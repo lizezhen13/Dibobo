@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Button } from "../../components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -42,10 +43,18 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
         })
         .superRefine((value, context) => {
           if (!isEditing && !value.api_key.trim()) {
-            context.addIssue({ code: "custom", path: ["api_key"], message: "新增时必须填写 API Key" });
+            context.addIssue({
+              code: "custom",
+              path: ["api_key"],
+              message: "新增时必须填写 API Key",
+            });
           }
           if (!/^https?:\/\//i.test(value.base_url)) {
-            context.addIssue({ code: "custom", path: ["base_url"], message: "仅支持 HTTP 或 HTTPS 地址" });
+            context.addIssue({
+              code: "custom",
+              path: ["base_url"],
+              message: "仅支持 HTTP 或 HTTPS 地址",
+            });
           }
         }),
     [isEditing],
@@ -90,7 +99,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
       }
       onOpenChange(false);
     } catch {
-      // The request error remains visible inside the dialog.
+      // 请求错误保留在弹窗内展示
     }
   });
 
@@ -106,15 +115,15 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} noValidate>
-          <div className="space-y-5 px-6 py-5">
-            <div className="grid grid-cols-2 gap-4">
+        <form id="data-source-form" onSubmit={onSubmit} noValidate>
+          <DialogBody className="space-y-5">
+            <div className="grid grid-cols-2 gap-5">
               <Field label="数据源名称" error={form.formState.errors.name?.message}>
                 <Input placeholder="例如：我的扶摇数据源" {...form.register("name")} />
               </Field>
               <Field label="数据源类型" error={form.formState.errors.provider_type?.message}>
                 <select
-                  className="h-11 w-full rounded-md border border-border bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-[0.95rem] text-foreground outline-none transition-all focus:border-primary/40 focus:ring-[3px] focus:ring-primary/15"
                   {...form.register("provider_type")}
                 >
                   <option value="fuyao">扶摇</option>
@@ -140,32 +149,43 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                   className="pl-10"
                   {...form.register("api_key")}
                 />
-                <KeyRound className="absolute left-3.5 top-3.5 text-muted-foreground/60" size={15} />
+                <KeyRound
+                  className="absolute left-3.5 top-3 text-muted-foreground/60"
+                  size={15}
+                />
               </div>
             </Field>
 
-            <div className="flex gap-3 border border-market-down/15 bg-market-down/5 px-4 py-3 text-xs leading-5 text-muted-foreground">
+            <div className="flex gap-3 rounded-lg border border-market-down/15 bg-market-down/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
               <ShieldCheck className="mt-0.5 shrink-0 text-market-down" size={16} />
               浏览器刷新或再次编辑时只会看到固定掩码。完整密钥不会出现在查询响应、页面状态或日志中。
             </div>
 
             {errorMessage && (
-              <div role="alert" className="border-l-2 border-market-up bg-market-up/6 px-4 py-3 text-sm text-market-up">
+              <div
+                role="alert"
+                className="rounded-lg border-l-4 border-market-up bg-market-up/6 px-4 py-3 text-[0.9rem] text-market-up"
+              >
                 {errorMessage}
               </div>
             )}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
-              取消
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending && <LoaderCircle className="animate-spin" size={15} />}
-              {isEditing ? "保存修改" : "保存数据源"}
-            </Button>
-          </DialogFooter>
+          </DialogBody>
         </form>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            取消
+          </Button>
+          <Button type="submit" form="data-source-form" disabled={isPending}>
+            {isPending && <LoaderCircle className="animate-spin" size={15} />}
+            {isEditing ? "保存修改" : "保存数据源"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -184,13 +204,14 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-muted-foreground">
+      <span className="mb-2 flex items-center justify-between text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
         {label}
-        {hint && <span className="font-normal tracking-normal text-muted-foreground/60">{hint}</span>}
+        {hint && (
+          <span className="font-normal tracking-normal text-muted-foreground/60">{hint}</span>
+        )}
       </span>
       {children}
-      {error && <span className="mt-1.5 block text-xs text-market-up">{error}</span>}
+      {error && <span className="mt-1.5 block text-[0.8rem] text-danger">{error}</span>}
     </label>
   );
 }
-

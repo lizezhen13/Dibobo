@@ -38,24 +38,30 @@ export function AppShell() {
       await logout.mutateAsync();
       navigate("/login", { replace: true });
     } catch {
-      // Keep the current session visible when the server could not revoke it.
+      // 服务端撤销会话失败时，保留当前视图
     }
   };
 
   return (
-    <div className="grid min-h-screen grid-cols-[248px_minmax(0,1fr)] bg-background">
-      {/* 侧边栏：深色磨砂玻璃外壳 */}
-      <aside className="fixed inset-y-0 left-0 z-20 flex w-[248px] flex-col overflow-hidden border-r border-shell-border bg-shell text-paper backdrop-blur-md">
-        <div className="relative z-10 flex h-[92px] items-center gap-3 border-b border-white/10 px-7">
-          <div className="grid size-9 place-items-center rounded-md border border-primary/70 bg-primary/10 font-mono text-sm text-primary shadow-subtle">D</div>
+    <div className="grid min-h-screen grid-cols-[260px_minmax(0,1fr)] bg-background">
+      {/* 侧边栏：恢复原版磨砂深色外壳 */}
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-[260px] flex-col overflow-hidden border-r border-[rgba(255,255,255,0.08)] bg-[rgba(17,17,17,0.72)] text-[#fcfaf7] backdrop-blur-md">
+        <div className="relative z-10 flex h-[88px] items-center gap-3 border-b border-[rgba(255,255,255,0.10)] px-7">
+          <div className="grid size-10 place-items-center rounded-lg border border-primary/60 bg-primary/10 font-mono text-base text-primary shadow-subtle">
+            D
+          </div>
           <div>
-            <p className="font-display text-xl tracking-[.06em]">DIBOBO</p>
-            <p className="mt-0.5 text-[9px] tracking-[.19em] text-paper/40">PRIVATE WORKBENCH</p>
+            <p className="font-display text-[1.35rem] tracking-[0.05em]">DIBOBO</p>
+            <p className="mt-0.5 text-[0.6rem] tracking-[0.18em] text-[#fcfaf7]/40">
+              PRIVATE WORKBENCH
+            </p>
           </div>
         </div>
 
-        <nav className="relative z-10 flex-1 px-3 py-7" aria-label="主导航">
-          <p className="mb-3 px-4 text-[9px] tracking-[.2em] text-paper/30">工作区 / WORKSPACE</p>
+        <nav className="relative z-10 flex-1 px-3 py-6" aria-label="主导航">
+          <p className="mb-3 px-4 text-[0.6rem] tracking-[0.18em] text-[#fcfaf7]/30">
+            工作区 / WORKSPACE
+          </p>
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -65,41 +71,47 @@ export function AppShell() {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "group flex h-11 items-center gap-3 rounded-md px-4 text-[13px] tracking-wide text-paper/55 transition hover:bg-white/[0.06] hover:text-paper/90",
-                      isActive && "bg-primary text-primary-foreground shadow-subtle",
+                      "group flex h-11 items-center gap-3 rounded-lg px-4 text-[0.9rem] tracking-wide text-[#fcfaf7]/55 transition-all duration-200 hover:bg-[rgba(255,255,255,0.06)] hover:text-[#fcfaf7]/90",
+                      isActive &&
+                        "bg-primary text-primary-foreground shadow-subtle hover:bg-primary hover:text-primary-foreground",
                     )
                   }
                 >
-                  <Icon size={16} strokeWidth={1.65} />
+                  <Icon size={17} strokeWidth={1.6} />
                   <span className="flex-1">{item.label}</span>
-                  <span className="font-mono text-[9px] text-paper/22 transition group-hover:text-paper/45">{item.number}</span>
+                  <span className="font-mono text-[0.6rem] text-[#fcfaf7]/25 transition group-hover:text-[#fcfaf7]/45">
+                    {item.number}
+                  </span>
                 </NavLink>
               );
             })}
           </div>
         </nav>
 
-        <div className="relative z-10 border-t border-white/10 px-7 py-5">
-          <p className="text-[10px] leading-5 text-paper/30">数据仅供参考</p>
-          <p className="text-[10px] leading-5 text-paper/30">不构成任何投资建议</p>
+        <div className="relative z-10 border-t border-[rgba(255,255,255,0.10)] px-7 py-5">
+          <p className="text-[0.7rem] leading-5 text-[#fcfaf7]/30">数据仅供参考</p>
+          <p className="text-[0.7rem] leading-5 text-[#fcfaf7]/30">不构成任何投资建议</p>
         </div>
       </aside>
 
       <div className="col-start-2 flex min-h-screen min-w-0 flex-col">
-        {/* 顶部标题栏：深色磨砂玻璃外壳 */}
-        <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-shell-border bg-shell px-8 text-paper backdrop-blur-md">
+        {/* 顶部标题栏：与右侧主区域背景保持一致 */}
+        <header className="sticky top-0 z-10 flex h-[68px] items-center justify-between border-b border-border bg-background px-8 text-foreground">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-paper/45">Dibobo</span>
-            <ChevronRight size={13} className="text-paper/45" />
-            <span className="font-semibold text-paper/95">{current.label}</span>
+            <span className="text-muted-foreground">Dibobo</span>
+            <ChevronRight size={14} className="text-muted-foreground" />
+            <span className="font-semibold text-foreground">{current.label}</span>
           </div>
           <div className="flex items-center gap-5">
-            <div className="flex items-center gap-2 border-r border-white/10 pr-5 text-xs text-paper/50">
-              <span className="size-1.5 rounded-full bg-primary" /> 行情状态 · 按页面更新
+            <div className="flex items-center gap-2 border-r border-border pr-5 text-xs text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-primary" />
+              行情状态 · 按页面更新
             </div>
-            <div className="flex items-center gap-2.5 text-sm text-paper/50">
-              <CircleUserRound size={16} />
-              <span className="font-medium text-paper/90">{session.data?.user.username}</span>
+            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <CircleUserRound size={17} />
+              <span className="font-medium text-foreground">
+                {session.data?.user.username}
+              </span>
             </div>
             <Button
               variant="ghost"
@@ -107,9 +119,9 @@ export function AppShell() {
               onClick={() => void handleLogout()}
               disabled={logout.isPending}
               aria-label="退出登录"
-              className="text-paper/70 hover:bg-white/[0.06] hover:text-paper"
+              className="text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
-              <LogOut size={14} /> 退出
+              <LogOut size={15} /> 退出
             </Button>
           </div>
         </header>
@@ -117,11 +129,11 @@ export function AppShell() {
         <main className="flex-1 bg-background p-8 xl:p-10">
           <Outlet />
         </main>
-        <footer className="border-t border-border bg-background px-8 py-4 text-center text-[10px] tracking-[.1em] text-muted-foreground/60">
+
+        <footer className="border-t border-border bg-background px-8 py-4 text-center text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">
           DIBOBO · 数据仅供参考，不构成任何投资建议
         </footer>
       </div>
     </div>
   );
 }
-

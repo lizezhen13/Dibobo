@@ -193,12 +193,12 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
           </DialogHeader>
 
           <form onSubmit={onSubmit} noValidate>
-            <div className="space-y-5 px-6 py-5">
+            <div className="space-y-5 px-6 py-6">
               {!isEditing && (
                 <div>
                   <label
                     htmlFor="holding-instrument-search"
-                    className="mb-2 block text-xs font-medium text-foreground"
+                    className="mb-2 block text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground"
                   >
                     股票 / ETF
                   </label>
@@ -218,14 +218,14 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                       aria-label="股票或 ETF"
                     />
                     {debouncedQuery && !selectedInstrument && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-60 overflow-y-auto rounded-md border border-border bg-card p-1.5 shadow-dialog">
+                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-2 shadow-dialog">
                         {instrumentSearch.isLoading && (
-                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 px-3 py-4 text-[0.85rem] text-muted-foreground">
                             <LoaderCircle className="animate-spin" size={14} /> 正在检索标的
                           </div>
                         )}
                         {instrumentSearch.isError && (
-                          <div className="px-3 py-4 text-xs text-market-up">
+                          <div className="px-3 py-4 text-[0.85rem] text-market-up">
                             {instrumentSearch.error instanceof ApiError
                               ? instrumentSearch.error.message
                               : "标的检索失败"}
@@ -235,42 +235,42 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                           <button
                             key={item.thscode}
                             type="button"
-                            className="flex w-full items-center gap-3 rounded-[2px] px-3 py-2.5 text-left transition hover:bg-card-deep"
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-card-deep"
                             onClick={() => {
                               setSelectedInstrument(item);
                               setInstrumentQuery(`${item.ticker} · ${item.name}`);
                               setSelectionError(null);
                             }}
                           >
-                            <span className="grid size-8 place-items-center border border-border bg-card-deep font-mono text-[10px] text-muted-foreground">
+                            <span className="grid size-8 place-items-center rounded border border-border bg-card-deep font-mono text-[0.7rem] text-muted-foreground">
                               {item.exchange}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold text-foreground">{item.name}</span>
-                              <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground/60">{item.thscode}</span>
+                              <span className="block truncate text-[0.95rem] font-semibold text-foreground">{item.name}</span>
+                              <span className="mt-0.5 block font-mono text-[0.7rem] text-muted-foreground/60">{item.thscode}</span>
                             </span>
                             <Badge variant="neutral">{item.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
                           </button>
                         ))}
                         {instrumentSearch.data?.items.length === 0 && (
-                          <div className="px-3 py-4 text-xs text-muted-foreground">没有找到可持有的 A 股或 ETF</div>
+                          <div className="px-3 py-4 text-[0.85rem] text-muted-foreground">没有找到可持有的 A 股或 ETF</div>
                         )}
                       </div>
                     )}
                   </div>
                   {selectedInstrument && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-market-down">
+                    <div className="mt-2 flex items-center gap-2 text-[0.8rem] text-market-down">
                       <Check size={13} /> 已选择 {selectedInstrument.thscode} · {selectedInstrument.name}
                     </div>
                   )}
-                  {selectionError && <p className="mt-1.5 text-xs text-market-up">{selectionError}</p>}
+                  {selectionError && <p className="mt-1.5 text-[0.8rem] text-danger">{selectionError}</p>}
                 </div>
               )}
 
               {isEditing && (
-                <div className="grid grid-cols-[110px_1fr_auto] items-center gap-4 border border-border bg-card-deep/45 px-4 py-3">
-                  <span className="font-mono text-[9px] tracking-[.12em] text-muted-foreground/60">INSTRUMENT</span>
-                  <span className="text-sm font-semibold text-foreground">
+                <div className="grid grid-cols-[110px_1fr_auto] items-center gap-4 rounded-xl border border-border bg-card-deep/45 px-4 py-3">
+                  <span className="font-mono text-[0.65rem] tracking-[0.12em] text-muted-foreground/60">INSTRUMENT</span>
+                  <span className="text-[0.95rem] font-semibold text-foreground">
                     {holding.ticker} · {holding.name}
                   </span>
                   <Badge>{holding.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
@@ -279,7 +279,7 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
 
               {!isClosed && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-5">
                     <Field label="平均持仓成本" error={form.formState.errors.average_cost?.message}>
                       <Input
                         type="number"
@@ -301,21 +301,21 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
 
               <Field label="备注" error={form.formState.errors.note?.message} hint={`${form.watch("note").length}/1000`}>
                 <textarea
-                  className="min-h-24 w-full resize-y rounded-md border border-border bg-card px-3.5 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  className="min-h-24 w-full resize-y rounded-lg border border-input bg-card px-3.5 py-3 text-[0.95rem] leading-7 text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-[3px] focus:ring-primary/15"
                   placeholder="记录建仓逻辑、计划或需要复盘的事项（可选）"
                   {...form.register("note")}
                 />
               </Field>
 
               {!isClosed && (
-                <div className="flex gap-3 border border-primary/20 bg-primary/8 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                <div className="flex gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
                   <ShieldAlert className="mt-0.5 shrink-0 text-primary/90" size={16} />
                   V1 只维护持仓快照，不录入逐笔交易、卖出价格、佣金或已实现盈亏。
                 </div>
               )}
 
               {errorMessage && (
-                <div role="alert" className="border-l-2 border-market-up bg-market-up/6 px-4 py-3 text-sm text-market-up">
+                <div role="alert" className="rounded-lg border-l-4 border-market-up bg-market-up/6 px-4 py-3 text-[0.9rem] text-danger">
                   {errorMessage}
                 </div>
               )}
@@ -373,12 +373,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-muted-foreground">
+      <span className="mb-2 flex items-center justify-between text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
         {label}
-        {hint && <span className="font-mono text-[9px] font-normal tracking-normal text-muted-foreground/60">{hint}</span>}
+        {hint && <span className="font-mono text-[0.7rem] font-normal tracking-normal text-muted-foreground/60">{hint}</span>}
       </span>
       {children}
-      {error && <span className="mt-1.5 block text-xs text-market-up">{error}</span>}
+      {error && <span className="mt-1.5 block text-[0.8rem] text-danger">{error}</span>}
     </label>
   );
 }

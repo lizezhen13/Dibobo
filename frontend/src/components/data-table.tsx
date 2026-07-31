@@ -39,9 +39,9 @@ export function DataTable<TData>({
   });
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-raised">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-raised">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-max border-collapse text-left text-xs">
+        <table className="w-full min-w-max border-collapse text-left text-sm">
           <thead className="border-b border-border bg-secondary/60">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -51,7 +51,7 @@ export function DataTable<TData>({
                     <th
                       key={header.id}
                       className={cn(
-                        "h-10 whitespace-nowrap px-4 font-mono text-[10px] font-medium uppercase tracking-[.12em] text-muted-foreground",
+                        "h-11 whitespace-nowrap px-5 py-3 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
                         meta?.align === "right" && "text-right",
                         meta?.align === "center" && "text-center",
                         meta?.headerClassName,
@@ -66,14 +66,14 @@ export function DataTable<TData>({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-border/70">
+          <tbody className="divide-y divide-border/60">
             {isLoading
               ? Array.from({ length: 4 }, (_, rowIndex) => (
                   <tr key={`skeleton-${rowIndex}`}>
                     {columns.map((_, columnIndex) => (
-                      <td key={columnIndex} className="h-16 px-4">
+                      <td key={columnIndex} className="h-[4.25rem] px-5">
                         <div
-                          className="h-3 animate-pulse rounded-full bg-secondary"
+                          className="h-3.5 animate-pulse rounded-full bg-secondary"
                           style={{ width: `${44 + ((rowIndex + columnIndex) % 4) * 13}%` }}
                         />
                       </td>
@@ -84,7 +84,7 @@ export function DataTable<TData>({
                   <tr
                     key={row.id}
                     className={cn(
-                      "group transition-colors hover:bg-row-hover",
+                      "group transition-colors duration-150 hover:bg-row-hover",
                       index % 2 === 1 && "bg-row-stripe",
                     )}
                   >
@@ -94,7 +94,7 @@ export function DataTable<TData>({
                         <td
                           key={cell.id}
                           className={cn(
-                            "h-16 whitespace-nowrap px-4 align-middle text-foreground/80",
+                            "h-[4.25rem] whitespace-nowrap px-5 align-middle text-foreground/85",
                             meta?.align === "right" && "text-right font-mono tabular-nums",
                             meta?.align === "center" && "text-center",
                             meta?.cellClassName,
@@ -109,7 +109,7 @@ export function DataTable<TData>({
           </tbody>
         </table>
       </div>
-      {!isLoading && data.length === 0 && empty}
+      {!isLoading && data.length === 0 && <div className="border-t border-border/60">{empty}</div>}
     </div>
   );
 }

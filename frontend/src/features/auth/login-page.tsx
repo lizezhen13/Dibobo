@@ -1,169 +1,126 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Eye, EyeOff, LoaderCircle, LockKeyhole } from "lucide-react";
-import { useState } from "react";
+import { Landmark, LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
-import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { ApiError } from "../../lib/api";
 import { useLoginMutation } from "./queries";
 
-const loginSchema = z.object({
-  username: z.string().trim().min(1, "请输入用户名").max(50, "用户名不能超过 50 个字符"),
-  password: z.string().min(1, "请输入密码").max(256),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
-
-const indexMarks = [
-  ["SH", "000001"],
-  ["CYB", "399006"],
-  ["CSI", "000300"],
-  ["STAR", "000688"],
-] as const;
+interface LoginForm {
+  username: string;
+  password: string;
+}
 
 export function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const mutation = useLoginMutation();
+  const login = useLoginMutation();
   const navigate = useNavigate();
-  const location = useLocation();
-  const form = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "" },
-  });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginForm>({ defaultValues: { username: "", password: "" } });
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const onSubmit = async (values: LoginForm) => {
     try {
-      await mutation.mutateAsync(values);
-      const from = (location.state as { from?: string } | null)?.from;
-      navigate(from && from !== "/login" ? from : "/overview", { replace: true });
+      await login.mutateAsync(values);
+      navigate("/overview", { replace: true });
     } catch {
-      // The mutation error is rendered below without retaining the password.
+      // 错误由 mutation.error 渲染
     }
-  });
+  };
 
   const errorMessage =
-    mutation.error instanceof ApiError ? mutation.error.message : mutation.error ? "登录失败，请稍后重试" : null;
+    login.error instanceof ApiError
+      ? login.error.message
+      : login.error
+        ? "登录失败，请稍后重试"
+        : null;
 
   return (
-    <main className="grid min-h-screen grid-cols-[minmax(560px,1.18fr)_minmax(430px,.82fr)] overflow-hidden bg-background">
-      <section className="glass-shell relative isolate flex min-h-screen flex-col overflow-hidden px-[clamp(48px,6vw,96px)] py-12 text-paper">
-        <div className="relative z-10 flex items-center gap-3 animate-enter">
-          <div className="grid size-9 place-items-center rounded-md border border-primary/70 bg-primary/10 font-mono text-sm text-primary shadow-subtle">D</div>
-          <div>
-            <p className="font-display text-xl tracking-[.08em]">DIBOBO</p>
-            <p className="mt-0.5 text-[10px] tracking-[.22em] text-paper/45">DIVIDEND WORKBENCH</p>
-          </div>
-        </div>
+    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-shell px-6 py-12 text-paper">
+      {/* 装饰背景 */}
+      <div className="pointer-events-none absolute inset-0 opacity-20">
+        <div className="absolute left-1/4 top-1/4 size-80 rounded-full bg-primary/20 blur-[100px]" />
+        <div className="absolute bottom-1/4 right-1/4 size-96 rounded-full bg-primary/10 blur-[120px]" />
+      </div>
 
-        <div className="relative z-10 my-auto max-w-2xl animate-enter-delayed">
-          <div className="mb-7 flex items-center gap-3 text-[11px] tracking-[.18em] text-primary">
-            <span className="h-px w-11 bg-primary" />
-            A 股 · 低波红利策略
+      <div className="relative z-10 w-full max-w-[420px] animate-fade-in-up">
+        {/* 品牌区 */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-5 grid size-16 place-items-center rounded-2xl border border-primary/40 bg-primary/10 text-primary shadow-raised">
+            <Landmark size={30} strokeWidth={1.4} />
           </div>
-          <h1 className="font-display text-[clamp(48px,5.2vw,78px)] leading-[1.08] tracking-[-.035em]">
-            把市场噪声，
-            <br />
-            留在<span className="text-primary">账簿之外</span>。
-          </h1>
-          <p className="mt-8 max-w-xl text-[15px] leading-8 tracking-wide text-paper/58">
-            指数行情、持仓、红利指标与投资日记，在一个私有、克制、可追溯的数据工作台中归位。
+          <h1 className="font-display text-4xl tracking-[0.04em] text-paper">DIBOBO</h1>
+          <p className="mt-3 text-[0.9rem] leading-relaxed text-paper/45">
+            你的私人投资工作台
           </p>
         </div>
 
-        <div className="relative z-10 grid grid-cols-4 border-y border-paper/12 py-5">
-          {indexMarks.map(([label, code], index) => (
-            <div key={code} className={index > 0 ? "border-l border-paper/12 pl-5" : ""}>
-              <p className="font-mono text-[10px] tracking-[.14em] text-paper/38">{label}</p>
-              <p className="mt-2 font-mono text-sm text-paper/75">{code}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        {/* 登录卡片 */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-dialog backdrop-blur-md">
+          <p className="eyebrow mb-5 text-paper/30">LOGIN</p>
 
-      <section className="relative flex min-h-screen items-center justify-center px-[clamp(48px,6vw,92px)]">
-        <div className="absolute right-9 top-8 font-mono text-[10px] tracking-[.16em] text-muted-foreground/60">V1.0 / PRIVATE</div>
-        <div className="w-full max-w-[420px] animate-enter">
-          <div className="mb-9">
-            <div className="mb-5 grid size-11 place-items-center rounded-full border border-border bg-secondary text-muted-foreground">
-              <LockKeyhole size={18} strokeWidth={1.7} />
-            </div>
-            <h2 className="font-display text-[34px] tracking-[-.02em] text-foreground">登录工作台</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">使用部署人员为你创建的账号。系统不开放自主注册。</p>
-          </div>
-
-          <form onSubmit={onSubmit} className="space-y-5" noValidate>
-            <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-semibold tracking-[.08em] text-muted-foreground">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <div className="space-y-2">
+              <label htmlFor="username" className="block text-[0.8rem] font-medium text-paper/65">
                 用户名
               </label>
               <Input
                 id="username"
                 autoComplete="username"
-                autoFocus
                 placeholder="请输入用户名"
-                aria-invalid={Boolean(form.formState.errors.username)}
-                {...form.register("username")}
+                className="border-white/10 bg-white/[0.05] text-paper placeholder:text-paper/30 focus-visible:border-primary/40 focus-visible:ring-primary/25"
+                {...register("username", { required: "请输入用户名" })}
               />
-              {form.formState.errors.username && (
-                <p className="mt-1.5 text-xs text-market-up">{form.formState.errors.username.message}</p>
+              {errors.username && (
+                <p className="text-[0.75rem] text-danger">{errors.username.message}</p>
               )}
             </div>
 
-            <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-semibold tracking-[.08em] text-muted-foreground">
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-[0.8rem] font-medium text-paper/65">
                 密码
               </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="请输入密码"
-                  className="pr-11"
-                  aria-invalid={Boolean(form.formState.errors.password)}
-                  {...form.register("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  className="absolute right-1 top-1 grid size-9 place-items-center rounded text-muted-foreground/60 transition hover:text-foreground"
-                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
-              {form.formState.errors.password && (
-                <p className="mt-1.5 text-xs text-market-up">{form.formState.errors.password.message}</p>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="请输入密码"
+                className="border-white/10 bg-white/[0.05] text-paper placeholder:text-paper/30 focus-visible:border-primary/40 focus-visible:ring-primary/25"
+                {...register("password", { required: "请输入密码" })}
+              />
+              {errors.password && (
+                <p className="text-[0.75rem] text-danger">{errors.password.message}</p>
               )}
             </div>
 
             {errorMessage && (
-              <div role="alert" className="border-l-2 border-market-up bg-market-up/6 px-3.5 py-3 text-sm text-market-up">
+              <div
+                role="alert"
+                className="rounded-lg border-l-4 border-danger bg-danger/10 px-4 py-3 text-[0.9rem] text-danger"
+              >
                 {errorMessage}
               </div>
             )}
 
-            <Button type="submit" size="lg" className="mt-2 w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <>
-                  <LoaderCircle className="animate-spin" size={17} /> 正在登录
-                </>
-              ) : (
-                <>
-                  进入 Dibobo <ArrowRight size={17} />
-                </>
-              )}
+            <Button
+              type="submit"
+              className="w-full text-base"
+              disabled={login.isPending}
+            >
+              {login.isPending ? (
+                <LoaderCircle className="animate-spin" size={17} />
+              ) : null}
+              {login.isPending ? "登录中…" : "进入工作台"}
             </Button>
           </form>
-
-          <p className="mt-10 border-t border-border pt-5 text-[11px] leading-5 text-muted-foreground/60">
-            登录即表示你知悉：数据仅供参考，不构成任何投资建议。
-          </p>
         </div>
-      </section>
-    </main>
+
+        <p className="mt-6 text-center text-[0.7rem] tracking-[0.08em] text-paper/25">
+          数据仅供参考，不构成任何投资建议
+        </p>
+      </div>
+    </div>
   );
 }

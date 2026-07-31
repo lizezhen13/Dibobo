@@ -33,6 +33,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { ApiError } from "../../lib/api";
 import { formatDateTime } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
+import type { DataSource } from "./types";
 import { DataSourceDialog } from "./data-source-dialog";
 import {
   useActivateDataSourceMutation,
@@ -40,7 +41,6 @@ import {
   useDeleteDataSourceMutation,
   useTestDataSourceMutation,
 } from "./queries";
-import type { ConnectionTestResult, DataSource } from "./types";
 
 type Notice = { tone: "success" | "error" | "warning"; message: string } | null;
 
@@ -120,12 +120,16 @@ export function DataSourceSettings() {
     <div className="animate-enter">
       <div className="mb-6 flex items-end justify-between gap-8">
         <div>
-          <p className="font-mono text-[10px] tracking-[.16em] text-primary/90">DATA SOURCES / 数据源设置</p>
-          <h2 className="mt-2 font-display text-[28px] tracking-[-.02em]">连接你的金融数据</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">每个用户可保存多条独立配置，但同一时间只有一条作为行情与雷达数据源。</p>
+          <p className="eyebrow text-primary/90">DATA SOURCES / 数据源设置</p>
+          <h2 className="mt-2 font-display text-[1.75rem] tracking-tight">
+            连接你的金融数据
+          </h2>
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">
+            每个用户可保存多条独立配置，但同一时间只有一条作为行情与雷达数据源。
+          </p>
         </div>
         <Button onClick={openCreate}>
-          <Plus size={15} /> 新增数据源
+          <Plus size={17} /> 新增数据源
         </Button>
       </div>
 
@@ -140,8 +144,8 @@ export function DataSourceSettings() {
       ) : query.isError ? (
         <Card className="grid min-h-[360px] place-items-center text-center">
           <div>
-            <AlertTriangle className="mx-auto text-danger" size={24} />
-            <p className="mt-4 font-display text-xl">数据源配置加载失败</p>
+            <AlertTriangle className="mx-auto text-danger" size={26} />
+            <p className="mt-5 font-display text-2xl">数据源配置加载失败</p>
             <Button className="mt-5" variant="outline" onClick={() => void query.refetch()}>
               重新加载
             </Button>
@@ -151,17 +155,19 @@ export function DataSourceSettings() {
         <Card className="grid min-h-[430px] place-items-center text-center">
           <div className="max-w-md">
             <div className="mx-auto grid size-14 place-items-center rounded-full border border-primary/25 bg-primary/10 text-primary/90">
-              <DatabaseZap size={22} />
+              <DatabaseZap size={23} />
             </div>
             <h3 className="mt-5 font-display text-2xl">还没有数据源</h3>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">添加扶摇或兼容配置，测试通过并启用后，总览与持仓页面即可请求真实行情。</p>
-            <Button className="mt-6" onClick={openCreate}>
-              <Plus size={15} /> 添加第一条配置
+            <p className="mt-3 text-[0.95rem] leading-7 text-muted-foreground">
+              添加扶摇或兼容配置，测试通过并启用后，总览与持仓页面即可请求真实行情。
+            </p>
+            <Button className="mt-7" onClick={openCreate}>
+              <Plus size={17} /> 添加第一条配置
             </Button>
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {query.data.map((source, index) => (
             <DataSourceCard
               key={source.id}
@@ -207,51 +213,80 @@ function DataSourceCard({
 }) {
   const capabilities = Object.entries(source.capabilities);
   return (
-    <Card className={cn("relative overflow-hidden", source.is_active && "border-market-down/35 shadow-[inset_3px_0_0_#16805c,0_10px_35px_rgba(31,43,37,.055)]")}>
-      <div className="absolute right-5 top-1 font-display text-[70px] leading-none text-foreground/[.025]">{String(ordinal).padStart(2, "0")}</div>
-      <div className="relative grid grid-cols-[1fr_250px]">
-        <div className="p-6">
+    <Card
+      className={cn(
+        "relative overflow-hidden",
+        source.is_active &&
+          "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(31,43,37,.055)]",
+      )}
+    >
+      <div className="absolute right-5 top-1 font-display text-[4.5rem] leading-none text-foreground/[0.025]">
+        {String(ordinal).padStart(2, "0")}
+      </div>
+      <div className="relative grid grid-cols-[1fr_260px]">
+        <div className="p-7">
           <div className="flex items-start gap-4">
-            <div className="grid size-11 shrink-0 place-items-center rounded-md border border-border bg-secondary font-mono text-xs font-bold text-primary/90">FY</div>
+            <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary font-mono text-xs font-bold text-primary/90">
+              FY
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5">
-                <h3 className="font-display text-[21px] text-foreground">{source.name}</h3>
-                {source.is_active && <Badge variant="success"><Activity size={9} /> 当前启用</Badge>}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h3 className="font-display text-[1.25rem] text-foreground">{source.name}</h3>
+                {source.is_active && (
+                  <Badge variant="success">
+                    <Activity size={10} className="mr-1" /> 当前启用
+                  </Badge>
+                )}
                 <Badge>{providerLabels[source.provider_type]}</Badge>
               </div>
-              <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground/60">{source.base_url}</p>
+              <p className="mt-2 truncate font-mono text-[0.7rem] text-muted-foreground/60">
+                {source.base_url}
+              </p>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-[180px_1fr] gap-4 border-t border-border pt-4">
+          <div className="mt-6 grid grid-cols-[180px_1fr] gap-5 border-t border-border pt-5">
             <div>
-              <p className="text-[10px] tracking-[.1em] text-muted-foreground/60">API KEY</p>
-              <p className="mt-1.5 flex items-center gap-2 font-mono text-xs text-muted-foreground"><KeyRound size={12} /> {source.api_key_mask}</p>
+              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
+                API KEY
+              </p>
+              <p className="mt-1.5 flex items-center gap-2 font-mono text-[0.8rem] text-muted-foreground">
+                <KeyRound size={12} /> {source.api_key_mask}
+              </p>
             </div>
             <div>
-              <p className="text-[10px] tracking-[.1em] text-muted-foreground/60">能力识别</p>
+              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
+                能力识别
+              </p>
               {capabilities.length ? (
-                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-muted-foreground">
                   {capabilities.slice(0, 5).map(([key, state]) => (
                     <span key={key} className="flex items-center gap-1">
-                      {state === "supported" ? <Check className="text-market-down" size={11} /> : <CircleOff className="text-muted-foreground/60" size={11} />}
+                      {state === "supported" ? (
+                        <Check className="text-market-down" size={11} />
+                      ) : (
+                        <CircleOff className="text-muted-foreground/60" size={11} />
+                      )}
                       {capabilityLabels[key] ?? key}
                     </span>
                   ))}
-                  {capabilities.length > 5 && <span className="text-muted-foreground/60">+{capabilities.length - 5}</span>}
+                  {capabilities.length > 5 && (
+                    <span className="text-muted-foreground/60">+{capabilities.length - 5}</span>
+                  )}
                 </div>
               ) : (
-                <p className="mt-1.5 text-xs text-muted-foreground/60">测试连接后识别</p>
+                <p className="mt-1.5 text-[0.8rem] text-muted-foreground/60">测试连接后识别</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="border-l border-border bg-secondary/45 p-5">
+        <div className="border-l border-border bg-secondary/45 p-6">
           <TestStatus source={source} />
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
             <Button variant="outline" size="sm" onClick={onTest} disabled={testing}>
-              {testing ? <LoaderCircle className="animate-spin" size={13} /> : <Activity size={13} />} 测试连接
+              {testing ? <LoaderCircle className="animate-spin" size={13} /> : <Activity size={13} />}{" "}
+              测试连接
             </Button>
             <Button
               variant={source.is_active ? "ghost" : "outline"}
@@ -262,7 +297,9 @@ function DataSourceCard({
               {activating ? <LoaderCircle className="animate-spin" size={13} /> : <Power size={13} />}
               {source.is_active ? "已启用" : "启用"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={onEdit}><Pencil size={13} /> 编辑</Button>
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              <Pencil size={13} /> 编辑
+            </Button>
             <DeleteSourceDialog source={source} deleting={deleting} onConfirm={onDelete} />
           </div>
         </div>
@@ -274,31 +311,61 @@ function DataSourceCard({
 function TestStatus({ source }: { source: DataSource }) {
   if (!source.last_test_status) {
     return (
-      <div className="min-h-[66px]">
-        <p className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><CircleOff size={13} /> 尚未测试</p>
-        <p className="mt-2 text-[11px] leading-5 text-muted-foreground/60">启用前需要验证地址、鉴权与代表接口。</p>
+      <div className="min-h-[72px]">
+        <p className="flex items-center gap-2 text-[0.8rem] font-semibold text-muted-foreground">
+          <CircleOff size={14} /> 尚未测试
+        </p>
+        <p className="mt-2 text-[0.75rem] leading-5 text-muted-foreground/60">
+          启用前需要验证地址、鉴权与代表接口。
+        </p>
       </div>
     );
   }
   const success = source.last_test_status === "success";
   return (
-    <div className="min-h-[66px]">
-      <p className={cn("flex items-center gap-2 text-xs font-semibold", success ? "text-market-down" : "text-danger")}>
-        {success ? <ShieldCheck size={13} /> : <AlertTriangle size={13} />}
+    <div className="min-h-[72px]">
+      <p
+        className={cn(
+          "flex items-center gap-2 text-[0.8rem] font-semibold",
+          success ? "text-market-down" : "text-danger",
+        )}
+      >
+        {success ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
         {success ? "最近测试成功" : "最近测试失败"}
-        {source.last_test_latency_ms !== null && <span className="font-mono font-normal text-muted-foreground/60">{source.last_test_latency_ms} ms</span>}
+        {source.last_test_latency_ms !== null && (
+          <span className="font-mono font-normal text-muted-foreground/60">
+            {source.last_test_latency_ms} ms
+          </span>
+        )}
       </p>
-      <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-muted-foreground/60" title={source.last_test_message ?? undefined}>{source.last_test_message}</p>
-      <p className="mt-1 font-mono text-[9px] text-muted-foreground/60">{formatDateTime(source.last_test_at)}</p>
+      <p
+        className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60"
+        title={source.last_test_message ?? undefined}
+      >
+        {source.last_test_message}
+      </p>
+      <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground/60">
+        {formatDateTime(source.last_test_at)}
+      </p>
     </div>
   );
 }
 
-function DeleteSourceDialog({ source, deleting, onConfirm }: { source: DataSource; deleting: boolean; onConfirm: () => void }) {
+function DeleteSourceDialog({
+  source,
+  deleting,
+  onConfirm,
+}: {
+  source: DataSource;
+  deleting: boolean;
+  onConfirm: () => void;
+}) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-danger hover:bg-market-up/6 hover:text-danger"><Trash2 size={13} /> 删除</Button>
+        <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/10 hover:text-danger">
+          <Trash2 size={13} /> 删除
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -319,18 +386,33 @@ function DeleteSourceDialog({ source, deleting, onConfirm }: { source: DataSourc
   );
 }
 
-function NoticeBar({ notice, onClose }: { notice: NonNullable<Notice>; onClose: () => void }) {
+function NoticeBar({
+  notice,
+  onClose,
+}: {
+  notice: NonNullable<Notice>;
+  onClose: () => void;
+}) {
   const Icon = notice.tone === "success" ? Check : notice.tone === "warning" ? AlertTriangle : X;
   return (
-    <div className={cn(
-      "mb-5 flex items-center gap-3 border-l-[3px] px-4 py-3 text-sm",
-      notice.tone === "success" && "border-market-down bg-market-down/6 text-market-down",
-      notice.tone === "warning" && "border-primary bg-primary/10 text-primary/90",
-      notice.tone === "error" && "border-market-up bg-market-up/6 text-danger",
-    )}>
-      <Icon size={15} />
+    <div
+      className={cn(
+        "mb-5 flex items-center gap-3 rounded-lg border-l-4 px-4 py-3 text-[0.9rem]",
+        notice.tone === "success" && "border-market-down bg-market-down/6 text-market-down",
+        notice.tone === "warning" && "border-primary bg-primary/10 text-primary/90",
+        notice.tone === "error" && "border-market-up bg-market-up/6 text-danger",
+      )}
+    >
+      <Icon size={16} />
       <span className="flex-1">{notice.message}</span>
-      <button type="button" onClick={onClose} className="grid size-7 place-items-center rounded hover:bg-secondary/60" aria-label="关闭提示"><X size={13} /></button>
+      <button
+        type="button"
+        onClick={onClose}
+        className="grid size-7 place-items-center rounded-md hover:bg-secondary/60"
+        aria-label="关闭提示"
+      >
+        <X size={13} />
+      </button>
     </div>
   );
 }
@@ -338,4 +420,3 @@ function NoticeBar({ notice, onClose }: { notice: NonNullable<Notice>; onClose: 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
-
