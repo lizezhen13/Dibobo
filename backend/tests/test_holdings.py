@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -7,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.database import Base
 from app.core.models import Holding, User
-from app.data_sources.domain import Instrument, SecurityQuote
-from app.holdings.schemas import HoldingCreate, HoldingUpdate
+from app.data_sources.domain import Instrument, InstrumentSearchResult, SecurityQuote
+from app.holdings import service as holdings_service
+from app.holdings.schemas import HoldingCreate, HoldingUpdate, InstrumentResponse
 from app.holdings.service import (
     build_holding_items,
     calculate_summary_values,
@@ -60,6 +62,59 @@ def payload(
         opened_on=date(2026, 7, 1),
         note="核心仓位",
     )
+
+
+@pytest.mark.asyncio
+async def test_instrument_search_maps_domain_models_to_response_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = SimpleNamespace(id="source-id", provider_type="fuyao")
+    user = SimpleNamespace(id="user-id")
+
+    async def active_source(*_: object) -> SimpleNamespace:
+        return source
+
+    class StubAdapter:
+        async def __aenter__(self) -> "StubAdapter":
+            return self
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+        async def search_instruments(
+            self,
+            query: str,
+            limit: int = 10,
+        ) -> InstrumentSearchResult:
+            assert query == "中国平安"
+            assert limit == 10
+            return InstrumentSearchResult(
+                items=[
+                    Instrument(
+                        thscode="601318.SH",
+                        ticker="601318",
+                        name="中国平安",
+                        asset_type="a_share",
+                        exchange="SH",
+                    )
+                ],
+                fetched_at=datetime.now(UTC),
+            )
+
+    monkeypatch.setattr(holdings_service, "_active_source", active_source)
+    monkeypatch.setattr(holdings_service, "_adapter", lambda *_: StubAdapter())
+
+    result = await holdings_service.search_instruments(object(), user, "中国平安", object())  # type: ignore[arg-type]
+
+    assert result.items == [
+        InstrumentResponse(
+            thscode="601318.SH",
+            ticker="601318",
+            name="中国平安",
+            asset_type="a_share",
+            exchange="SH",
+        )
+    ]
 
 
 @pytest.mark.asyncio

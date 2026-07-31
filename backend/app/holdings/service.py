@@ -24,6 +24,7 @@ from app.holdings.schemas import (
     HoldingStatus,
     HoldingSummaryResponse,
     HoldingUpdate,
+    InstrumentResponse,
     InstrumentSearchResponse,
 )
 from app.overview.schemas import DataSourceSummary
@@ -140,7 +141,9 @@ async def search_instruments(
             extra={"user_id": str(user.id), "data_source_id": str(source.id), "code": exc.code},
         )
         _raise_search_error(exc)
-    return InstrumentSearchResponse(items=result.items)
+    return InstrumentSearchResponse(
+        items=[InstrumentResponse.model_validate(item.model_dump()) for item in result.items]
+    )
 
 
 async def resolve_instrument(
