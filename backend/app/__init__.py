@@ -1,0 +1,2 @@
+"""Dibobo backend application."""
+

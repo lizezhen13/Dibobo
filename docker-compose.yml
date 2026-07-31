@@ -1,0 +1,122 @@
+name: dibobo
+
+services:
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${DIBOBO_WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    environment: &backend-environment
+      DIBOBO_APP_ENV: ${DIBOBO_APP_ENV:-production}
+      DIBOBO_APP_PUBLIC_URL: ${DIBOBO_APP_PUBLIC_URL:-http://localhost:8080}
+      DIBOBO_DATABASE_URL: ${DIBOBO_DATABASE_URL:?Set DIBOBO_DATABASE_URL in .env}
+      DIBOBO_VALKEY_URL: ${DIBOBO_VALKEY_URL:-redis://valkey:6379/0}
+      DIBOBO_SESSION_SECRET: ${DIBOBO_SESSION_SECRET:?Set DIBOBO_SESSION_SECRET in .env}
+      DIBOBO_API_KEY_ENCRYPTION_KEY: ${DIBOBO_API_KEY_ENCRYPTION_KEY:?Set DIBOBO_API_KEY_ENCRYPTION_KEY in .env}
+      DIBOBO_SESSION_SECURE_COOKIE: ${DIBOBO_SESSION_SECURE_COOKIE:-false}
+      DIBOBO_TIMEZONE: ${DIBOBO_TIMEZONE:-Asia/Shanghai}
+      DIBOBO_LOG_LEVEL: ${DIBOBO_LOG_LEVEL:-INFO}
+      DIBOBO_QUOTE_REFRESH_SECONDS: ${DIBOBO_QUOTE_REFRESH_SECONDS:-5}
+      DIBOBO_UPSTREAM_TIMEOUT_SECONDS: ${DIBOBO_UPSTREAM_TIMEOUT_SECONDS:-8}
+      DIBOBO_UPSTREAM_CONCURRENCY: ${DIBOBO_UPSTREAM_CONCURRENCY:-4}
+      DIBOBO_LOGIN_FAILURE_LIMIT: ${DIBOBO_LOGIN_FAILURE_LIMIT:-5}
+      DIBOBO_LOGIN_LOCK_SECONDS: ${DIBOBO_LOGIN_LOCK_SECONDS:-300}
+      DIBOBO_WORKER_CONCURRENCY: ${DIBOBO_WORKER_CONCURRENCY:-2}
+      DIBOBO_RADAR_SYNC_SCHEDULE: ${DIBOBO_RADAR_SYNC_SCHEDULE:-0 18 * * 1-5}
+      DIBOBO_INITIAL_USERNAME: ${DIBOBO_INITIAL_USERNAME:-}
+      DIBOBO_INITIAL_PASSWORD: ${DIBOBO_INITIAL_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "celery -A app.tasks.celery_app:celery_app worker --loglevel=${DIBOBO_LOG_LEVEL:-INFO} --concurrency=${DIBOBO_WORKER_CONCURRENCY:-2}"]
+    environment: *backend-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app:celery_app inspect ping -d celery@$$HOSTNAME --timeout 5 | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "app.tasks.celery_app:celery_app", "beat", "--loglevel=INFO", "--pidfile=/tmp/celerybeat.pid"]
+    environment: *backend-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/celerybeat.pid && kill -0 $$(cat /tmp/celerybeat.pid)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dibobo}
+      POSTGRES_USER: ${POSTGRES_USER:-dibobo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      TZ: ${DIBOBO_TIMEZONE:-Asia/Shanghai}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dibobo} -d ${POSTGRES_DB:-dibobo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  valkey_data:

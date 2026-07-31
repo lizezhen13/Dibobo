@@ -1,0 +1,9 @@
+node_modules
+dist
+.pnpm-store
+.vite
+*.tsbuildinfo
+*.log
+.env
+.env.*
+

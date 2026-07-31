@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #17211d;
+  --color-ink-soft: #25352e;
+  --color-ink-muted: #68736d;
+  --color-ink-faint: #9aa29e;
+  --color-paper: #f7f4ec;
+  --color-paper-deep: #eee9dd;
+  --color-line: #d9d3c6;
+  --color-accent: #c58b32;
+  --color-accent-deep: #8c5d19;
+  --color-market-up: #cf493e;
+  --color-market-down: #16805c;
+  --font-body: "MiSans", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-mono: "IBM Plex Mono", "JetBrains Mono", "Cascadia Mono", monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-width: 1024px;
+    background: var(--color-paper-deep);
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-width: 1024px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-paper);
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  ::selection {
+    color: var(--color-paper);
+    background: var(--color-ink-soft);
+  }
+}
+
+@layer utilities {
+  .paper-grid {
+    background-image:
+      linear-gradient(rgba(23, 33, 29, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(23, 33, 29, 0.045) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .fine-noise {
+    position: relative;
+  }
+
+  .fine-noise::after {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E");
+  }
+
+  .animate-enter {
+    animation: enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-enter-delayed {
+    animation: enter 600ms 110ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.985); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dialog-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -48%) scale(0.985); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
