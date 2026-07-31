@@ -60,15 +60,15 @@ export function AccountSettings() {
   return (
     <div className="max-w-[850px] animate-enter">
       <div className="mb-6">
-        <p className="font-mono text-[10px] tracking-[.16em] text-accent-deep">ACCOUNT / 账号设置</p>
+        <p className="font-mono text-[10px] tracking-[.16em] text-primary/90">ACCOUNT / 账号设置</p>
         <h2 className="mt-2 font-display text-[28px] tracking-[-.02em]">登录凭证与会话</h2>
-        <p className="mt-2 text-sm leading-6 text-ink-muted">用户名由部署人员创建且不可修改。修改密码后，全部登录会话会立即失效。</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">用户名由部署人员创建且不可修改。修改密码后，全部登录会话会立即失效。</p>
       </div>
 
       <Card className="overflow-hidden">
-        <div className="grid grid-cols-[190px_1fr] border-b border-line bg-paper-deep/55">
-          <div className="border-r border-line px-6 py-5 text-xs tracking-[.1em] text-ink-faint">CURRENT USER</div>
-          <div className="px-6 py-5 font-mono text-sm font-semibold text-ink">{session.data?.user.username}</div>
+        <div className="grid grid-cols-[190px_1fr] border-b border-border bg-secondary/55">
+          <div className="border-r border-border px-6 py-5 text-xs tracking-[.1em] text-muted-foreground/60">CURRENT USER</div>
+          <div className="px-6 py-5 font-mono text-sm font-semibold text-foreground">{session.data?.user.username}</div>
         </div>
 
         <form onSubmit={onSubmit} className="p-6" noValidate>
@@ -88,8 +88,8 @@ export function AccountSettings() {
             </PasswordField>
           </div>
 
-          <div className="mt-5 flex items-start gap-3 border-l-2 border-accent bg-accent/7 px-4 py-3 text-xs leading-5 text-ink-muted">
-            <KeyRound className="mt-0.5 shrink-0 text-accent-deep" size={15} />
+          <div className="mt-5 flex items-start gap-3 border-l-2 border-primary bg-primary/10 px-4 py-3 text-xs leading-5 text-muted-foreground">
+            <KeyRound className="mt-0.5 shrink-0 text-primary/90" size={15} />
             新密码至少 8 位，并同时包含字母和数字。密码不会进入浏览器持久化存储或应用日志。
           </div>
 
@@ -99,8 +99,8 @@ export function AccountSettings() {
             </div>
           )}
 
-          <div className="mt-6 flex items-center justify-between border-t border-line pt-5">
-            <div className="flex items-center gap-2 text-xs text-ink-faint">
+          <div className="mt-6 flex items-center justify-between border-t border-border pt-5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
               <ShieldCheck size={14} /> Argon2id 安全哈希
             </div>
             <Button type="submit" disabled={mutation.isPending}>
@@ -127,7 +127,7 @@ function PasswordField({
 }) {
   return (
     <label className={className}>
-      <span className="mb-2 block text-xs font-semibold tracking-[.06em] text-ink-muted">{label}</span>
+      <span className="mb-2 block text-xs font-semibold tracking-[.06em] text-muted-foreground">{label}</span>
       {children}
       {error && <span className="mt-1.5 block text-xs text-market-up">{error}</span>}
     </label>

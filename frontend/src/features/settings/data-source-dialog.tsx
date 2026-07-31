@@ -114,7 +114,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
               </Field>
               <Field label="数据源类型" error={form.formState.errors.provider_type?.message}>
                 <select
-                  className="h-11 w-full rounded-[3px] border border-line bg-paper px-3.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15"
+                  className="h-11 w-full rounded-md border border-border bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
                   {...form.register("provider_type")}
                 >
                   <option value="fuyao">扶摇</option>
@@ -140,11 +140,11 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                   className="pl-10"
                   {...form.register("api_key")}
                 />
-                <KeyRound className="absolute left-3.5 top-3.5 text-ink-faint" size={15} />
+                <KeyRound className="absolute left-3.5 top-3.5 text-muted-foreground/60" size={15} />
               </div>
             </Field>
 
-            <div className="flex gap-3 border border-market-down/15 bg-market-down/5 px-4 py-3 text-xs leading-5 text-ink-muted">
+            <div className="flex gap-3 border border-market-down/15 bg-market-down/5 px-4 py-3 text-xs leading-5 text-muted-foreground">
               <ShieldCheck className="mt-0.5 shrink-0 text-market-down" size={16} />
               浏览器刷新或再次编辑时只会看到固定掩码。完整密钥不会出现在查询响应、页面状态或日志中。
             </div>
@@ -184,9 +184,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-ink-muted">
+      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-muted-foreground">
         {label}
-        {hint && <span className="font-normal tracking-normal text-ink-faint">{hint}</span>}
+        {hint && <span className="font-normal tracking-normal text-muted-foreground/60">{hint}</span>}
       </span>
       {children}
       {error && <span className="mt-1.5 block text-xs text-market-up">{error}</span>}

@@ -5,14 +5,14 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[3px] text-sm font-semibold tracking-wide transition-[color,background-color,border-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:pointer-events-none disabled:opacity-55 active:translate-y-px",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold tracking-wide transition-[color,background-color,border-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-55 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-ink text-paper shadow-[0_6px_18px_rgba(23,33,29,.16)] hover:bg-ink-soft",
-        outline: "border border-line bg-transparent text-ink hover:border-ink/35 hover:bg-paper-deep",
-        ghost: "text-ink-muted hover:bg-ink/6 hover:text-ink",
-        danger: "bg-market-up text-white hover:bg-market-up/90",
+        default: "bg-primary text-primary-foreground shadow-subtle hover:bg-primary-hover hover:shadow-raised",
+        outline: "border border-input bg-background text-foreground hover:border-foreground/25 hover:bg-secondary hover:shadow-raised",
+        ghost: "text-muted-foreground hover:bg-secondary hover:text-foreground",
+        danger: "bg-destructive text-destructive-foreground shadow-subtle hover:bg-destructive/90 hover:shadow-raised",
       },
       size: {
         default: "h-10 px-4",

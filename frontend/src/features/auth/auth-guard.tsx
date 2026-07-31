@@ -5,9 +5,9 @@ import { useSessionQuery } from "./queries";
 
 function AuthLoading() {
   return (
-    <div className="grid min-h-screen grid-cols-[248px_1fr] bg-paper">
-      <aside className="bg-ink p-7">
-        <Skeleton className="h-8 w-28 bg-paper/12" />
+    <div className="grid min-h-screen grid-cols-[248px_1fr] bg-background">
+      <aside className="glass-shell p-7">
+        <Skeleton className="h-8 w-28 bg-background/12" />
       </aside>
       <main className="p-10">
         <Skeleton className="h-9 w-48" />

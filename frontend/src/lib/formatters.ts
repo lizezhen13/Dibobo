@@ -53,6 +53,6 @@ export function formatDateTime(value: string | null): string {
 }
 
 export function movementClass(value: number | null): string {
-  if (value === null || value === 0) return "text-ink-muted";
+  if (value === null || value === 0) return "text-muted-foreground";
   return value > 0 ? "text-market-up" : "text-market-down";
 }

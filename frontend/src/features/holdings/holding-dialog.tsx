@@ -198,12 +198,12 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                 <div>
                   <label
                     htmlFor="holding-instrument-search"
-                    className="mb-2 block text-xs font-medium text-ink"
+                    className="mb-2 block text-xs font-medium text-foreground"
                   >
                     股票 / ETF
                   </label>
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-3.5 top-3.5 text-ink-faint" size={15} />
+                    <Search className="pointer-events-none absolute left-3.5 top-3.5 text-muted-foreground/60" size={15} />
                     <Input
                       id="holding-instrument-search"
                       value={instrumentQuery}
@@ -218,9 +218,9 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                       aria-label="股票或 ETF"
                     />
                     {debouncedQuery && !selectedInstrument && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-60 overflow-y-auto rounded-[3px] border border-line bg-paper p-1.5 shadow-[0_18px_50px_rgba(23,33,29,.18)]">
+                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-60 overflow-y-auto rounded-md border border-border bg-card p-1.5 shadow-dialog">
                         {instrumentSearch.isLoading && (
-                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-ink-muted">
+                          <div className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
                             <LoaderCircle className="animate-spin" size={14} /> 正在检索标的
                           </div>
                         )}
@@ -235,25 +235,25 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                           <button
                             key={item.thscode}
                             type="button"
-                            className="flex w-full items-center gap-3 rounded-[2px] px-3 py-2.5 text-left transition hover:bg-paper-deep"
+                            className="flex w-full items-center gap-3 rounded-[2px] px-3 py-2.5 text-left transition hover:bg-card-deep"
                             onClick={() => {
                               setSelectedInstrument(item);
                               setInstrumentQuery(`${item.ticker} · ${item.name}`);
                               setSelectionError(null);
                             }}
                           >
-                            <span className="grid size-8 place-items-center border border-line bg-paper-deep font-mono text-[10px] text-ink-muted">
+                            <span className="grid size-8 place-items-center border border-border bg-card-deep font-mono text-[10px] text-muted-foreground">
                               {item.exchange}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold text-ink">{item.name}</span>
-                              <span className="mt-0.5 block font-mono text-[10px] text-ink-faint">{item.thscode}</span>
+                              <span className="block truncate text-sm font-semibold text-foreground">{item.name}</span>
+                              <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground/60">{item.thscode}</span>
                             </span>
                             <Badge variant="neutral">{item.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
                           </button>
                         ))}
                         {instrumentSearch.data?.items.length === 0 && (
-                          <div className="px-3 py-4 text-xs text-ink-muted">没有找到可持有的 A 股或 ETF</div>
+                          <div className="px-3 py-4 text-xs text-muted-foreground">没有找到可持有的 A 股或 ETF</div>
                         )}
                       </div>
                     )}
@@ -268,9 +268,9 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
               )}
 
               {isEditing && (
-                <div className="grid grid-cols-[110px_1fr_auto] items-center gap-4 border border-line bg-paper-deep/45 px-4 py-3">
-                  <span className="font-mono text-[9px] tracking-[.12em] text-ink-faint">INSTRUMENT</span>
-                  <span className="text-sm font-semibold text-ink">
+                <div className="grid grid-cols-[110px_1fr_auto] items-center gap-4 border border-border bg-card-deep/45 px-4 py-3">
+                  <span className="font-mono text-[9px] tracking-[.12em] text-muted-foreground/60">INSTRUMENT</span>
+                  <span className="text-sm font-semibold text-foreground">
                     {holding.ticker} · {holding.name}
                   </span>
                   <Badge>{holding.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
@@ -301,15 +301,15 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
 
               <Field label="备注" error={form.formState.errors.note?.message} hint={`${form.watch("note").length}/1000`}>
                 <textarea
-                  className="min-h-24 w-full resize-y rounded-[3px] border border-line bg-paper px-3.5 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/15"
+                  className="min-h-24 w-full resize-y rounded-md border border-border bg-card px-3.5 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
                   placeholder="记录建仓逻辑、计划或需要复盘的事项（可选）"
                   {...form.register("note")}
                 />
               </Field>
 
               {!isClosed && (
-                <div className="flex gap-3 border border-accent/20 bg-accent/6 px-4 py-3 text-xs leading-5 text-ink-muted">
-                  <ShieldAlert className="mt-0.5 shrink-0 text-accent-deep" size={16} />
+                <div className="flex gap-3 border border-primary/20 bg-primary/8 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                  <ShieldAlert className="mt-0.5 shrink-0 text-primary/90" size={16} />
                   V1 只维护持仓快照，不录入逐笔交易、卖出价格、佣金或已实现盈亏。
                 </div>
               )}
@@ -373,9 +373,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-ink-muted">
+      <span className="mb-2 flex items-center justify-between text-xs font-semibold tracking-[.06em] text-muted-foreground">
         {label}
-        {hint && <span className="font-mono text-[9px] font-normal tracking-normal text-ink-faint">{hint}</span>}
+        {hint && <span className="font-mono text-[9px] font-normal tracking-normal text-muted-foreground/60">{hint}</span>}
       </span>
       {children}
       {error && <span className="mt-1.5 block text-xs text-market-up">{error}</span>}

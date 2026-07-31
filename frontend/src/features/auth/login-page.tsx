@@ -48,10 +48,10 @@ export function LoginPage() {
     mutation.error instanceof ApiError ? mutation.error.message : mutation.error ? "登录失败，请稍后重试" : null;
 
   return (
-    <main className="grid min-h-screen grid-cols-[minmax(560px,1.18fr)_minmax(430px,.82fr)] overflow-hidden bg-paper">
-      <section className="fine-noise paper-grid relative isolate flex min-h-screen flex-col overflow-hidden bg-ink px-[clamp(48px,6vw,96px)] py-12 text-paper">
+    <main className="grid min-h-screen grid-cols-[minmax(560px,1.18fr)_minmax(430px,.82fr)] overflow-hidden bg-background">
+      <section className="glass-shell relative isolate flex min-h-screen flex-col overflow-hidden px-[clamp(48px,6vw,96px)] py-12 text-paper">
         <div className="relative z-10 flex items-center gap-3 animate-enter">
-          <div className="grid size-9 place-items-center border border-accent/80 font-mono text-sm text-accent">D</div>
+          <div className="grid size-9 place-items-center rounded-md border border-primary/70 bg-primary/10 font-mono text-sm text-primary shadow-subtle">D</div>
           <div>
             <p className="font-display text-xl tracking-[.08em]">DIBOBO</p>
             <p className="mt-0.5 text-[10px] tracking-[.22em] text-paper/45">DIVIDEND WORKBENCH</p>
@@ -59,14 +59,14 @@ export function LoginPage() {
         </div>
 
         <div className="relative z-10 my-auto max-w-2xl animate-enter-delayed">
-          <div className="mb-7 flex items-center gap-3 text-[11px] tracking-[.18em] text-accent">
-            <span className="h-px w-11 bg-accent" />
+          <div className="mb-7 flex items-center gap-3 text-[11px] tracking-[.18em] text-primary">
+            <span className="h-px w-11 bg-primary" />
             A 股 · 低波红利策略
           </div>
           <h1 className="font-display text-[clamp(48px,5.2vw,78px)] leading-[1.08] tracking-[-.035em]">
             把市场噪声，
             <br />
-            留在<span className="text-accent">账簿之外</span>。
+            留在<span className="text-primary">账簿之外</span>。
           </h1>
           <p className="mt-8 max-w-xl text-[15px] leading-8 tracking-wide text-paper/58">
             指数行情、持仓、红利指标与投资日记，在一个私有、克制、可追溯的数据工作台中归位。
@@ -84,19 +84,19 @@ export function LoginPage() {
       </section>
 
       <section className="relative flex min-h-screen items-center justify-center px-[clamp(48px,6vw,92px)]">
-        <div className="absolute right-9 top-8 font-mono text-[10px] tracking-[.16em] text-ink-faint">V1.0 / PRIVATE</div>
+        <div className="absolute right-9 top-8 font-mono text-[10px] tracking-[.16em] text-muted-foreground/60">V1.0 / PRIVATE</div>
         <div className="w-full max-w-[420px] animate-enter">
           <div className="mb-9">
-            <div className="mb-5 grid size-11 place-items-center rounded-full border border-line bg-paper-deep text-ink-muted">
+            <div className="mb-5 grid size-11 place-items-center rounded-full border border-border bg-secondary text-muted-foreground">
               <LockKeyhole size={18} strokeWidth={1.7} />
             </div>
-            <h2 className="font-display text-[34px] tracking-[-.02em] text-ink">登录工作台</h2>
-            <p className="mt-3 text-sm leading-6 text-ink-muted">使用部署人员为你创建的账号。系统不开放自主注册。</p>
+            <h2 className="font-display text-[34px] tracking-[-.02em] text-foreground">登录工作台</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">使用部署人员为你创建的账号。系统不开放自主注册。</p>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-semibold tracking-[.08em] text-ink-muted">
+              <label htmlFor="username" className="mb-2 block text-xs font-semibold tracking-[.08em] text-muted-foreground">
                 用户名
               </label>
               <Input
@@ -113,7 +113,7 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-xs font-semibold tracking-[.08em] text-ink-muted">
+              <label htmlFor="password" className="mb-2 block text-xs font-semibold tracking-[.08em] text-muted-foreground">
                 密码
               </label>
               <div className="relative">
@@ -129,7 +129,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((visible) => !visible)}
-                  className="absolute right-1 top-1 grid size-9 place-items-center rounded text-ink-faint transition hover:text-ink"
+                  className="absolute right-1 top-1 grid size-9 place-items-center rounded text-muted-foreground/60 transition hover:text-foreground"
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 >
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -159,7 +159,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-10 border-t border-line pt-5 text-[11px] leading-5 text-ink-faint">
+          <p className="mt-10 border-t border-border pt-5 text-[11px] leading-5 text-muted-foreground/60">
             登录即表示你知悉：数据仅供参考，不构成任何投资建议。
           </p>
         </div>

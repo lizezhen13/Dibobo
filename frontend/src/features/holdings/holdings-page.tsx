@@ -90,11 +90,11 @@ export function HoldingsPage() {
     <div className="mx-auto max-w-[1560px] animate-enter">
       <div className="mb-7 flex items-end justify-between gap-8">
         <div>
-          <p className="mb-3 font-mono text-[10px] tracking-[.18em] text-accent-deep">
+          <p className="mb-3 font-mono text-[10px] tracking-[.18em] text-primary/90">
             POSITION LEDGER / 持仓账簿
           </p>
-          <h1 className="font-display text-[38px] leading-tight tracking-[-.025em] text-ink">持仓管理</h1>
-          <p className="mt-3 text-sm leading-6 text-ink-muted">
+          <h1 className="font-display text-[38px] leading-tight tracking-[-.025em] text-foreground">持仓管理</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             维护当前仓位与清仓档案；行情只用于估值，不改写你的成本和数量。
           </p>
         </div>
@@ -112,20 +112,20 @@ export function HoldingsPage() {
       <SummaryStrip summary={summary.data} isLoading={summary.isLoading} />
 
       {summary.data?.incomplete && summary.data.holding_count > 0 && (
-        <div className="mt-3 flex items-center gap-2 border-l-2 border-accent bg-accent/7 px-4 py-3 text-xs text-accent-deep">
+        <div className="mt-3 flex items-center gap-2 border-l-2 border-primary bg-primary/10 px-4 py-3 text-xs text-primary/90">
           <AlertTriangle size={15} /> 部分持仓行情缺失，汇总数据不完整；缺失值没有按 0 计算。
         </div>
       )}
 
       {source && source.state !== "ready" && (
-        <div className="mt-4 flex items-center justify-between gap-6 border border-line bg-paper px-5 py-4">
+        <div className="mt-4 flex items-center justify-between gap-6 border border-border bg-card px-5 py-4">
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-full bg-accent/10 text-accent-deep">
+            <span className="grid size-9 place-items-center rounded-full bg-primary/10 text-primary/90">
               <Settings size={16} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-ink">行情连接未就绪</p>
-              <p className="mt-1 text-xs text-ink-muted">{source.message ?? "请检查当前启用的数据源"}</p>
+              <p className="text-sm font-semibold text-foreground">行情连接未就绪</p>
+              <p className="mt-1 text-xs text-muted-foreground">{source.message ?? "请检查当前启用的数据源"}</p>
             </div>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -136,25 +136,25 @@ export function HoldingsPage() {
 
       <div className="mt-7">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as HoldingStatus)}>
-          <div className="mb-3 flex items-end justify-between border-b border-line">
+          <div className="mb-3 flex items-end justify-between border-b border-border">
             <TabsList className="h-auto gap-7 bg-transparent p-0">
               <TabsTrigger
                 value="open"
-                className="relative h-11 rounded-none border-0 bg-transparent px-0 text-sm text-ink-faint shadow-none data-[state=active]:bg-transparent data-[state=active]:text-ink data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:h-0.5 after:w-full after:scale-x-0 after:bg-accent after:transition data-[state=active]:after:scale-x-100"
+                className="relative h-11 rounded-none border-0 bg-transparent px-0 text-sm text-muted-foreground/60 shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:h-0.5 after:w-full after:scale-x-0 after:bg-primary after:transition data-[state=active]:after:scale-x-100"
               >
                 当前持仓
-                <span className="font-mono text-[9px] text-ink-faint">{openHoldings.data?.items.length ?? 0}</span>
+                <span className="font-mono text-[9px] text-muted-foreground/60">{openHoldings.data?.items.length ?? 0}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="closed"
-                className="relative h-11 rounded-none border-0 bg-transparent px-0 text-sm text-ink-faint shadow-none data-[state=active]:bg-transparent data-[state=active]:text-ink data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:h-0.5 after:w-full after:scale-x-0 after:bg-accent after:transition data-[state=active]:after:scale-x-100"
+                className="relative h-11 rounded-none border-0 bg-transparent px-0 text-sm text-muted-foreground/60 shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:h-0.5 after:w-full after:scale-x-0 after:bg-primary after:transition data-[state=active]:after:scale-x-100"
               >
                 已清仓
-                <span className="font-mono text-[9px] text-ink-faint">{closedHoldings.data?.items.length ?? 0}</span>
+                <span className="font-mono text-[9px] text-muted-foreground/60">{closedHoldings.data?.items.length ?? 0}</span>
               </TabsTrigger>
             </TabsList>
-            <div className="mb-3 flex items-center gap-3 text-[10px] text-ink-faint">
-              <span className={cn("size-1.5 rounded-full", marketStatus === "交易中" ? "bg-market-down" : "bg-accent")} />
+            <div className="mb-3 flex items-center gap-3 text-[10px] text-muted-foreground/60">
+              <span className={cn("size-1.5 rounded-full", marketStatus === "交易中" ? "bg-market-down" : "bg-primary")} />
               {activeTab === "open" ? `市场 · ${marketStatus}` : "历史记录 · 不轮询行情"}
               {openHoldings.data?.stale && <Badge variant="warning">最后成功行情</Badge>}
             </div>
@@ -200,7 +200,7 @@ export function HoldingsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteMutation.error && (
-            <div role="alert" className="mt-4 border-l-2 border-market-up bg-market-up/6 px-4 py-3 text-sm text-market-up">
+            <div role="alert" className="mt-4 border-l-2 border-market-up bg-danger/10 px-4 py-3 text-sm text-market-up">
               删除失败，请稍后重试
             </div>
           )}
@@ -234,19 +234,19 @@ function SummaryStrip({ summary, isLoading }: { summary?: HoldingSummary; isLoad
     },
   ];
   return (
-    <div className="grid grid-cols-4 divide-x divide-line overflow-hidden rounded-[4px] border border-line bg-paper shadow-[0_18px_60px_rgba(23,33,29,.04)]">
+    <div className="grid grid-cols-4 divide-x divide-line overflow-hidden rounded-md border border-border bg-card shadow-raised">
       {metrics.map((metric, index) => {
         const Icon = metric.icon;
         return (
           <div key={metric.label} className="relative px-5 py-5">
-            <span className="absolute right-4 top-4 font-mono text-[9px] text-ink-faint">0{index + 1}</span>
-            <div className="flex items-center gap-2 text-[10px] tracking-[.12em] text-ink-faint">
+            <span className="absolute right-4 top-4 font-mono text-[9px] text-muted-foreground/60">0{index + 1}</span>
+            <div className="flex items-center gap-2 text-[10px] tracking-[.12em] text-muted-foreground/60">
               <Icon size={14} /> {metric.label}
             </div>
             {isLoading ? (
-              <div className="mt-4 h-7 w-2/3 animate-pulse rounded-full bg-ink/7" />
+              <div className="mt-4 h-7 w-2/3 animate-pulse rounded-full bg-secondary" />
             ) : (
-              <p className={cn("mt-3 font-display text-[25px] tracking-[-.02em] text-ink", movementClass(metric.movement ?? null))}>
+              <p className={cn("mt-3 font-display text-[25px] tracking-[-.02em] text-foreground", movementClass(metric.movement ?? null))}>
                 {metric.value}
               </p>
             )}
@@ -266,7 +266,7 @@ function createOpenColumns(
       id: "instrument",
       header: "标的",
       cell: ({ row }) => <InstrumentCell holding={row.original} />,
-      meta: { cellClassName: "sticky left-0 z-[1] min-w-[176px] bg-paper group-hover:bg-[#f2eee4]" },
+      meta: { cellClassName: "sticky left-0 z-[1] min-w-[176px] bg-card group-hover:bg-secondary/60" },
     },
     {
       accessorKey: "asset_type",
@@ -300,7 +300,7 @@ function createOpenColumns(
       id: "actions",
       header: "操作",
       cell: ({ row }) => <RowActions holding={row.original} onEdit={onEdit} onDelete={onDelete} />,
-      meta: { align: "right", cellClassName: "sticky right-0 z-[1] bg-paper group-hover:bg-[#f2eee4]" },
+      meta: { align: "right", cellClassName: "sticky right-0 z-[1] bg-card group-hover:bg-secondary/60" },
     },
   ];
 }
@@ -345,8 +345,8 @@ function numericColumn(
 function InstrumentCell({ holding }: { holding: Holding }) {
   return (
     <div>
-      <p className="font-semibold text-ink">{holding.name}</p>
-      <p className="mt-1 font-mono text-[10px] tracking-[.04em] text-ink-faint">{holding.thscode}</p>
+      <p className="font-semibold text-foreground">{holding.name}</p>
+      <p className="mt-1 font-mono text-[10px] tracking-[.04em] text-muted-foreground/60">{holding.thscode}</p>
     </div>
   );
 }
@@ -375,13 +375,13 @@ function RowActions({
 function EmptyState({ status, onAdd }: { status: HoldingStatus; onAdd: () => void }) {
   const isOpen = status === "open";
   return (
-    <div className="grid min-h-64 place-items-center border-t border-line px-6 py-12 text-center">
+    <div className="grid min-h-64 place-items-center border-t border-border px-6 py-12 text-center">
       <div>
-        <span className="mx-auto grid size-12 place-items-center rounded-full border border-line bg-paper-deep text-ink-faint">
+        <span className="mx-auto grid size-12 place-items-center rounded-full border border-border bg-secondary text-muted-foreground/60">
           {isOpen ? <BriefcaseBusiness size={19} /> : <Archive size={19} />}
         </span>
-        <h3 className="mt-4 font-display text-xl text-ink">{isOpen ? "还没有当前持仓" : "还没有清仓记录"}</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-muted">
+        <h3 className="mt-4 font-display text-xl text-foreground">{isOpen ? "还没有当前持仓" : "还没有清仓记录"}</h3>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {isOpen ? "从数据源检索 A 股或 ETF，记录一条不依赖券商连接的私有持仓。" : "数量调整为 0 的记录会自动归档到这里。"}
         </p>
         {isOpen && <Button className="mt-5" size="sm" onClick={onAdd}><Plus size={14} /> 添加第一条持仓</Button>}
@@ -392,10 +392,10 @@ function EmptyState({ status, onAdd }: { status: HoldingStatus; onAdd: () => voi
 
 function LoadError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="grid min-h-64 place-items-center rounded-[4px] border border-line bg-paper text-center">
+    <div className="grid min-h-64 place-items-center rounded-md border border-border bg-card text-center">
       <div>
         <AlertTriangle className="mx-auto text-market-up" size={22} />
-        <h3 className="mt-3 font-display text-xl text-ink">持仓记录加载失败</h3>
+        <h3 className="mt-3 font-display text-xl text-foreground">持仓记录加载失败</h3>
         <Button className="mt-4" variant="outline" size="sm" onClick={onRetry}>重新加载</Button>
       </div>
     </div>
