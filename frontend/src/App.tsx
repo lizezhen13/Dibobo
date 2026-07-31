@@ -1,10 +1,11 @@
-import { BookOpenText, Radar } from "lucide-react";
+import { Radar } from "lucide-react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell";
 import { AuthGuard, GuestGuard } from "./features/auth/auth-guard";
 import { LoginPage } from "./features/auth/login-page";
 import { HoldingsPage } from "./features/holdings/holdings-page";
+import { JournalsPage } from "./features/journals/journals-page";
 import { OverviewPage } from "./features/overview/overview-page";
 import { SettingsPage } from "./features/settings/settings-page";
 import { PlaceholderPage } from "./pages/placeholder-page";
@@ -31,17 +32,7 @@ export function App() {
               />
             }
           />
-          <Route
-            path="/journals"
-            element={
-              <PlaceholderPage
-                eyebrow="INVESTMENT NOTES / 投资日记"
-                title="投资日记"
-                description="后续将实现按日期检索的纯文本日记、分页、编辑和永久删除确认。"
-                icon={BookOpenText}
-              />
-            }
-          />
+          <Route path="/journals" element={<JournalsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

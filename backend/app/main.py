@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.security import ApiKeyCipher
 from app.health import router as health_router
 from app.holdings.router import router as holdings_router
+from app.journals.router import router as journals_router
 from app.overview.router import router as overview_router
 from app.settings.router import router as settings_router
 
@@ -55,4 +56,5 @@ app.include_router(health_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(overview_router, prefix="/api")
 app.include_router(holdings_router, prefix="/api")
+app.include_router(journals_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")

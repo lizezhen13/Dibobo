@@ -54,6 +54,9 @@ class User(TimestampMixin, Base):
     holdings: Mapped[list["Holding"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    journals: Mapped[list["Journal"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserSession(Base):
@@ -142,3 +145,25 @@ class Holding(TimestampMixin, Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="holdings")
+
+
+class Journal(TimestampMixin, Base):
+    __tablename__ = "journals"
+    __table_args__ = (
+        Index(
+            "ix_journals_user_date_created",
+            "user_id",
+            "journal_date",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    journal_date: Mapped[date] = mapped_column(nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="journals")
