@@ -6,13 +6,19 @@ import httpx
 
 from app.data_sources.base import DataSourceAdapter, DataSourceError
 from app.data_sources.domain import (
+    DividendEvent,
+    DividendEventResult,
     IndexQuote,
     IndexQuoteBatch,
     Instrument,
+    InstrumentListResult,
     InstrumentSearchResult,
+    RoeIndicator,
     SecurityQuote,
     SecurityQuoteBatch,
     TradingCalendar,
+    ValuationSnapshot,
+    ValuationSnapshotBatch,
 )
 
 ERROR_MESSAGES = {
@@ -234,5 +240,159 @@ class FuyaoAdapter(DataSourceAdapter):
         batches = await asyncio.gather(*tasks) if tasks else []
         return SecurityQuoteBatch(
             quotes=[quote for batch in batches for quote in batch],
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def list_a_share_instruments(self) -> InstrumentListResult:
+        offset = 0
+        limit = 5000
+        instruments: list[Instrument] = []
+        while True:
+            data = await self._get(
+                "/api/meta/tickers/list",
+                params={"asset_type": "a-share", "limit": str(limit), "offset": str(offset)},
+            )
+            raw_items = data.get("item")
+            items = raw_items if isinstance(raw_items, list) else []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                thscode = item.get("thscode")
+                ticker = item.get("ticker")
+                name = item.get("name")
+                exchange = item.get("exchange")
+                if (
+                    isinstance(thscode, str)
+                    and isinstance(ticker, str)
+                    and isinstance(name, str)
+                    and exchange in {"SH", "SZ", "BJ"}
+                ):
+                    instruments.append(
+                        Instrument(
+                            thscode=thscode.upper(),
+                            ticker=ticker,
+                            name=name,
+                            asset_type="a_share",
+                            exchange=exchange,
+                        )
+                    )
+            if len(items) < limit:
+                break
+            offset += limit
+        return InstrumentListResult(items=instruments, fetched_at=datetime.now(UTC))
+
+    async def get_valuation_snapshots(
+        self,
+        thscodes: list[str],
+        concurrency: int = 4,
+    ) -> ValuationSnapshotBatch:
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def fetch(codes: list[str]) -> tuple[datetime | None, list[ValuationSnapshot]]:
+            async with semaphore:
+                data = await self._get(
+                    "/api/a-share/valuations/snapshot",
+                    params={"thscodes": ",".join(codes)},
+                )
+            metric_at = _timestamp_to_datetime(data.get("timestamp"))
+            raw_items = data.get("item")
+            items = raw_items if isinstance(raw_items, list) else []
+            parsed: list[ValuationSnapshot] = []
+            for item in items:
+                if not isinstance(item, dict) or not isinstance(item.get("thscode"), str):
+                    continue
+                parsed.append(
+                    ValuationSnapshot(
+                        thscode=item["thscode"].upper(),
+                        pb_mrq=_optional_number(item.get("pb_mrq")),
+                        metric_at=metric_at,
+                    )
+                )
+            return metric_at, parsed
+
+        batches = await asyncio.gather(
+            *(
+                fetch(thscodes[start : start + 100])
+                for start in range(0, len(thscodes), 100)
+            )
+        ) if thscodes else []
+        return ValuationSnapshotBatch(
+            items=[item for _, batch in batches for item in batch],
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_roe_indicator(self, thscode: str, reports: list[str]) -> RoeIndicator:
+        last_empty_error: DataSourceError | None = None
+        for report in reports:
+            try:
+                data = await self._get(
+                    "/api/a-share/financials/indicators",
+                    params={"thscode": thscode, "report": report},
+                )
+            except DataSourceError as exc:
+                if exc.code in {3001, 3002, 3004}:
+                    last_empty_error = exc
+                    continue
+                raise
+
+            abilities = data.get("abilities")
+            if not isinstance(abilities, list):
+                abilities = []
+            for ability in abilities:
+                if not isinstance(ability, dict):
+                    continue
+                indicators = ability.get("indicators")
+                if not isinstance(indicators, list):
+                    continue
+                for indicator in indicators:
+                    if (
+                        isinstance(indicator, dict)
+                        and indicator.get("index_id") == "index_weighted_avg_roe"
+                    ):
+                        raw_value = indicator.get("value")
+                        try:
+                            value = float(raw_value) if raw_value is not None else None
+                        except (TypeError, ValueError):
+                            value = None
+                        if value is None:
+                            continue
+                        return RoeIndicator(
+                            thscode=thscode,
+                            report=report,
+                            value=value,
+                            fetched_at=datetime.now(UTC),
+                        )
+        if last_empty_error is not None:
+            raise last_empty_error
+        return RoeIndicator(
+            thscode=thscode,
+            report=reports[0] if reports else "unknown",
+            value=None,
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_dividend_events(
+        self,
+        thscode: str,
+        date_from: str,
+        date_to: str,
+    ) -> DividendEventResult:
+        data = await self._get(
+            "/api/a-share/corporate-actions/adjustment-factors",
+            params={"thscode": thscode, "from": date_from, "to": date_to},
+        )
+        raw_items = data.get("item")
+        items = raw_items if isinstance(raw_items, list) else []
+        events: list[DividendEvent] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            ex_date = _timestamp_to_datetime(item.get("ex_date_ms"))
+            amount = _optional_number(item.get("dividend_per_share"))
+            if ex_date is not None and amount is not None and amount > 0:
+                events.append(DividendEvent(ex_date=ex_date, dividend_per_share=amount))
+        return DividendEventResult(
+            thscode=thscode,
+            items=events,
             fetched_at=datetime.now(UTC),
         )

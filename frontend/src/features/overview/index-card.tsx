@@ -24,8 +24,8 @@ const marketBadge = {
 export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: number }) {
   const movement = movementClass(data.change_percent);
   return (
-    <Card className="group relative min-h-[254px] overflow-hidden p-6 transition duration-300 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-raised">
-      <div className="absolute -right-1 -top-7 select-none font-display text-[7.5rem] leading-none text-foreground/[0.025] transition group-hover:text-primary/[0.05]">
+    <Card className="group relative min-h-[254px] overflow-hidden p-6 transition duration-300 hover:-translate-y-0.5 hover:border-[#3d4755] hover:shadow-raised">
+      <div className="absolute -right-1 -top-7 select-none font-display text-[7.5rem] leading-none text-foreground/[0.03] transition group-hover:text-primary/[0.06]">
         {String(ordinal).padStart(2, "0")}
       </div>
       <div className="relative flex items-start justify-between gap-4">
@@ -39,7 +39,12 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
       </div>
 
       <div className="relative mt-8 flex items-end justify-between gap-6">
-        <p className={cn("font-mono text-[2.35rem] font-medium leading-none tracking-[-0.03em]", data.latest === null && "font-sans text-2xl font-normal tracking-normal text-muted-foreground/60")}>
+        <p className={cn(
+          "font-mono text-[2.35rem] font-medium leading-none tracking-[-0.03em]",
+          data.latest === null
+            ? "font-sans text-2xl font-normal tracking-normal text-muted-foreground/60"
+            : movement,
+        )}>
           {formatPoint(data.latest)}
         </p>
         <div className={cn("flex items-center gap-2 pb-0.5 font-mono text-[0.95rem] font-semibold", movement)}>

@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dibobo 页面风格探索 V2 · 去纸张感</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+     * 色彩系统：与当前线上版本完全一致（保持色调不变）
+     * 米白 #fcfaf7 / 赭石橙 #b86b38 / 深棕 #2c2721
+     * 变化点：全部改用无衬线字体，去除纸张纹理与温润质感
+     * ============================================================ */
+    :root {
+      --bg: #fcfaf7;
+      --surface: #ffffff;
+      --text: #2c2721;
+      --text-muted: #7a7167;
+      --primary: #b86b38;
+      --border: #e6e0d8;
+      --up: #c04a3b;    /* A 股：涨 · 红 */
+      --down: #3d7a52;  /* A 股：跌 · 绿 */
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      /* 页面底色用中性浅灰，避免整页也带纸张感 */
+      background: #eceae7;
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- 页头说明 ---------- */
+    .intro {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 52px 24px 8px;
+    }
+
+    .intro .kicker {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin: 0 0 10px;
+    }
+
+    .intro h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 10px;
+    }
+
+    .intro p {
+      color: var(--text-muted);
+      margin: 0;
+      max-width: 680px;
+      font-size: 0.92rem;
+    }
+
+    .palette {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .swatch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 12px 5px 6px;
+    }
+
+    .swatch i {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    /* ---------- 风格分区 ---------- */
+    .style-section { padding: 36px 0 8px; }
+
+    .style-label {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 0 24px 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .style-label h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .style-label > span {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .tags { display: flex; gap: 6px; margin-left: auto; }
+
+    .tags i {
+      font-style: normal;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 4px;
+      padding: 3px 8px;
+    }
+
+    .frame {
+      max-width: 1220px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--bg);
+      box-shadow: 0 20px 50px rgba(44, 39, 33, 0.07);
+    }
+
+    /* ========== 公共布局结构（四种风格共用同一套 DOM） ========== */
+    .shell {
+      display: grid;
+      grid-template-columns: 216px 1fr;
+      min-height: 560px;
+    }
+
+    .sidebar {
+      padding: 22px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-radius: 8px;
+    }
+
+    .brand-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.14em;
+      opacity: 0.5;
+      margin-top: 3px;
+    }
+
+    .nav-group-title {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.45;
+      margin: 0 0 8px 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      text-decoration: none;
+      font-size: 0.83rem;
+      color: inherit;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-item.active { font-weight: 600; }
+
+    .nav-number {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      opacity: 0.35;
+    }
+
+    .main { display: flex; flex-direction: column; }
+
+    .topbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 26px;
+      font-size: 0.8rem;
+    }
+
+    .breadcrumb { display: flex; align-items: center; gap: 8px; }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin-right: 6px;
+      vertical-align: 1px;
+    }
+
+    .content { flex: 1; padding: 26px 28px 30px; }
+
+    .page-header { margin-bottom: 22px; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin: 0 0 8px;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 6px;
+    }
+
+    .page-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .index-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 196px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .card-name {
+      font-size: 0.98rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+
+    .card-code {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .card-mid {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card-value {
+      font-family: var(--font-mono);
+      font-size: 1.8rem;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card-change {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card-change.up { color: var(--up); }
+    .card-change.down { color: var(--down); }
+
+    .card-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      margin-top: 16px;
+      padding-top: 13px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 4px;
+    }
+
+    .footer-value {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .footer-value.right { text-align: right; }
+
+    /* ============================================================
+     * 风格 1：冷白工具（Linear / Notion 式高密度 SaaS）
+     * 纯白界面 + 细边框 + 小圆角，橙色只做功能性点缀
+     * ============================================================ */
+    .style-linear .frame {
+      background: #ffffff;
+      border-color: #e9e6e2;
+    }
+
+    .style-linear .sidebar {
+      background: #faf9f8;
+      border-right: 1px solid #efedea;
+    }
+
+    .style-linear .brand-mark {
+      background: var(--text);
+      color: #fff;
+      border-radius: 7px;
+    }
+
+    .style-linear .nav-item { color: #6f6862; }
+
+    .style-linear .nav-item:hover { background: #f2f0ee; color: var(--text); }
+
+    .style-linear .nav-item.active {
+      background: #f5ece3;
+      color: var(--primary);
+    }
+
+    .style-linear .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid #efedea;
+    }
+
+    .style-linear .index-card {
+      background: #ffffff;
+      border: 1px solid #eae7e3;
+      border-radius: 10px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .style-linear .index-card:hover {
+      border-color: #d6d1ca;
+      box-shadow: 0 4px 14px rgba(44, 39, 33, 0.06);
+    }
+
+    .style-linear .badge {
+      background: #f6f4f2;
+      color: #6f6862;
+      border: 1px solid #eae7e3;
+    }
+
+    .style-linear .badge-dot { background: var(--primary); }
+
+    .style-linear .card-footer { border-top-color: #f0eeeb; }
+
+    /* ============================================================
+     * 风格 2：暗夜驾驶舱（深棕黑底 + 橙色辉光，终端数据感）
+     * 深色取自现有侧边栏色系，橙色调亮以保证对比度
+     * ============================================================ */
+    .style-dark .frame {
+      background: #171310;
+      border-color: #2c251f;
+      box-shadow: 0 24px 60px rgba(20, 15, 11, 0.35);
+    }
+
+    .style-dark .shell { color: #f2ece4; }
+
+    .style-dark .sidebar {
+      background: #100d0b;
+      border-right: 1px solid #29221c;
+    }
+
+    .style-dark .brand-mark {
+      background: #d68a4e;
+      color: #171310;
+      border-radius: 7px;
+    }
+
+    .style-dark .nav-item { color: #9b9084; }
+
+    .style-dark .nav-item:hover { background: rgba(255, 255, 255, 0.04); color: #f2ece4; }
+
+    .style-dark .nav-item.active {
+      background: rgba(214, 138, 78, 0.14);
+      color: #e09a5c;
+    }
+
+    .style-dark .main {
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        #171310;
+      background-size: 30px 30px;
+    }
+
+    .style-dark .topbar {
+      background: rgba(23, 19, 16, 0.85);
+      border-bottom: 1px solid #29221c;
+      color: #9b9084;
+    }
+
+    .style-dark .topbar strong { color: #f2ece4; }
+
+    .style-dark .live-dot {
+      background: #d68a4e;
+      box-shadow: 0 0 8px rgba(214, 138, 78, 0.9);
+    }
+
+    .style-dark .eyebrow { color: #d68a4e; }
+
+    .style-dark .page-title { color: #f7f2ea; }
+
+    .style-dark .page-desc { color: #9b9084; }
+
+    .style-dark .index-card {
+      background: #1f1a15;
+      border: 1px solid #322a22;
+      border-radius: 12px;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .style-dark .index-card:hover {
+      border-color: #4a3d30;
+      transform: translateY(-2px);
+    }
+
+    .style-dark .card-name { color: #f2ece4; }
+
+    .style-dark .card-code { color: #7d7266; }
+
+    .style-dark .card-value {
+      color: #f7f2ea;
+      text-shadow: 0 0 24px rgba(214, 138, 78, 0.15);
+    }
+
+    .style-dark .card-change.up { color: #e0705c; }
+    .style-dark .card-change.down { color: #64b586; }
+
+    .style-dark .badge {
+      background: rgba(214, 138, 78, 0.1);
+      color: #e09a5c;
+      border: 1px solid rgba(214, 138, 78, 0.28);
+    }
+
+    .style-dark .card-footer { border-top-color: #2c251e; }
+
+    .style-dark .footer-label,
+    .style-dark .footer-value { color: #7d7266; }
+
+    /* ============================================================
+     * 风格 3：极简留白（无卡片、无装饰，编辑级排版）
+     * 保留暖白底色，但用细线分割 + 超细字重彻底去纸张感
+     * ============================================================ */
+    .style-minimal .frame { background: var(--bg); }
+
+    .style-minimal .sidebar {
+      background: transparent;
+      border-right: 1px solid var(--border);
+    }
+
+    .style-minimal .brand-mark {
+      background: transparent;
+      border: 1.5px solid var(--text);
+      color: var(--text);
+      border-radius: 50%;
+    }
+
+    .style-minimal .nav-item { color: var(--text-muted); padding-left: 10px; }
+
+    .style-minimal .nav-item:hover { color: var(--text); background: transparent; }
+
+    .style-minimal .nav-item.active {
+      color: var(--text);
+      background: transparent;
+    }
+
+    /* 激活项前置橙色小方块，代替底色高亮 */
+    .style-minimal .nav-item.active::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      flex: none;
+    }
+
+    .style-minimal .topbar {
+      background: transparent;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .style-minimal .page-title { font-weight: 300; letter-spacing: -0.02em; }
+
+    .style-minimal .cards-grid { gap: 0 32px; }
+
+    .style-minimal .index-card {
+      background: transparent;
+      border: none;
+      border-top: 1px solid var(--border);
+      border-radius: 0;
+      padding: 22px 4px;
+      min-height: 208px;
+    }
+
+    .style-minimal .card-name { font-weight: 500; }
+
+    /* 数字用超细字重，靠尺寸制造层级 */
+    .style-minimal .card-value {
+      font-weight: 300;
+      font-size: 2.1rem;
+      letter-spacing: -0.04em;
+    }
+
+    .style-minimal .badge {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0;
+      border-radius: 0;
+      font-weight: 400;
+    }
+
+    .style-minimal .badge-dot { background: var(--primary); }
+
+    .style-minimal .card-footer { border-top: none; padding-top: 0; }
+
+    .style-minimal .eyebrow { color: var(--text-muted); }
+
+    /* ============================================================
+     * 风格 4：Bento 网格（圆角模块 + 柔光渐变，现代消费级）
+     * 首卡横跨两列形成 Bento 节奏，橙光只做氛围渲染
+     * ============================================================ */
+    .style-bento .frame {
+      background: #f2eee8;
+      border: none;
+    }
+
+    .style-bento .shell {
+      grid-template-columns: 232px 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .style-bento .sidebar {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 2px 10px rgba(44, 39, 33, 0.05);
+    }
+
+    .style-bento .brand-mark {
+      background: linear-gradient(135deg, #c87d4c, #a85e2f);
+      color: #fff;
+      border-radius: 10px;
+    }
+
+    .style-bento .nav-item { color: #8a8178; border-radius: 10px; }
+
+    .style-bento .nav-item:hover { background: #f6f2ec; color: var(--text); }
+
+    .style-bento .nav-item.active {
+      background: var(--text);
+      color: #fff;
+    }
+
+    .style-bento .nav-item.active .nav-number { opacity: 0.5; }
+
+    .style-bento .topbar { padding: 4px 12px 0; height: 48px; }
+
+    .style-bento .content { padding: 10px 12px 14px; }
+
+    .style-bento .cards-grid { gap: 14px; }
+
+    /* Bento 节奏：第一张卡横跨整行 */
+    .style-bento .index-card:first-child {
+      grid-column: 1 / -1;
+      min-height: 168px;
+    }
+
+    .style-bento .index-card {
+      background:
+        radial-gradient(420px 200px at 88% -10%, rgba(184, 107, 56, 0.09), transparent 65%),
+        #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 20px;
+      box-shadow: 0 3px 14px rgba(44, 39, 33, 0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .style-bento .index-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(44, 39, 33, 0.09);
+    }
+
+    .style-bento .badge {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .style-bento .badge-dot { background: rgba(255, 255, 255, 0.9); }
+
+    .style-bento .card-footer { border-top-color: #f0ece6; }
+
+    .style-bento .breadcrumb,
+    .style-bento .topbar-actions { color: var(--text-muted); }
+
+    .style-bento .topbar strong { color: var(--text); }
+
+    /* ---------- 响应式：窄屏隐藏侧栏 ---------- */
+    @media (max-width: 900px) {
+      .shell,
+      .style-bento .shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .tags { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 页面说明：明确"色调不变，质感更换"的前提 -->
+  <div class="intro">
+    <p class="kicker">Dibobo · Style Exploration V2</p>
+    <h1>同一色调，四种现代质感</h1>
+    <p>以下四个样例严格沿用当前配色（米白 / 赭石橙 / 深棕），仅去除纸张元素：不再使用衬线标题与纸质纹理，改用无衬线排版与现代界面质感。四个方向差异明显，方便你快速锁定偏好。</p>
+    <div class="palette">
+      <span class="swatch"><i style="background:#fcfaf7"></i>#FCFAF7 米白</span>
+      <span class="swatch"><i style="background:#b86b38"></i>#B86B38 赭石橙</span>
+      <span class="swatch"><i style="background:#2c2721"></i>#2C2721 深棕</span>
+      <span class="swatch"><i style="background:#7a7167"></i>#7A7167 灰棕</span>
+    </div>
+  </div>
+
+  <!-- ================= 风格 1：冷白工具 ================= -->
+  <section class="style-section style-linear">
+    <div class="style-label">
+      <h2>01 · 冷白工具</h2>
+      <span>Linear / Notion 式高密度 SaaS，纯白界面 + 细边框，橙色只做功能点缀</span>
+      <div class="tags"><i>无衬线</i><i>细边框</i><i>高密度</i><i>效率感</i></div>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / Workspace</div>
+            <a class="nav-item active" href="#">总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#">持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#">红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#">投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#">系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>/</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span><span class="live-dot"></span>行情已连接</span><span>user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change down">−12.45 &nbsp;−0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change up">+89.22 &nbsp;+0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change up">+34.10 &nbsp;+1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change down">−5.33 &nbsp;−0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 风格 2：暗夜驾驶舱 ================= -->
+  <section class="style-section style-dark">
+    <div class="style-label">
+      <h2>02 · 暗夜驾驶舱</h2>
+      <span>深棕黑底 + 橙色辉光，终端级数据密度，深色取自现有侧栏色系</span>
+      <div class="tags"><i>深色模式</i><i>辉光</i><i>等宽数字</i><i>终端感</i></div>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / Workspace</div>
+            <a class="nav-item active" href="#">总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#">持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#">红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#">投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#">系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span>Dibobo</span> <span>/</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span><span class="live-dot"></span>行情已连接</span><span>user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change down">−12.45 &nbsp;−0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change up">+89.22 &nbsp;+0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change up">+34.10 &nbsp;+1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change down">−5.33 &nbsp;−0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 风格 3：极简留白 ================= -->
+  <section class="style-section style-minimal">
+    <div class="style-label">
+      <h2>03 · 极简留白</h2>
+      <span>无卡片无阴影，细线分割 + 超细数字字重，编辑级排版</span>
+      <div class="tags"><i>无卡片</i><i>细线</i><i>大留白</i><i>排版驱动</i></div>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / Workspace</div>
+            <a class="nav-item active" href="#">总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#">持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#">红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#">投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#">系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>/</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span><span class="live-dot"></span>行情已连接</span><span>user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change down">−12.45 &nbsp;−0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change up">+89.22 &nbsp;+0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change up">+34.10 &nbsp;+1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change down">−5.33 &nbsp;−0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 风格 4：Bento 网格 ================= -->
+  <section class="style-section style-bento">
+    <div class="style-label">
+      <h2>04 · Bento 网格</h2>
+      <span>圆角悬浮模块 + 橙色柔光渐变，现代消费级产品的亲和感</span>
+      <div class="tags"><i>Bento</i><i>大圆角</i><i>柔光渐变</i><i>亲和力</i></div>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / Workspace</div>
+            <a class="nav-item active" href="#">总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#">持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#">红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#">投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#">系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span>Dibobo</span> <span>/</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span><span class="live-dot"></span>行情已连接</span><span>user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change down">−12.45 &nbsp;−0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change up">+89.22 &nbsp;+0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change up">+34.10 &nbsp;+1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change down">−5.33 &nbsp;−0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height: 56px"></div>
+
+</body>
+</html>

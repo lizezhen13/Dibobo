@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dibobo 页面风格探索</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fcfaf7;
+      --surface: #ffffff;
+      --surface-2: #f6f3ef;
+      --text: #2c2721;
+      --text-muted: #7a7167;
+      --primary: #b86b38;
+      --primary-light: #e8c8b0;
+      --border: #e6e0d8;
+      --radius: 16px;
+      --font-display: "DM Serif Display", Georgia, serif;
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+    }
+
+    .intro {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 24px 16px;
+    }
+
+    .intro h1 {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .intro p {
+      color: var(--text-muted);
+      margin: 0;
+      max-width: 640px;
+    }
+
+    .style-section {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+
+    .style-label {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    .style-label h2 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      margin: 0;
+    }
+
+    .style-label span {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .frame {
+      max-width: 1200px;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg);
+      box-shadow: 0 24px 60px rgba(44, 39, 33, 0.08);
+    }
+
+    /* ========== 公共结构 ========== */
+    .shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 560px;
+    }
+
+    .sidebar {
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+
+    .brand-sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      opacity: 0.55;
+      margin-top: 2px;
+    }
+
+    .nav-group-title {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.45;
+      margin: 0 0 10px 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item.active { font-weight: 600; }
+
+    .nav-number {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      opacity: 0.35;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 0.8rem;
+    }
+
+    .content {
+      flex: 1;
+      padding: 28px;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin: 0 0 8px;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 1.65rem;
+      margin: 0 0 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .page-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .index-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 210px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .card-name {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      margin: 0;
+    }
+
+    .card-code {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .card-mid {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .card-value {
+      font-family: var(--font-mono);
+      font-size: 1.85rem;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+
+    .card-change {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #c04a3b;
+    }
+
+    .card-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      margin-top: 18px;
+      padding-top: 14px;
+    }
+
+    .footer-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 4px;
+    }
+
+    .footer-value {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .footer-value.right { text-align: right; }
+
+    .card-ordinal {
+      position: absolute;
+      top: -14px;
+      right: 6px;
+      font-family: var(--font-display);
+      font-size: 5.5rem;
+      line-height: 1;
+      opacity: 0.04;
+      pointer-events: none;
+    }
+
+    /* ========== 风格 1：清透玻璃 ========== */
+    .style-glass .sidebar {
+      background: rgba(30, 26, 22, 0.78);
+      backdrop-filter: blur(18px);
+      color: rgba(252, 250, 247, 0.9);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .style-glass .brand-mark {
+      background: rgba(184, 107, 56, 0.18);
+      border: 1px solid rgba(184, 107, 56, 0.45);
+      border-radius: 10px;
+    }
+
+    .style-glass .nav-item {
+      color: rgba(252, 250, 247, 0.55);
+    }
+
+    .style-glass .nav-item:hover,
+    .style-glass .nav-item.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fcfaf7;
+    }
+
+    .style-glass .nav-item.active {
+      background: var(--primary);
+      box-shadow: 0 4px 14px rgba(184, 107, 56, 0.28);
+    }
+
+    .style-glass .main {
+      background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(252,250,247,0) 40%), var(--bg);
+    }
+
+    .style-glass .topbar {
+      background: rgba(252, 250, 247, 0.55);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(230, 224, 216, 0.65);
+    }
+
+    .style-glass .index-card {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 20px;
+      box-shadow:
+        0 1px 2px rgba(44, 39, 33, 0.03),
+        0 8px 28px rgba(44, 39, 33, 0.06);
+      backdrop-filter: blur(10px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .style-glass .index-card:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 1px 2px rgba(44, 39, 33, 0.03),
+        0 14px 38px rgba(44, 39, 33, 0.1);
+    }
+
+    .style-glass .badge {
+      background: rgba(184, 107, 56, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(184, 107, 56, 0.2);
+    }
+
+    .style-glass .card-footer {
+      border-top: 1px solid rgba(230, 224, 216, 0.7);
+    }
+
+    /* ========== 风格 2：粗野主义 ========== */
+    .style-brutalist {
+      --brutal-shadow: 5px 5px 0 #2c2721;
+    }
+
+    .style-brutalist .frame {
+      border: 2px solid var(--text);
+      box-shadow: 8px 8px 0 var(--text);
+      border-radius: 0;
+    }
+
+    .style-brutalist .sidebar {
+      background: var(--text);
+      color: var(--bg);
+      border-right: 2px solid var(--text);
+    }
+
+    .style-brutalist .brand-mark {
+      background: var(--primary);
+      color: var(--bg);
+      border-radius: 0;
+      border: 2px solid var(--bg);
+    }
+
+    .style-brutalist .nav-item {
+      color: rgba(252, 250, 247, 0.65);
+      border-radius: 0;
+      border: 2px solid transparent;
+    }
+
+    .style-brutalist .nav-item:hover,
+    .style-brutalist .nav-item.active {
+      background: transparent;
+      border-color: var(--primary);
+      color: var(--bg);
+    }
+
+    .style-brutalist .nav-item.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+    }
+
+    .style-brutalist .main {
+      background: var(--bg);
+    }
+
+    .style-brutalist .topbar {
+      border-bottom: 2px solid var(--text);
+      background: var(--bg);
+    }
+
+    .style-brutalist .content {
+      background:
+        linear-gradient(90deg, var(--border) 1px, transparent 1px),
+        linear-gradient(var(--border) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+    }
+
+    .style-brutalist .index-card {
+      background: var(--surface);
+      border: 2px solid var(--text);
+      border-radius: 0;
+      box-shadow: var(--brutal-shadow);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .style-brutalist .index-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 var(--text);
+    }
+
+    .style-brutalist .badge {
+      background: var(--primary);
+      color: var(--bg);
+      border-radius: 0;
+      font-weight: 700;
+    }
+
+    .style-brutalist .card-footer {
+      border-top: 2px solid var(--text);
+    }
+
+    .style-brutalist .eyebrow {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* ========== 风格 3：瑞士国际主义 ========== */
+    .style-swiss .frame {
+      border-radius: 0;
+      border: 1px solid var(--border);
+    }
+
+    .style-swiss .sidebar {
+      background: var(--surface);
+      color: var(--text);
+      border-right: 1px solid var(--border);
+      padding: 28px 22px;
+    }
+
+    .style-swiss .brand-mark {
+      background: var(--primary);
+      color: var(--bg);
+      border-radius: 0;
+      font-size: 0.85rem;
+    }
+
+    .style-swiss .brand-title {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-size: 0.95rem;
+    }
+
+    .style-swiss .brand-sub {
+      opacity: 0.4;
+      letter-spacing: 0.05em;
+    }
+
+    .style-swiss .nav-group-title {
+      opacity: 0.35;
+      margin-left: 0;
+    }
+
+    .style-swiss .nav-item {
+      color: var(--text-muted);
+      border-radius: 0;
+      padding-left: 0;
+      border-bottom: 1px solid transparent;
+    }
+
+    .style-swiss .nav-item:hover {
+      color: var(--text);
+      background: transparent;
+    }
+
+    .style-swiss .nav-item.active {
+      color: var(--text);
+      background: transparent;
+      border-bottom-color: var(--primary);
+    }
+
+    .style-swiss .nav-number {
+      font-family: var(--font-sans);
+      font-weight: 300;
+    }
+
+    .style-swiss .main {
+      background: var(--bg);
+    }
+
+    .style-swiss .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .style-swiss .content {
+      padding: 32px;
+    }
+
+    .style-swiss .index-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      box-shadow: none;
+      transition: background 0.2s ease;
+    }
+
+    .style-swiss .index-card:hover {
+      background: #fffdfa;
+    }
+
+    .style-swiss .badge {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .style-swiss .card-footer {
+      border-top: 1px solid var(--border);
+    }
+
+    .style-swiss .card-value {
+      font-weight: 400;
+    }
+
+    .style-swiss .eyebrow {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .style-swiss .page-title {
+      font-family: var(--font-sans);
+      font-weight: 300;
+      letter-spacing: -0.03em;
+    }
+
+    /* ========== 风格 4：柔和拟物 ========== */
+    .style-clay .sidebar {
+      background: #2d2620;
+      color: rgba(252, 250, 247, 0.9);
+      border-radius: 0 24px 24px 0;
+      margin: 14px 0 14px 14px;
+      width: calc(100% - 14px);
+      box-shadow:
+        inset -2px 0 4px rgba(255,255,255,0.04),
+        8px 0 24px rgba(44, 39, 33, 0.18);
+    }
+
+    .style-clay .shell {
+      gap: 14px;
+      padding-right: 14px;
+      background: var(--bg);
+    }
+
+    .style-clay .brand-mark {
+      background: linear-gradient(145deg, #c87d4c, #a65e2e);
+      color: var(--bg);
+      border-radius: 12px;
+      box-shadow:
+        inset 0 1px 1px rgba(255,255,255,0.3),
+        0 4px 8px rgba(0,0,0,0.25);
+    }
+
+    .style-clay .nav-item {
+      color: rgba(252, 250, 247, 0.6);
+      border-radius: 12px;
+    }
+
+    .style-clay .nav-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--bg);
+    }
+
+    .style-clay .nav-item.active {
+      background: linear-gradient(145deg, #c87d4c, #a65e2e);
+      color: var(--bg);
+      box-shadow:
+        inset 0 1px 1px rgba(255,255,255,0.25),
+        0 6px 12px rgba(0,0,0,0.22);
+    }
+
+    .style-clay .main {
+      background: var(--bg);
+    }
+
+    .style-clay .topbar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      margin: 14px 0 0;
+      height: 58px;
+      box-shadow:
+        0 4px 12px rgba(44, 39, 33, 0.05),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .style-clay .content {
+      padding: 22px 0 0;
+    }
+
+    .style-clay .index-card {
+      background: linear-gradient(145deg, #ffffff, #f5f1ec);
+      border: 1px solid rgba(230, 224, 216, 0.9);
+      border-radius: 24px;
+      box-shadow:
+        0 6px 16px rgba(44, 39, 33, 0.06),
+        0 2px 4px rgba(44, 39, 33, 0.04),
+        inset 0 1px 1px rgba(255,255,255,0.9);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .style-clay .index-card:hover {
+      transform: translateY(-4px) scale(1.005);
+      box-shadow:
+        0 14px 32px rgba(44, 39, 33, 0.1),
+        0 4px 8px rgba(44, 39, 33, 0.05),
+        inset 0 1px 1px rgba(255,255,255,0.9);
+    }
+
+    .style-clay .badge {
+      background: rgba(184, 107, 56, 0.12);
+      color: var(--primary);
+      border-radius: 999px;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.6);
+    }
+
+    .style-clay .card-footer {
+      border-top: 1px solid rgba(230, 224, 216, 0.9);
+    }
+
+    .style-clay .card-value {
+      text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="intro">
+    <h1>Dibobo 页面风格探索</h1>
+    <p>保持现有暖色调配色（米白背景、赭石橙主色、深色侧栏）不变，提供四种不同视觉风格的系统页面样例。每个样例展示相同的「市场总览」布局，方便你横向对比。</p>
+  </div>
+
+  <!-- 风格 1：清透玻璃 -->
+  <section class="style-section style-glass">
+    <div class="style-label">
+      <h2>01 · 清透玻璃</h2>
+      <span>半透明磨砂、柔和阴影、轻盈悬浮感</span>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / WORKSPACE</div>
+            <a class="nav-item active" href="#"><span>◈</span> 总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>›</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span>● 行情状态 · 按页面更新</span><span>👤 user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <span class="card-ordinal">01</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change">−12.45 −0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">02</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change">+89.22 +0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">03</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change">+34.10 +1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">04</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change">−5.33 −0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 风格 2：粗野主义 -->
+  <section class="style-section style-brutalist">
+    <div class="style-label">
+      <h2>02 · 粗野主义</h2>
+      <span>硬边黑框、厚重阴影、原始几何、高对比</span>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / WORKSPACE</div>
+            <a class="nav-item active" href="#"><span>◈</span> 总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>›</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span>● 行情状态 · 按页面更新</span><span>👤 user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <span class="card-ordinal">01</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change">−12.45 −0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">02</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change">+89.22 +0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">03</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change">+34.10 +1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">04</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change">−5.33 −0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 风格 3：瑞士国际主义 -->
+  <section class="style-section style-swiss">
+    <div class="style-label">
+      <h2>03 · 瑞士国际主义</h2>
+      <span>严格网格、无衬线标题、去装饰、信息优先</span>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / WORKSPACE</div>
+            <a class="nav-item active" href="#"><span>◈</span> 总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>›</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span>● 行情状态 · 按页面更新</span><span>👤 user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <span class="card-ordinal">01</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change">−12.45 −0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">02</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change">+89.22 +0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">03</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change">+34.10 +1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">04</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change">−5.33 −0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 风格 4：柔和拟物 -->
+  <section class="style-section style-clay">
+    <div class="style-label">
+      <h2>04 · 柔和拟物</h2>
+      <span>大圆角、柔和阴影、微渐变、亲和的立体触感</span>
+    </div>
+    <div class="frame">
+      <div class="shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-title">DIBOBO</div>
+              <div class="brand-sub">PRIVATE WORKBENCH</div>
+            </div>
+          </div>
+          <nav>
+            <div class="nav-group-title">工作区 / WORKSPACE</div>
+            <a class="nav-item active" href="#"><span>◈</span> 总览面板 <span class="nav-number">01</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 持仓管理 <span class="nav-number">02</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 红利雷达 <span class="nav-number">03</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 投资日记 <span class="nav-number">04</span></a>
+            <a class="nav-item" href="#"><span>◈</span> 系统设置 <span class="nav-number">05</span></a>
+          </nav>
+        </aside>
+        <div class="main">
+          <header class="topbar">
+            <div class="breadcrumb"><span style="color: var(--text-muted)">Dibobo</span> <span>›</span> <strong>总览面板</strong></div>
+            <div class="topbar-actions"><span>● 行情状态 · 按页面更新</span><span>👤 user</span></div>
+          </header>
+          <div class="content">
+            <div class="page-header">
+              <p class="eyebrow">Market Overview / 市场总览</p>
+              <h1 class="page-title">四个坐标，看清今日市场</h1>
+              <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+            </div>
+            <div class="cards-grid">
+              <div class="index-card">
+                <span class="card-ordinal">01</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,247.36</p><span class="card-change">−12.45 −0.38%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">3,842.6 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">02</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">10,523.81</p><span class="card-change">+89.22 +0.86%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">4,671.2 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">03</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">2,118.92</p><span class="card-change">+34.10 +1.64%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,156.8 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+              <div class="index-card">
+                <span class="card-ordinal">04</span>
+                <div class="card-header-row">
+                  <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                  <span class="badge"><span class="badge-dot"></span> 交易中</span>
+                </div>
+                <div class="card-mid"><p class="card-value">3,821.55</p><span class="card-change">−5.33 −0.14%</span></div>
+                <div class="card-footer">
+                  <div><p class="footer-label">成交额</p><p class="footer-value">2,094.3 亿</p></div>
+                  <div><p class="footer-label right">数据时间</p><p class="footer-value right">10:42:18</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

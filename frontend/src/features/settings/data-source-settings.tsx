@@ -217,7 +217,7 @@ function DataSourceCard({
       className={cn(
         "relative overflow-hidden",
         source.is_active &&
-          "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(31,43,37,.055)]",
+          "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(0,0,0,.4)]",
       )}
     >
       <div className="absolute right-5 top-1 font-display text-[4.5rem] leading-none text-foreground/[0.025]">

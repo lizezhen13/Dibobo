@@ -39,12 +39,6 @@ export function LoginPage() {
 
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden bg-shell px-6 py-12 text-paper">
-      {/* 装饰背景 */}
-      <div className="pointer-events-none absolute inset-0 opacity-20">
-        <div className="absolute left-1/4 top-1/4 size-80 rounded-full bg-primary/20 blur-[100px]" />
-        <div className="absolute bottom-1/4 right-1/4 size-96 rounded-full bg-primary/10 blur-[120px]" />
-      </div>
-
       <div className="relative z-10 w-full max-w-[420px] animate-fade-in-up">
         {/* 品牌区 */}
         <div className="mb-10 text-center">
@@ -58,7 +52,7 @@ export function LoginPage() {
         </div>
 
         {/* 登录卡片 */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-dialog backdrop-blur-md">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 shadow-dialog">
           <p className="eyebrow mb-5 text-paper/30">LOGIN</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>

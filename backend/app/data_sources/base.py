@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
 
 from app.data_sources.domain import (
+    DividendEventResult,
     IndexQuoteBatch,
     Instrument,
+    InstrumentListResult,
     InstrumentSearchResult,
+    RoeIndicator,
     SecurityQuoteBatch,
     TradingCalendar,
+    ValuationSnapshotBatch,
 )
 
 
@@ -36,4 +40,29 @@ class DataSourceAdapter(ABC):
         instruments: list[Instrument],
         concurrency: int = 4,
     ) -> SecurityQuoteBatch:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_a_share_instruments(self) -> InstrumentListResult:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_valuation_snapshots(
+        self,
+        thscodes: list[str],
+        concurrency: int = 4,
+    ) -> ValuationSnapshotBatch:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_roe_indicator(self, thscode: str, reports: list[str]) -> RoeIndicator:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_dividend_events(
+        self,
+        thscode: str,
+        date_from: str,
+        date_to: str,
+    ) -> DividendEventResult:
         raise NotImplementedError

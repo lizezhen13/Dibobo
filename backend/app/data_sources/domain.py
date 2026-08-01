@@ -40,6 +40,40 @@ class InstrumentSearchResult(BaseModel):
     fetched_at: datetime
 
 
+class InstrumentListResult(BaseModel):
+    items: list[Instrument]
+    fetched_at: datetime
+
+
+class ValuationSnapshot(BaseModel):
+    thscode: str
+    pb_mrq: float | None = None
+    metric_at: datetime | None = None
+
+
+class ValuationSnapshotBatch(BaseModel):
+    items: list[ValuationSnapshot]
+    fetched_at: datetime
+
+
+class RoeIndicator(BaseModel):
+    thscode: str
+    report: str
+    value: float | None = None
+    fetched_at: datetime
+
+
+class DividendEvent(BaseModel):
+    ex_date: datetime
+    dividend_per_share: float
+
+
+class DividendEventResult(BaseModel):
+    thscode: str
+    items: list[DividendEvent]
+    fetched_at: datetime
+
+
 class SecurityQuote(BaseModel):
     thscode: str
     latest: float | None = None
