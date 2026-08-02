@@ -32,26 +32,10 @@ export function OverviewPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1500px] animate-enter">
-      <div className="mb-8 flex items-end justify-between gap-8">
-        <div>
-          <p className="eyebrow text-primary/90">MARKET OVERVIEW / 市场总览</p>
-          <h1 className="mt-2 font-display text-4xl tracking-tight text-foreground">
-            四个坐标，看清今日市场
-          </h1>
-          <p className="mt-2.5 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
-            固定宽基指数行情，不叠加个人资产，不制造多余判断。
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {query.isFetching && !query.isPending && (
-            <span className="flex items-center gap-2 text-[0.8rem] text-muted-foreground/60">
-              <RefreshCw className="animate-spin" size={13} /> 正在更新
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
-            <RefreshCw size={13} /> 手动刷新
-          </Button>
-        </div>
+      <div className="mb-6 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
+          <RefreshCw size={13} /> 手动刷新
+        </Button>
       </div>
 
       {query.data?.data_source.state === "not_configured" && (
@@ -60,7 +44,7 @@ export function OverviewPage() {
             <DatabaseZap className="text-primary/90" size={19} />
             <div>
               <p className="text-[0.95rem] font-semibold text-foreground">行情数据源尚未配置</p>
-              <p className="mt-1 text-[0.85rem] leading-relaxed text-muted-foreground">完成扶摇或兼容数据源配置后，这里会展示真实指数行情。</p>
+              <p className="mt-1 text-[0.85rem] leading-relaxed text-muted-foreground">完成同花顺或兼容数据源配置后，这里会展示真实指数行情。</p>
             </div>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -111,10 +95,6 @@ export function OverviewPage() {
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-border pt-4 font-mono text-[0.7rem] tracking-[0.1em] text-muted-foreground/60">
-        <span>UPSTREAM · {query.data?.data_source.name ?? "NOT CONNECTED"}</span>
-        <span>{query.data?.polling_enabled ? `交易时段每 ${query.data.refresh_seconds} 秒更新` : "非交易时段不连续轮询"}</span>
-      </div>
     </div>
   );
 }

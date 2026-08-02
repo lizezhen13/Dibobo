@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Power,
+  PowerOff,
   ShieldCheck,
   Trash2,
   X,
@@ -38,16 +39,12 @@ import { DataSourceDialog } from "./data-source-dialog";
 import {
   useActivateDataSourceMutation,
   useDataSourcesQuery,
+  useDeactivateDataSourceMutation,
   useDeleteDataSourceMutation,
   useTestDataSourceMutation,
 } from "./queries";
 
 type Notice = { tone: "success" | "error" | "warning"; message: string } | null;
-
-const providerLabels = {
-  fuyao: "扶摇",
-  fuyao_compatible: "扶摇兼容",
-} as const;
 
 const capabilityLabels: Record<string, string> = {
   instrument_search: "标的检索",
@@ -66,6 +63,7 @@ export function DataSourceSettings() {
   const query = useDataSourcesQuery();
   const testMutation = useTestDataSourceMutation();
   const activateMutation = useActivateDataSourceMutation();
+  const deactivateMutation = useDeactivateDataSourceMutation();
   const deleteMutation = useDeleteDataSourceMutation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
@@ -106,6 +104,16 @@ export function DataSourceSettings() {
     }
   };
 
+  const deactivate = async (source: DataSource) => {
+    setNotice(null);
+    try {
+      await deactivateMutation.mutateAsync(source.id);
+      setNotice({ tone: "success", message: `${source.name} 已停用` });
+    } catch (error) {
+      setNotice({ tone: "error", message: getErrorMessage(error, "停用失败") });
+    }
+  };
+
   const remove = async (source: DataSource) => {
     setNotice(null);
     try {
@@ -118,21 +126,6 @@ export function DataSourceSettings() {
 
   return (
     <div className="animate-enter">
-      <div className="mb-6 flex items-end justify-between gap-8">
-        <div>
-          <p className="eyebrow text-primary/90">DATA SOURCES / 数据源设置</p>
-          <h2 className="mt-2 font-display text-[1.75rem] tracking-tight">
-            连接你的金融数据
-          </h2>
-          <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">
-            每个用户可保存多条独立配置，但同一时间只有一条作为行情与雷达数据源。
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus size={17} /> 新增数据源
-        </Button>
-      </div>
-
       {notice && <NoticeBar notice={notice} onClose={() => setNotice(null)} />}
 
       {query.isPending ? (
@@ -159,7 +152,7 @@ export function DataSourceSettings() {
             </div>
             <h3 className="mt-5 font-display text-2xl">还没有数据源</h3>
             <p className="mt-3 text-[0.95rem] leading-7 text-muted-foreground">
-              添加扶摇或兼容配置，测试通过并启用后，总览与持仓页面即可请求真实行情。
+              添加同花顺或兼容配置，测试通过并启用后，总览与持仓页面即可请求真实行情。
             </p>
             <Button className="mt-7" onClick={openCreate}>
               <Plus size={17} /> 添加第一条配置
@@ -175,13 +168,23 @@ export function DataSourceSettings() {
               ordinal={index + 1}
               testing={testMutation.isPending && testMutation.variables === source.id}
               activating={activateMutation.isPending && activateMutation.variables === source.id}
+              deactivating={deactivateMutation.isPending && deactivateMutation.variables === source.id}
               deleting={deleteMutation.isPending && deleteMutation.variables === source.id}
               onTest={() => void runTest(source)}
               onActivate={() => void activate(source)}
+              onDeactivate={() => void deactivate(source)}
               onEdit={() => openEdit(source)}
               onDelete={() => void remove(source)}
             />
           ))}
+        </div>
+      )}
+
+      {!query.isPending && !query.isError && (
+        <div className="mt-5">
+          <Button onClick={openCreate}>
+            <Plus size={17} /> 新增数据源
+          </Button>
         </div>
       )}
 
@@ -195,9 +198,11 @@ function DataSourceCard({
   ordinal,
   testing,
   activating,
+  deactivating,
   deleting,
   onTest,
   onActivate,
+  onDeactivate,
   onEdit,
   onDelete,
 }: {
@@ -205,9 +210,11 @@ function DataSourceCard({
   ordinal: number;
   testing: boolean;
   activating: boolean;
+  deactivating: boolean;
   deleting: boolean;
   onTest: () => void;
   onActivate: () => void;
+  onDeactivate: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -223,8 +230,8 @@ function DataSourceCard({
       <div className="absolute right-5 top-1 font-display text-[4.5rem] leading-none text-foreground/[0.025]">
         {String(ordinal).padStart(2, "0")}
       </div>
-      <div className="relative grid grid-cols-[1fr_260px]">
-        <div className="p-7">
+      <div className="relative grid grid-cols-[1fr_230px]">
+        <div className="p-5">
           <div className="flex items-start gap-4">
             <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary font-mono text-xs font-bold text-primary/90">
               FY
@@ -237,7 +244,16 @@ function DataSourceCard({
                     <Activity size={10} className="mr-1" /> 当前启用
                   </Badge>
                 )}
-                <Badge>{providerLabels[source.provider_type]}</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto h-7 gap-1 px-2 text-[0.75rem]"
+                  onClick={onTest}
+                  disabled={testing}
+                >
+                  {testing ? <LoaderCircle className="animate-spin" size={12} /> : <Activity size={12} />}
+                  测试连接
+                </Button>
               </div>
               <p className="mt-2 truncate font-mono text-[0.7rem] text-muted-foreground/60">
                 {source.base_url}
@@ -245,7 +261,7 @@ function DataSourceCard({
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-[180px_1fr] gap-5 border-t border-border pt-5">
+          <div className="mt-4 grid grid-cols-[150px_1fr] gap-4 border-t border-border pt-3.5">
             <div>
               <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
                 API KEY
@@ -281,13 +297,9 @@ function DataSourceCard({
           </div>
         </div>
 
-        <div className="border-l border-border bg-secondary/45 p-6">
+        <div className="border-l border-border bg-secondary/45 p-4">
           <TestStatus source={source} />
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
-            <Button variant="outline" size="sm" onClick={onTest} disabled={testing}>
-              {testing ? <LoaderCircle className="animate-spin" size={13} /> : <Activity size={13} />}{" "}
-              测试连接
-            </Button>
+          <div className="-mt-1 grid grid-cols-2 gap-2.5">
             <Button
               variant={source.is_active ? "ghost" : "outline"}
               size="sm"
@@ -296,6 +308,15 @@ function DataSourceCard({
             >
               {activating ? <LoaderCircle className="animate-spin" size={13} /> : <Power size={13} />}
               {source.is_active ? "已启用" : "启用"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDeactivate}
+              disabled={!source.is_active || deactivating}
+            >
+              {deactivating ? <LoaderCircle className="animate-spin" size={13} /> : <PowerOff size={13} />}
+              停用
             </Button>
             <Button variant="ghost" size="sm" onClick={onEdit}>
               <Pencil size={13} /> 编辑
@@ -331,20 +352,22 @@ function TestStatus({ source }: { source: DataSource }) {
         )}
       >
         {success ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
-        {success ? "最近测试成功" : "最近测试失败"}
+        {success ? "连接成功" : "最近测试失败"}
         {source.last_test_latency_ms !== null && (
           <span className="font-mono font-normal text-muted-foreground/60">
             {source.last_test_latency_ms} ms
           </span>
         )}
       </p>
-      <p
-        className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60"
-        title={source.last_test_message ?? undefined}
-      >
-        {source.last_test_message}
-      </p>
-      <p className="mt-1 font-mono text-[0.65rem] text-muted-foreground/60">
+      {!success && source.last_test_message && (
+        <p
+          className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60"
+          title={source.last_test_message}
+        >
+          {source.last_test_message}
+        </p>
+      )}
+      <p className="mt-2 font-mono text-[0.7rem] text-muted-foreground/60">
         {formatDateTime(source.last_test_at)}
       </p>
     </div>

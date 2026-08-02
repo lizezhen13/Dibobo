@@ -119,15 +119,15 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
           <DialogBody className="space-y-5">
             <div className="grid grid-cols-2 gap-5">
               <Field label="数据源名称" error={form.formState.errors.name?.message}>
-                <Input placeholder="例如：我的扶摇数据源" {...form.register("name")} />
+                <Input placeholder="例如：我的同花顺数据源" {...form.register("name")} />
               </Field>
               <Field label="数据源类型" error={form.formState.errors.provider_type?.message}>
                 <select
                   className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-[0.95rem] text-foreground outline-none transition-all focus:border-primary/40 focus:ring-[3px] focus:ring-primary/15"
                   {...form.register("provider_type")}
                 >
-                  <option value="fuyao">扶摇</option>
-                  <option value="fuyao_compatible">扶摇兼容</option>
+                  <option value="fuyao">同花顺</option>
+                  <option value="fuyao_compatible">同花顺兼容</option>
                 </select>
               </Field>
             </div>

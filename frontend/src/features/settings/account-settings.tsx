@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRound, LoaderCircle, LogOut, ShieldCheck } from "lucide-react";
+import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -8,7 +8,6 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { ApiError } from "../../lib/api";
-import { useSessionQuery } from "../auth/queries";
 import { useChangePasswordMutation } from "./queries";
 
 const passwordSchema = z
@@ -33,7 +32,6 @@ const passwordSchema = z
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 export function AccountSettings() {
-  const session = useSessionQuery();
   const mutation = useChangePasswordMutation();
   const navigate = useNavigate();
   const form = useForm<PasswordForm>({
@@ -60,26 +58,7 @@ export function AccountSettings() {
 
   return (
     <div className="max-w-[850px] animate-enter">
-      <div className="mb-6">
-        <p className="eyebrow text-primary/90">ACCOUNT / 账号设置</p>
-        <h2 className="mt-2 font-display text-[1.75rem] tracking-tight">
-          登录凭证与会话
-        </h2>
-        <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">
-          用户名由部署人员创建且不可修改。修改密码后，全部登录会话会立即失效。
-        </p>
-      </div>
-
       <Card className="overflow-hidden">
-        <div className="grid grid-cols-[200px_1fr] border-b border-border bg-secondary/55">
-          <div className="border-r border-border px-6 py-5 text-[0.7rem] font-medium tracking-[0.1em] text-muted-foreground/70">
-            CURRENT USER
-          </div>
-          <div className="px-6 py-5 font-mono text-[0.95rem] font-semibold text-foreground">
-            {session.data?.user.username}
-          </div>
-        </div>
-
         <form onSubmit={onSubmit} className="p-7" noValidate>
           <div className="grid grid-cols-2 gap-x-6 gap-y-5">
             <PasswordField
@@ -112,17 +91,21 @@ export function AccountSettings() {
             </div>
           )}
 
-          <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
-            <div className="flex items-center gap-2 text-[0.8rem] text-muted-foreground/60">
-              <ShieldCheck size={15} /> Argon2id 安全哈希
-            </div>
+          <div className="mt-7 flex items-center justify-center gap-3 border-t border-border pt-5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset({ current_password: "", new_password: "", confirm_password: "" })}
+            >
+              重置
+            </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? (
                 <LoaderCircle className="animate-spin" size={15} />
               ) : (
                 <LogOut size={15} />
               )}
-              修改密码并退出
+              确定
             </Button>
           </div>
         </form>

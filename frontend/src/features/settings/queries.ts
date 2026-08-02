@@ -68,6 +68,20 @@ export function useActivateDataSourceMutation() {
   });
 }
 
+export function useDeactivateDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<DataSource>(`/api/settings/data-sources/${id}/deactivate`, { method: "POST" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: overviewQueryKey }),
+      ]);
+    },
+  });
+}
+
 export function useDeleteDataSourceMutation() {
   const queryClient = useQueryClient();
   return useMutation({

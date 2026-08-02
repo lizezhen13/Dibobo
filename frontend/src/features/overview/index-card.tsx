@@ -1,5 +1,3 @@
-import { CircleDot } from "lucide-react";
-
 import { Badge } from "../../components/ui/badge";
 import { Card } from "../../components/ui/card";
 import {
@@ -33,8 +31,8 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
           <p className="font-display text-[1.4rem] tracking-tight text-foreground">{data.name}</p>
           <p className="mt-1.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">{data.thscode}</p>
         </div>
-        <Badge variant={marketBadge[data.market_status]}>
-          <CircleDot size={9} /> {data.market_status}
+        <Badge className="text-[13.5px]" variant={marketBadge[data.market_status]}>
+          {data.market_status}
         </Badge>
       </div>
 

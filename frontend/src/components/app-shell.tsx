@@ -93,7 +93,7 @@ export function AppShell() {
         </nav>
 
         <div className="relative z-10 border-t border-dark-border px-7 py-5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             {/* 数据源接入状态指示灯：绿色为已接入，红色为未接入，辉光随令牌颜色联动 */}
             <span
               className="size-2 rounded-full"
@@ -103,7 +103,7 @@ export function AppShell() {
               }}
               aria-hidden
             />
-            <p className={cn("text-[0.7rem] leading-5", isConnected ? "text-market-down" : "text-market-up")}>
+            <p className={cn("text-[13.5px] leading-5", isConnected ? "text-market-down" : "text-market-up")}>
               {isConnected ? "已接入数据源" : "未接入数据源"}
             </p>
           </div>
@@ -119,10 +119,6 @@ export function AppShell() {
             <span className="font-semibold text-foreground">{current.label}</span>
           </div>
           <div className="flex items-center gap-5">
-            <div className="flex items-center gap-2 border-r border-border pr-5 text-sm text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-primary" />
-              行情状态 · 按页面更新
-            </div>
             <div className="flex items-center gap-2.5 text-base text-muted-foreground">
               <CircleUserRound size={17} />
               <span className="font-medium text-foreground">

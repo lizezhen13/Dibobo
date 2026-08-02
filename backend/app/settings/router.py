@@ -19,6 +19,7 @@ from app.settings.schemas import (
 from app.settings.service import (
     activate_source,
     create_source,
+    deactivate_source,
     delete_source,
     list_sources,
     test_source_connection,
@@ -112,6 +113,22 @@ async def enable_data_source(
     user: User = Depends(get_current_user),
 ) -> DataSourceResponse:
     source = await activate_source(db, user, source_id)
+    await invalidate_data_source_cache(cache, source.id)
+    return to_response(source)
+
+
+@router.post(
+    "/{source_id}/deactivate",
+    response_model=DataSourceResponse,
+    dependencies=[Depends(require_csrf)],
+)
+async def disable_data_source(
+    source_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache),
+    user: User = Depends(get_current_user),
+) -> DataSourceResponse:
+    source = await deactivate_source(db, user, source_id)
     await invalidate_data_source_cache(cache, source.id)
     return to_response(source)
 

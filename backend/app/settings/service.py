@@ -256,6 +256,27 @@ async def activate_source(
     return source
 
 
+async def deactivate_source(
+    db: AsyncSession,
+    user: User,
+    source_id: uuid.UUID,
+) -> DataSource:
+    source = await get_owned_source(db, user, source_id)
+    if not source.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="该数据源当前未启用",
+        )
+    source.is_active = False
+    await db.commit()
+    await db.refresh(source)
+    logger.info(
+        "Data source deactivated",
+        extra={"user_id": str(user.id), "data_source_id": str(source.id)},
+    )
+    return source
+
+
 async def delete_source(
     db: AsyncSession,
     user: User,
