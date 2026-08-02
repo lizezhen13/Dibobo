@@ -336,9 +336,7 @@ input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
 }
 
 /* 焦点环优化 */
-::focus-visible {
-  outline: none;
-  ring: 2px solid var(--ring);
-  ring-offset: 2px;
-  ring-offset-color: var(--background);
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

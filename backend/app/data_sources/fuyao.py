@@ -1,6 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -8,11 +8,19 @@ from app.data_sources.base import DataSourceAdapter, DataSourceError
 from app.data_sources.domain import (
     DividendEvent,
     DividendEventResult,
+    DragonTigerBatch,
+    DragonTigerStock,
+    HotStock,
+    HotStockBatch,
+    IndexCatalogBatch,
+    IndexCatalogItem,
     IndexQuote,
     IndexQuoteBatch,
     Instrument,
     InstrumentListResult,
     InstrumentSearchResult,
+    MarketSnapshotBatch,
+    MarketSnapshotQuote,
     RoeIndicator,
     SecurityQuote,
     SecurityQuoteBatch,
@@ -38,6 +46,10 @@ FUYAO_CAPABILITIES = {
     "a_share_quote": "supported",
     "etf_quote": "supported",
     "index_quote": "supported",
+    "industry_index": "supported",
+    "market_breadth": "supported",
+    "market_hot_list": "supported",
+    "dragon_tiger": "supported",
     "valuation_pb": "supported",
     "financial_roe": "supported",
     "corporate_action_dividend": "supported",
@@ -56,6 +68,12 @@ def _optional_number(value: object) -> float | None:
     if isinstance(value, bool) or not isinstance(value, int | float):
         return None
     return float(value)
+
+
+def _optional_integer(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return int(value)
 
 
 def _security_quotes(data: dict[str, Any]) -> list[SecurityQuote]:
@@ -138,6 +156,8 @@ class FuyaoAdapter(DataSourceAdapter):
                 IndexQuote(
                     thscode=item["thscode"].upper(),
                     latest=_optional_number(item.get("last_price")),
+                    high=_optional_number(item.get("high_price")),
+                    low=_optional_number(item.get("low_price")),
                     change=_optional_number(item.get("price_change")),
                     change_percent=_optional_number(item.get("price_change_ratio_pct")),
                     turnover=_optional_number(item.get("turnover")),
@@ -394,5 +414,160 @@ class FuyaoAdapter(DataSourceAdapter):
         return DividendEventResult(
             thscode=thscode,
             items=events,
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_hot_stock_list(
+        self,
+        period: Literal["day", "hour"] = "day",
+    ) -> HotStockBatch:
+        data = await self._get(
+            "/api/a-share/special-data/hot-stock-list",
+            params={"period": period},
+        )
+        raw_items = data.get("item")
+        items = raw_items if isinstance(raw_items, list) else []
+        stocks: list[HotStock] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            thscode = item.get("thscode")
+            ticker = item.get("ticker")
+            name = item.get("name")
+            rank = _optional_integer(item.get("rank"))
+            if (
+                not isinstance(thscode, str)
+                or not isinstance(ticker, str)
+                or not isinstance(name, str)
+                or rank is None
+            ):
+                continue
+            heat_value = item.get("heat")
+            heat = heat_value if isinstance(heat_value, str) else str(heat_value or "")
+            trend_value = item.get("rank_trend")
+            trend = trend_value if trend_value in {"up", "down", "flat"} else "unknown"
+            stocks.append(
+                HotStock(
+                    thscode=thscode.upper(),
+                    ticker=ticker,
+                    name=name,
+                    rank=rank,
+                    heat=heat,
+                    rank_change=_optional_integer(item.get("rank_change")),
+                    rank_trend=trend,
+                )
+            )
+        return HotStockBatch(
+            items=stocks,
+            quoted_at=_timestamp_to_datetime(data.get("timestamp")),
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_dragon_tiger_list(
+        self,
+        board_type: Literal["all", "org", "hot_money"] = "all",
+    ) -> DragonTigerBatch:
+        data = await self._get(
+            "/api/a-share/special-data/dragon-tiger-list",
+            params={"board_type": board_type},
+        )
+        raw_items = data.get("stock_items")
+        items = raw_items if isinstance(raw_items, list) else []
+        stocks: list[DragonTigerStock] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            thscode = item.get("thscode")
+            ticker = item.get("ticker")
+            name = item.get("name")
+            if (
+                not isinstance(thscode, str)
+                or not isinstance(ticker, str)
+                or not isinstance(name, str)
+            ):
+                continue
+            limit_reason = item.get("limit_reason")
+            stocks.append(
+                DragonTigerStock(
+                    thscode=thscode.upper(),
+                    ticker=ticker,
+                    name=name,
+                    change=_optional_number(item.get("change")),
+                    net_value=_optional_number(item.get("net_value")),
+                    net_rate=_optional_number(item.get("net_rate")),
+                    hot_rank=_optional_integer(item.get("hot_rank")),
+                    buy_value=_optional_number(item.get("buy_value")),
+                    sell_value=_optional_number(item.get("sell_value")),
+                    limit_reason=limit_reason if isinstance(limit_reason, str) else None,
+                    range_days=_optional_integer(item.get("range_days")),
+                    org_net_value=_optional_number(item.get("org_net_value")),
+                    hot_money_net_value=_optional_number(item.get("hot_money_net_value")),
+                )
+            )
+        return DragonTigerBatch(
+            trade_date=data.get("trade_date") if isinstance(data.get("trade_date"), str) else None,
+            count=_optional_integer(data.get("count")) or 0,
+            stock_count=_optional_integer(data.get("stock_count")) or 0,
+            items=stocks,
+            quoted_at=_timestamp_to_datetime(data.get("timestamp")),
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_index_catalog(self, tag: str = "industry") -> IndexCatalogBatch:
+        data = await self._get(
+            "/api/a-share-index/catalog/ths-index-list",
+            params={"tag": tag},
+        )
+        raw_items = data.get("item")
+        items = raw_items if isinstance(raw_items, list) else []
+        indices: list[IndexCatalogItem] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            thscode = item.get("thscode")
+            name = item.get("name")
+            if isinstance(thscode, str) and isinstance(name, str):
+                indices.append(IndexCatalogItem(thscode=thscode.upper(), name=name))
+        return IndexCatalogBatch(
+            items=indices,
+            quoted_at=_timestamp_to_datetime(data.get("timestamp")),
+            fetched_at=datetime.now(UTC),
+        )
+
+    async def get_market_snapshot(self, page_size: int = 1000) -> MarketSnapshotBatch:
+        offset = 0
+        total = 0
+        quoted_at: datetime | None = None
+        quotes: list[MarketSnapshotQuote] = []
+        while True:
+            data = await self._get(
+                "/api/a-share/prices/snapshot",
+                params={"limit": str(page_size), "offset": str(offset)},
+            )
+            page_time = _timestamp_to_datetime(data.get("timestamp"))
+            if page_time is not None and (quoted_at is None or page_time > quoted_at):
+                quoted_at = page_time
+            raw_items = data.get("item")
+            items = raw_items if isinstance(raw_items, list) else []
+            for item in items:
+                if not isinstance(item, dict) or not isinstance(item.get("thscode"), str):
+                    continue
+                quotes.append(
+                    MarketSnapshotQuote(
+                        thscode=item["thscode"].upper(),
+                        change_percent=_optional_number(item.get("price_change_ratio_pct")),
+                        turnover=_optional_number(item.get("turnover")),
+                    )
+                )
+            response_total = _optional_integer(data.get("total"))
+            if response_total is not None:
+                total = max(total, response_total)
+            if len(items) < page_size or not items or offset + len(items) >= total:
+                break
+            offset += page_size
+        return MarketSnapshotBatch(
+            quotes=quotes,
+            total=max(total, len(quotes)),
+            quoted_at=quoted_at,
             fetched_at=datetime.now(UTC),
         )

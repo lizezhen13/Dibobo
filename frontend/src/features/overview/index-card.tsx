@@ -1,67 +1,84 @@
-import { Badge } from "../../components/ui/badge";
-import { Card } from "../../components/ui/card";
-import {
-  formatDateTime,
-  formatMoney,
-  formatPercent,
-  formatPoint,
-  formatSignedPoint,
-  movementClass,
-} from "../../lib/formatters";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+
+import { formatMoney, formatPercent, formatPoint, formatSignedPoint, movementClass } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import type { IndexCardData } from "./types";
 
-const marketBadge = {
-  交易中: "success",
-  午间休市: "warning",
-  已收盘: "neutral",
-  休市: "neutral",
-  未知: "neutral",
-} as const;
-
 export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: number }) {
   const movement = movementClass(data.change_percent);
+  const DirectionIcon =
+    data.change_percent === null || data.change_percent === 0
+      ? Minus
+      : data.change_percent > 0
+        ? ArrowUpRight
+        : ArrowDownRight;
+
   return (
-    <Card className="group relative min-h-[254px] overflow-hidden p-6 transition duration-300 hover:-translate-y-0.5 hover:border-[#3d4755] hover:shadow-raised">
-      <div className="absolute -right-1 -top-7 select-none font-display text-[7.5rem] leading-none text-foreground/[0.03] transition group-hover:text-primary/[0.06]">
-        {String(ordinal).padStart(2, "0")}
-      </div>
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="font-display text-[1.4rem] tracking-tight text-foreground">{data.name}</p>
-          <p className="mt-1.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">{data.thscode}</p>
+    <article className="relative min-w-0 border-b border-border/80 p-4 last:border-b-0 min-[900px]:border-r min-[900px]:[&:nth-child(even)]:border-r-0 min-[900px]:[&:nth-last-child(-n+2)]:border-b-0 min-[1400px]:border-b-0 min-[1400px]:border-r min-[1400px]:[&:nth-child(even)]:border-r min-[1400px]:last:border-r-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] text-muted-foreground/50">
+              {String(ordinal).padStart(2, "0")}
+            </span>
+            <h3 className="truncate text-[15px] font-semibold tracking-normal text-foreground">{data.name}</h3>
+          </div>
+          <p className="mt-0.5 font-mono text-[11px] tracking-normal text-muted-foreground/55">
+            {data.thscode}
+          </p>
         </div>
-        <Badge className="text-[13.5px]" variant={marketBadge[data.market_status]}>
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/65">
+          <span
+            className={cn(
+              "size-1.5 rounded-full bg-muted-foreground/50",
+              data.market_status === "交易中" && "bg-success",
+            )}
+          />
           {data.market_status}
-        </Badge>
+        </span>
       </div>
 
-      <div className="relative mt-8 flex items-end justify-between gap-6">
-        <p className={cn(
-          "font-mono text-[2.35rem] font-medium leading-none tracking-[-0.03em]",
-          data.latest === null
-            ? "font-sans text-2xl font-normal tracking-normal text-muted-foreground/60"
-            : movement,
-        )}>
+      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
+        <p
+          className={cn(
+            "min-w-0 truncate font-mono text-[28px] font-medium leading-none tracking-normal",
+            data.latest === null ? "text-muted-foreground" : movement,
+          )}
+        >
           {formatPoint(data.latest)}
         </p>
-        <div className={cn("flex items-center gap-2 pb-0.5 font-mono text-[0.95rem] font-semibold", movement)}>
-          <span>{formatSignedPoint(data.change)}</span>
+        <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[13px] tracking-normal", movement)}>
+          <DirectionIcon size={14} />
           <span>{formatPercent(data.change_percent)}</span>
         </div>
       </div>
 
-      <div className="relative mt-8 grid grid-cols-[1fr_auto] items-end border-t border-border pt-4">
-        <div>
-          <p className="text-[0.65rem] tracking-[0.12em] text-muted-foreground/60">成交额</p>
-          <p className="mt-1.5 font-mono text-[0.95rem] text-muted-foreground">{formatMoney(data.turnover)}</p>
+      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2.5 border-t border-border/70 pt-3">
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <span className="shrink-0 text-[11px] text-muted-foreground/60">涨跌额</span>
+          <span className={cn("truncate font-mono text-xs tracking-normal", movement)}>
+            {formatSignedPoint(data.change)}
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-[0.65rem] tracking-[0.12em] text-muted-foreground/60">数据时间</p>
-          <p className="mt-1.5 font-mono text-[0.75rem] text-muted-foreground">{formatDateTime(data.quoted_at)}</p>
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <span className="shrink-0 text-[11px] text-muted-foreground/60">成交额</span>
+          <span className="truncate font-mono text-xs tracking-normal text-muted-foreground">
+            {formatMoney(data.turnover)}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <span className="shrink-0 text-[11px] text-muted-foreground/60">最低</span>
+          <span className="truncate font-mono text-xs tracking-normal text-foreground/80">
+            {formatPoint(data.low)}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
+          <span className="shrink-0 text-[11px] text-muted-foreground/60">最高</span>
+          <span className="truncate font-mono text-xs tracking-normal text-foreground/80">
+            {formatPoint(data.high)}
+          </span>
         </div>
       </div>
-    </Card>
+    </article>
   );
 }
-

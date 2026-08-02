@@ -23,6 +23,8 @@ async def test_fuyao_index_quote_mapping() -> None:
                         {
                             "thscode": "000001.SH",
                             "last_price": 3388.06,
+                            "high_price": 3392.18,
+                            "low_price": 3365.4,
                             "price_change": 12.21,
                             "price_change_ratio_pct": 0.3617,
                             "turnover": 420000000000,
@@ -45,6 +47,8 @@ async def test_fuyao_index_quote_mapping() -> None:
     assert batch.request_id == "req-1"
     assert len(batch.quotes) == 1
     assert batch.quotes[0].latest == 3388.06
+    assert batch.quotes[0].high == 3392.18
+    assert batch.quotes[0].low == 3365.4
     assert batch.quotes[0].change_percent == 0.3617
 
 
@@ -175,3 +179,172 @@ async def test_fuyao_security_quotes_batch_a_shares_and_single_etfs() -> None:
     quotes = {quote.thscode: quote for quote in result.quotes}
     assert quotes["600519.SH"].latest == 1288.5
     assert quotes["510300.SH"].change_percent == -1.7569
+
+
+@pytest.mark.asyncio
+async def test_fuyao_hot_stock_list_mapping() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/a-share/special-data/hot-stock-list"
+        assert request.url.params["period"] == "day"
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": {
+                    "timestamp": 1784275991000,
+                    "item": [
+                        {
+                            "thscode": "000725.SZ",
+                            "ticker": "000725",
+                            "name": "京东方A",
+                            "rank": 1,
+                            "heat": "1941909",
+                            "rank_change": 7,
+                            "rank_trend": "up",
+                        }
+                    ],
+                },
+            },
+        )
+
+    adapter = FuyaoAdapter("https://example.test", "secret", 5)
+    await adapter._client.aclose()
+    adapter._client = httpx.AsyncClient(
+        base_url="https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    async with adapter:
+        result = await adapter.get_hot_stock_list()
+
+    assert result.items[0].name == "京东方A"
+    assert result.items[0].rank_change == 7
+    assert result.items[0].rank_trend == "up"
+
+
+@pytest.mark.asyncio
+async def test_fuyao_dragon_tiger_mapping() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/a-share/special-data/dragon-tiger-list"
+        assert request.url.params["board_type"] == "all"
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": {
+                    "timestamp": 1782921600000,
+                    "trade_date": "2026-07-01",
+                    "count": 1,
+                    "stock_count": 1,
+                    "stock_items": [
+                        {
+                            "thscode": "002407.SZ",
+                            "ticker": "002407",
+                            "name": "多氟多",
+                            "change": 0.09994,
+                            "net_value": 1786253128.23,
+                            "org_net_value": 300000000,
+                            "hot_money_net_value": 180000000,
+                            "range_days": 1,
+                        }
+                    ],
+                },
+            },
+        )
+
+    adapter = FuyaoAdapter("https://example.test", "secret", 5)
+    await adapter._client.aclose()
+    adapter._client = httpx.AsyncClient(
+        base_url="https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    async with adapter:
+        result = await adapter.get_dragon_tiger_list()
+
+    assert result.trade_date == "2026-07-01"
+    assert result.items[0].change == 0.09994
+    assert result.items[0].net_value == 1786253128.23
+
+
+@pytest.mark.asyncio
+async def test_fuyao_index_catalog_mapping() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/a-share-index/catalog/ths-index-list"
+        assert request.url.params["tag"] == "industry"
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": {
+                    "timestamp": 1782921600000,
+                    "item": [{"thscode": "881101.TI", "name": "种植业"}],
+                },
+            },
+        )
+
+    adapter = FuyaoAdapter("https://example.test", "secret", 5)
+    await adapter._client.aclose()
+    adapter._client = httpx.AsyncClient(
+        base_url="https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    async with adapter:
+        result = await adapter.get_index_catalog()
+
+    assert result.items[0].thscode == "881101.TI"
+    assert result.items[0].name == "种植业"
+
+
+@pytest.mark.asyncio
+async def test_fuyao_market_snapshot_reads_pages_sequentially() -> None:
+    offsets: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        offset = int(request.url.params["offset"])
+        offsets.append(offset)
+        items = (
+            [
+                {
+                    "thscode": "000001.SZ",
+                    "price_change_ratio_pct": 1.25,
+                    "turnover": 100,
+                },
+                {
+                    "thscode": "000002.SZ",
+                    "price_change_ratio_pct": -0.5,
+                    "turnover": 200,
+                },
+            ]
+            if offset == 0
+            else [
+                {
+                    "thscode": "600000.SH",
+                    "price_change_ratio_pct": 0,
+                    "turnover": 300,
+                }
+            ]
+        )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "message": "success",
+                "data": {"timestamp": 1782921600000, "total": 3, "item": items},
+            },
+        )
+
+    adapter = FuyaoAdapter("https://example.test", "secret", 5)
+    await adapter._client.aclose()
+    adapter._client = httpx.AsyncClient(
+        base_url="https://example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    async with adapter:
+        result = await adapter.get_market_snapshot(page_size=2)
+
+    assert offsets == [0, 2]
+    assert result.total == 3
+    assert len(result.quotes) == 3
+    assert result.quotes[1].change_percent == -0.5

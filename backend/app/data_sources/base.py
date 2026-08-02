@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
+from typing import Literal
 
 from app.data_sources.domain import (
     DividendEventResult,
+    DragonTigerBatch,
+    HotStockBatch,
+    IndexCatalogBatch,
     IndexQuoteBatch,
     Instrument,
     InstrumentListResult,
     InstrumentSearchResult,
+    MarketSnapshotBatch,
     RoeIndicator,
     SecurityQuoteBatch,
     TradingCalendar,
@@ -65,4 +70,26 @@ class DataSourceAdapter(ABC):
         date_from: str,
         date_to: str,
     ) -> DividendEventResult:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_hot_stock_list(
+        self,
+        period: Literal["day", "hour"] = "day",
+    ) -> HotStockBatch:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_dragon_tiger_list(
+        self,
+        board_type: Literal["all", "org", "hot_money"] = "all",
+    ) -> DragonTigerBatch:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_index_catalog(self, tag: str = "industry") -> IndexCatalogBatch:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_market_snapshot(self, page_size: int = 1000) -> MarketSnapshotBatch:
         raise NotImplementedError
