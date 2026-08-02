@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -9,6 +10,7 @@ from app.api.dependencies import get_cache, get_current_user, require_csrf
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.models import User
+from app.data_sources.domain import AssetType
 from app.holdings.schemas import (
     HoldingCreate,
     HoldingItem,
@@ -46,12 +48,26 @@ async def get_instrument_search(
 @router.get("/holdings", response_model=HoldingsListResponse)
 async def get_holdings(
     status_filter: Annotated[HoldingStatus, Query(alias="status")] = "open",
+    keyword: Annotated[str | None, Query(alias="keyword", min_length=1, max_length=80)] = None,
+    asset_type: Annotated[AssetType | None, Query(alias="asset_type")] = None,
+    opened_from: Annotated[date | None, Query(alias="opened_from")] = None,
+    opened_to: Annotated[date | None, Query(alias="opened_to")] = None,
     db: AsyncSession = Depends(get_db),
     cache: Redis = Depends(get_cache),
     user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> HoldingsListResponse:
-    return await list_holdings(db, cache, user, status_filter, settings)
+    return await list_holdings(
+        db,
+        cache,
+        user,
+        status_filter,
+        settings,
+        keyword=keyword,
+        asset_type=asset_type,
+        opened_from=opened_from,
+        opened_to=opened_to,
+    )
 
 
 @router.get("/holdings/summary", response_model=HoldingSummaryResponse)

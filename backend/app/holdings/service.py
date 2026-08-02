@@ -1,13 +1,14 @@
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import select
+
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,7 @@ from app.core.config import Settings
 from app.core.models import DataSource, Holding, User
 from app.core.security import ApiKeyCipher
 from app.data_sources.base import DataSourceError
-from app.data_sources.domain import Instrument, MarketStatus, SecurityQuote, SecurityQuoteBatch
+from app.data_sources.domain import AssetType, Instrument, MarketStatus, SecurityQuote, SecurityQuoteBatch
 from app.data_sources.fuyao import FuyaoAdapter
 from app.holdings.schemas import (
     HoldingCreate,
@@ -515,17 +516,38 @@ async def list_holdings(
     user: User,
     holding_status: HoldingStatus,
     settings: Settings,
+    keyword: str | None = None,
+    asset_type: AssetType | None = None,
+    opened_from: date | None = None,
+    opened_to: date | None = None,
 ) -> HoldingsListResponse:
-    holdings = list(
-        (
-            await db.scalars(
-                select(Holding).where(
-                    Holding.user_id == user.id,
-                    Holding.status == holding_status,
-                )
+    # 构造基础查询条件
+    where_clauses = [Holding.user_id == user.id, Holding.status == holding_status]
+
+    # 代码 / 名称模糊匹配
+    if keyword:
+        like_pattern = f"%{keyword}%"
+        where_clauses.append(
+            or_(
+                Holding.thscode.ilike(like_pattern),
+                Holding.ticker.ilike(like_pattern),
+                Holding.name.ilike(like_pattern),
             )
-        ).all()
-    )
+        )
+
+    # 类型筛选
+    if asset_type:
+        where_clauses.append(Holding.asset_type == asset_type)
+
+    # 建仓日期区间：起止顺序容错，避免传反后无结果
+    if opened_from and opened_to and opened_from > opened_to:
+        opened_from, opened_to = opened_to, opened_from
+    if opened_from:
+        where_clauses.append(Holding.opened_on >= opened_from)
+    if opened_to:
+        where_clauses.append(Holding.opened_on <= opened_to)
+
+    holdings = list((await db.scalars(select(Holding).where(*where_clauses))).all())
     context = (
         await load_market_context(db, cache, user, holdings, settings)
         if holding_status == "open"

@@ -280,22 +280,59 @@
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -48%) scale(0.97);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 @keyframes dialog-out {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -48%) scale(0.97);
+    transform: scale(0.97);
   }
+}
+
+/* 自定义日期输入框：隐藏浏览器默认图标，点击任意位置均可唤起日历，并贴合暗色主题 */
+input[type="date"].date-input,
+input[type="datetime-local"].date-input {
+  position: relative;
+  color-scheme: dark;
+}
+
+input[type="date"].date-input-empty,
+input[type="datetime-local"].date-input-empty,
+input[type="date"].date-input-empty::-webkit-datetime-edit,
+input[type="datetime-local"].date-input-empty::-webkit-datetime-edit {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+input[type="date"].date-input-empty::-webkit-datetime-edit-day-field,
+input[type="date"].date-input-empty::-webkit-datetime-edit-month-field,
+input[type="date"].date-input-empty::-webkit-datetime-edit-year-field,
+input[type="date"].date-input-empty::-webkit-datetime-edit-text,
+input[type="datetime-local"].date-input-empty::-webkit-datetime-edit-day-field,
+input[type="datetime-local"].date-input-empty::-webkit-datetime-edit-month-field,
+input[type="datetime-local"].date-input-empty::-webkit-datetime-edit-year-field,
+input[type="datetime-local"].date-input-empty::-webkit-datetime-edit-text {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+input[type="date"].date-input::-webkit-calendar-picker-indicator,
+input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 /* 焦点环优化 */

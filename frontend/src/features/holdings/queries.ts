@@ -4,6 +4,7 @@ import { apiFetch } from "../../lib/api";
 import type {
   Holding,
   HoldingCreatePayload,
+  HoldingsFilters,
   HoldingsList,
   HoldingStatus,
   HoldingSummary,
@@ -11,13 +12,22 @@ import type {
   Instrument,
 } from "./types";
 
-export const holdingsQueryKey = (status: HoldingStatus) => ["holdings", status] as const;
+export const holdingsQueryKey = (status: HoldingStatus, filters: HoldingsFilters) =>
+  ["holdings", status, filters] as const;
 export const holdingSummaryQueryKey = ["holdings", "summary"] as const;
 
-export function useHoldingsQuery(status: HoldingStatus) {
+export function useHoldingsQuery(status: HoldingStatus, filters: HoldingsFilters) {
   return useQuery({
-    queryKey: holdingsQueryKey(status),
-    queryFn: () => apiFetch<HoldingsList>(`/api/holdings?status=${status}`),
+    queryKey: holdingsQueryKey(status, filters),
+    queryFn: () => {
+      const params = new URLSearchParams({ status });
+      const trimmedKeyword = filters.keyword.trim();
+      if (trimmedKeyword) params.set("keyword", trimmedKeyword);
+      if (filters.asset_type) params.set("asset_type", filters.asset_type);
+      if (filters.opened_from) params.set("opened_from", filters.opened_from);
+      if (filters.opened_to) params.set("opened_to", filters.opened_to);
+      return apiFetch<HoldingsList>(`/api/holdings?${params.toString()}`);
+    },
     refetchInterval: (query) => {
       const data = query.state.data;
       return status === "open" && data?.polling_enabled && !document.hidden

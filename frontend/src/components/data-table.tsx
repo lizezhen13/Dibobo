@@ -51,7 +51,7 @@ export function DataTable<TData>({
                     <th
                       key={header.id}
                       className={cn(
-                        "h-11 whitespace-nowrap px-5 py-3 font-mono text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+                        "h-11 whitespace-nowrap px-5 py-3 align-middle text-[13px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
                         meta?.align === "right" && "text-right",
                         meta?.align === "center" && "text-center",
                         meta?.headerClassName,

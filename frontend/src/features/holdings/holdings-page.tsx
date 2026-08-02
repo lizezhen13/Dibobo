@@ -5,11 +5,14 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BriefcaseBusiness,
+  CalendarDays,
   CircleDollarSign,
   Edit3,
   Plus,
   RefreshCw,
+  Search,
   Settings,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -28,6 +31,7 @@ import {
 } from "../../components/ui/alert-dialog";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
   formatDateTime,
@@ -38,20 +42,29 @@ import {
 } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { HoldingDialog } from "./holding-dialog";
+import { DateRangeField } from "./date-range-field";
 import {
   useDeleteHoldingMutation,
   useHoldingsQuery,
   useHoldingSummaryQuery,
 } from "./queries";
-import type { Holding, HoldingStatus, HoldingSummary } from "./types";
+import type { AssetType, Holding, HoldingStatus, HoldingSummary, HoldingsFilters } from "./types";
+
+const DEFAULT_FILTERS: HoldingsFilters = {
+  keyword: "",
+  asset_type: "",
+  opened_from: "",
+  opened_to: "",
+};
 
 export function HoldingsPage() {
   const [activeTab, setActiveTab] = useState<HoldingStatus>("open");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Holding | null>(null);
-  const openHoldings = useHoldingsQuery("open");
-  const closedHoldings = useHoldingsQuery("closed");
+  const [filters, setFilters] = useState<HoldingsFilters>(DEFAULT_FILTERS);
+  const openHoldings = useHoldingsQuery("open", filters);
+  const closedHoldings = useHoldingsQuery("closed", filters);
   const summary = useHoldingSummaryQuery();
   const deleteMutation = useDeleteHoldingMutation();
 
@@ -70,7 +83,7 @@ export function HoldingsPage() {
   }
 
   const refresh = async () => {
-    await Promise.all([openHoldings.refetch(), summary.refetch()]);
+    await Promise.all([openHoldings.refetch(), closedHoldings.refetch(), summary.refetch()]);
   };
 
   const confirmDelete = async () => {
@@ -107,7 +120,10 @@ export function HoldingsPage() {
         </div>
       </div>
 
-      <SummaryStrip summary={summary.data} isLoading={summary.isLoading} />
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <SummaryCards summary={summary.data} isLoading={summary.isLoading} />
+        <FilterBar filters={filters} onChange={setFilters} />
+      </section>
 
       {summary.data?.incomplete && summary.data.holding_count > 0 && (
         <div className="mt-3 flex items-center gap-2.5 rounded-r-xl border-l-4 border-primary bg-primary/8 px-5 py-3.5 text-[0.85rem] text-primary/90">
@@ -215,43 +231,145 @@ export function HoldingsPage() {
   );
 }
 
-function SummaryStrip({ summary, isLoading }: { summary?: HoldingSummary; isLoading: boolean }) {
+function SummaryCards({ summary, isLoading }: { summary?: HoldingSummary; isLoading: boolean }) {
   const metrics = [
-    { label: "总成本", value: summary ? formatMoney(summary.total_cost) : "—", icon: BriefcaseBusiness },
-    { label: "可计算市值", value: summary ? formatMoney(summary.total_market_value) : "—", icon: CircleDollarSign },
+    {
+      label: "总成本",
+      value: summary ? formatMoney(summary.total_cost) : "—",
+      icon: BriefcaseBusiness,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+    },
+    {
+      label: "总市值",
+      value: summary ? formatMoney(summary.total_market_value) : "—",
+      icon: CircleDollarSign,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
     {
       label: "浮动盈亏",
       value: summary ? formatMoney(summary.floating_gain) : "—",
       icon: (summary?.floating_gain ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight,
       movement: summary?.floating_gain ?? null,
+      colorClass: movementClass(summary?.floating_gain ?? null),
+      bg: "bg-amber-500/10",
     },
     {
       label: "浮动盈亏率",
       value: summary ? formatPercent(summary.floating_gain_percent) : "—",
       icon: (summary?.floating_gain_percent ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight,
       movement: summary?.floating_gain_percent ?? null,
+      colorClass: movementClass(summary?.floating_gain_percent ?? null),
+      bg: "bg-violet-500/10",
     },
   ];
+
   return (
-    <div className="grid grid-cols-4 divide-x divide-line overflow-hidden rounded-xl border border-border bg-card shadow-raised">
-      {metrics.map((metric, index) => {
+    <section className="grid h-full grid-cols-1 gap-5 sm:grid-cols-2">
+      {metrics.map((metric) => {
         const Icon = metric.icon;
         return (
-          <div key={metric.label} className="relative px-6 py-6">
-            <span className="absolute right-5 top-5 font-mono text-[0.65rem] text-muted-foreground/60">0{index + 1}</span>
-            <div className="flex items-center gap-2 text-[0.7rem] tracking-[0.12em] text-muted-foreground/60">
-              <Icon size={14} /> {metric.label}
+          <div
+            key={metric.label}
+            className="relative overflow-hidden rounded-xl border border-border bg-card px-5 py-4 shadow-raised transition-shadow hover:shadow-lg"
+          >
+            <div className={cn("absolute right-4 top-4 rounded-lg p-2", metric.bg)}>
+              <Icon className={cn("size-5", metric.color)} />
             </div>
+            <p className="text-[0.8rem] font-medium tracking-wide text-muted-foreground/70">{metric.label}</p>
             {isLoading ? (
               <div className="mt-4 h-8 w-2/3 animate-pulse rounded-full bg-secondary" />
             ) : (
-              <p className={cn("mt-3 font-display text-[1.65rem] tracking-tight text-foreground", movementClass(metric.movement ?? null))}>
+              <p
+                className={cn(
+                  "mt-2 font-display text-[1.45rem] leading-none tracking-tight",
+                  metric.colorClass ?? "text-foreground",
+                )}
+              >
                 {metric.value}
               </p>
             )}
           </div>
         );
       })}
+    </section>
+  );
+}
+
+interface FilterBarProps {
+  filters: HoldingsFilters;
+  onChange: (filters: HoldingsFilters) => void;
+  className?: string;
+}
+
+function FilterBar({ filters, onChange, className }: FilterBarProps) {
+  const update = (patch: Partial<HoldingsFilters>) => onChange({ ...filters, ...patch });
+  const reset = () => onChange(DEFAULT_FILTERS);
+  const activeCount = [filters.keyword, filters.asset_type, filters.opened_from, filters.opened_to].filter(
+    Boolean,
+  ).length;
+
+  return (
+    <div className={cn("rounded-xl border border-border bg-card p-4 shadow-raised", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <SlidersHorizontal size={15} className="text-primary/80" />
+          筛选条件
+          {activeCount > 0 && (
+            <Badge variant="neutral" className="ml-1 h-5 px-1.5 text-[0.7rem]">
+              {activeCount}
+            </Badge>
+          )}
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={reset} className="h-8 px-3">
+          重置
+        </Button>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <label className="mb-1 flex items-center gap-1.5 text-[0.78rem] font-medium text-muted-foreground">
+            <Search size={12} /> 代码 / 名称
+          </label>
+          <Input
+            placeholder="输入代码或名称"
+            value={filters.keyword}
+            onChange={(e) => update({ keyword: e.target.value })}
+            className="h-9"
+          />
+        </div>
+        <div>
+          <label className="mb-1 flex items-center gap-1.5 text-[0.78rem] font-medium text-muted-foreground">
+            类型
+          </label>
+          <div className="relative">
+            <select
+              value={filters.asset_type}
+              onChange={(e) => update({ asset_type: e.target.value as AssetType | "" })}
+              className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm text-foreground outline-none ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">全部类型</option>
+              <option value="a_share">A 股</option>
+              <option value="fund_etf">ETF</option>
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60">
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </div>
+        </div>
+        <div>
+          <label className="mb-1 flex items-center gap-1.5 text-[0.78rem] font-medium text-muted-foreground">
+            <CalendarDays size={12} /> 建仓日期
+          </label>
+          <DateRangeField
+            openedFrom={filters.opened_from}
+            openedTo={filters.opened_to}
+            onChange={(opened_from, opened_to) => onChange({ ...filters, opened_from, opened_to })}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -263,9 +381,12 @@ function createOpenColumns(
   return [
     {
       id: "instrument",
-      header: "标的",
+      header: "标的名称",
       cell: ({ row }) => <InstrumentCell holding={row.original} />,
-      meta: { cellClassName: "sticky left-0 z-[1] min-w-[176px] bg-card group-hover:bg-secondary/60" },
+      meta: {
+        headerClassName: "sticky left-0 z-[1] min-w-[176px] bg-card",
+        cellClassName: "sticky left-0 z-[1] min-w-[176px] bg-card group-hover:bg-secondary",
+      },
     },
     {
       accessorKey: "asset_type",
@@ -299,7 +420,11 @@ function createOpenColumns(
       id: "actions",
       header: "操作",
       cell: ({ row }) => <RowActions holding={row.original} onEdit={onEdit} onDelete={onDelete} />,
-      meta: { align: "right", cellClassName: "sticky right-0 z-[1] bg-card group-hover:bg-secondary/60" },
+      meta: {
+        align: "right",
+        headerClassName: "sticky right-0 z-[1] bg-card",
+        cellClassName: "sticky right-0 z-[1] w-[96px] bg-card group-hover:bg-secondary",
+      },
     },
   ];
 }
@@ -309,7 +434,15 @@ function createClosedColumns(
   onDelete: (holding: Holding) => void,
 ): ColumnDef<Holding, unknown>[] {
   return [
-    { id: "instrument", header: "标的", cell: ({ row }) => <InstrumentCell holding={row.original} /> },
+    {
+      id: "instrument",
+      header: "标的名称",
+      cell: ({ row }) => <InstrumentCell holding={row.original} />,
+      meta: {
+        headerClassName: "sticky left-0 z-[1] min-w-[176px] bg-card",
+        cellClassName: "sticky left-0 z-[1] min-w-[176px] bg-card group-hover:bg-secondary",
+      },
+    },
     { accessorKey: "asset_type", header: "类型", cell: ({ row }) => <Badge>{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge> },
     numericColumn("average_cost", "原平均成本", (holding) => formatPoint(holding.average_cost)),
     { accessorKey: "opened_on", header: "建仓日期", cell: ({ row }) => formatDate(row.original.opened_on) },
@@ -323,7 +456,11 @@ function createClosedColumns(
       id: "actions",
       header: "操作",
       cell: ({ row }) => <RowActions holding={row.original} onEdit={onEdit} onDelete={onDelete} />,
-      meta: { align: "right" },
+      meta: {
+        align: "right",
+        headerClassName: "sticky right-0 z-[1] bg-card",
+        cellClassName: "sticky right-0 z-[1] bg-card group-hover:bg-secondary",
+      },
     },
   ];
 }

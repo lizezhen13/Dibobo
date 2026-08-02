@@ -18,8 +18,20 @@ import { ApiError } from "../../lib/api";
 import { useCreateJournalMutation, useUpdateJournalMutation } from "./queries";
 import type { Journal } from "./types";
 
+function todayInShanghai(): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 const journalSchema = z.object({
-  journal_date: z.string().min(1, "请选择日记日期"),
+  journal_date: z
+    .string()
+    .min(1, "请选择日记日期")
+    .refine((value) => value <= todayInShanghai(), { message: "日记日期不能选择未来日期" }),
   title: z.string().trim().min(1, "请输入标题").max(100, "标题不能超过 100 个字符"),
   content: z
     .string()
@@ -34,15 +46,6 @@ interface JournalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   journal: Journal | null;
-}
-
-function todayInShanghai(): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }
 
 export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProps) {
@@ -105,7 +108,7 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
             <DialogTitle>{isEditing ? "编辑投资日记" : "写一篇投资日记"}</DialogTitle>
           </div>
           <DialogDescription>
-            只记录纯文本。写下当时的判断、证据与风险，给未来的自己留下可复盘的原始切片。
+            写下当时的判断、证据与风险，给未来的自己留下可复盘的原始切片。
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +116,12 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
             <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-5">
               <Field label="日记日期" error={form.formState.errors.journal_date?.message}>
-                <Input type="date" {...form.register("journal_date")} />
+                <Input
+                  type="date"
+                  max={todayInShanghai()}
+                  className="date-input"
+                  {...form.register("journal_date")}
+                />
               </Field>
               <Field
                 label="标题"
@@ -139,11 +147,6 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
                 {...form.register("content")}
               />
             </Field>
-
-            <div className="flex items-center justify-between border-t border-dashed border-border pt-3 font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground/55">
-              <span>PLAIN TEXT ONLY</span>
-              <span>不支持 Markdown、图片与附件</span>
-            </div>
 
             {errorMessage && (
               <div

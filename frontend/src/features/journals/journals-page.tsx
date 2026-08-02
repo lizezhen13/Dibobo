@@ -109,9 +109,9 @@ export function JournalsPage() {
       <div className="mb-8 flex items-end justify-between gap-8">
         <div>
           <p className="eyebrow text-primary/90">INVESTMENT NOTES / 投资日记</p>
-          <h1 className="mt-2 font-display text-4xl tracking-tight text-foreground">给判断留下时间戳</h1>
+          <h1 className="mt-2 font-display text-4xl tracking-tight text-foreground">投资日记</h1>
           <p className="mt-2.5 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
-            用纯文本保存当时的证据、假设与行动边界。市场会改变答案，但不该改写你曾经的问题。
+            记录你每一次买入的逻辑，卖出的理由，每一笔交易背后，都是一次决策的印记。
           </p>
         </div>
         <Button onClick={() => openEditor(null)}>
@@ -124,31 +124,55 @@ export function JournalsPage() {
           <div className="flex h-10 items-center gap-2 pr-2 text-[0.78rem] font-semibold tracking-[0.08em] text-muted-foreground">
             <CalendarDays size={16} className="text-primary/80" /> 日期范围
           </div>
-          <label>
-            <span className="mb-1.5 block font-mono text-[0.65rem] tracking-[0.1em] text-muted-foreground/60">
-              FROM / 开始
-            </span>
-            <Input
-              type="date"
-              value={dateFromInput}
-              onChange={(event) => {
-                setDateFromInput(event.target.value);
-                setFilterError(null);
-              }}
-            />
+          <label className="relative block">
+            <div className="relative">
+              <CalendarDays
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80"
+              />
+              <span
+                className={cn(
+                  "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-[0.9rem] text-muted-foreground/45",
+                  dateFromInput && "hidden",
+                )}
+              >
+                请选择开始日期
+              </span>
+              <Input
+                type="date"
+                value={dateFromInput}
+                className={cn("date-input w-full cursor-pointer pl-9", !dateFromInput && "date-input-empty")}
+                onChange={(event) => {
+                  setDateFromInput(event.target.value);
+                  setFilterError(null);
+                }}
+              />
+            </div>
           </label>
-          <label>
-            <span className="mb-1.5 block font-mono text-[0.65rem] tracking-[0.1em] text-muted-foreground/60">
-              TO / 结束
-            </span>
-            <Input
-              type="date"
-              value={dateToInput}
-              onChange={(event) => {
-                setDateToInput(event.target.value);
-                setFilterError(null);
-              }}
-            />
+          <label className="relative block">
+            <div className="relative">
+              <CalendarDays
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80"
+              />
+              <span
+                className={cn(
+                  "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-[0.9rem] text-muted-foreground/45",
+                  dateToInput && "hidden",
+                )}
+              >
+                请选择结束日期
+              </span>
+              <Input
+                type="date"
+                value={dateToInput}
+                className={cn("date-input w-full cursor-pointer pl-9", !dateToInput && "date-input-empty")}
+                onChange={(event) => {
+                  setDateToInput(event.target.value);
+                  setFilterError(null);
+                }}
+              />
+            </div>
           </label>
           <div className="flex gap-2">
             <Button variant="outline" onClick={clearFilters} disabled={!dateFromInput && !dateToInput && !isFiltered}>
@@ -173,13 +197,14 @@ export function JournalsPage() {
         <EmptyState filtered={isFiltered} onCreate={() => openEditor(null)} onClear={clearFilters} />
       ) : (
         <div className={cn("relative", query.isPlaceholderData && "opacity-55 transition-opacity")}>
-          <div className="absolute bottom-8 left-[58px] top-8 w-px bg-border" aria-hidden="true" />
           <div className="space-y-5">
             {query.data.items.map((journal, index) => (
               <JournalEntry
                 key={journal.id}
                 journal={journal}
                 ordinal={(query.data.page - 1) * query.data.page_size + index + 1}
+                isFirst={index === 0}
+                isLast={index === query.data.items.length - 1}
                 expanded={expandedIds.has(journal.id)}
                 onToggle={() => toggleExpanded(journal.id)}
                 onEdit={() => openEditor(journal)}
@@ -250,6 +275,8 @@ export function JournalsPage() {
 function JournalEntry({
   journal,
   ordinal,
+  isFirst,
+  isLast,
   expanded,
   onToggle,
   onEdit,
@@ -257,6 +284,8 @@ function JournalEntry({
 }: {
   journal: Journal;
   ordinal: number;
+  isFirst: boolean;
+  isLast: boolean;
   expanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -265,11 +294,23 @@ function JournalEntry({
   const dateParts = getDateParts(journal.journal_date);
   const contentIsLong = journal.content.length > 240 || journal.content.split("\n").length > 4;
   const wasEdited = new Date(journal.updated_at).getTime() - new Date(journal.created_at).getTime() > 1000;
+  const showTimeline = !(isFirst && isLast);
 
   return (
     <div className="relative grid grid-cols-[116px_minmax(0,1fr)] gap-5">
-      <div className="relative z-[1] pt-5 text-center">
-        <div className="mx-auto w-[74px] rounded-xl border border-border bg-background px-2 py-3 shadow-subtle">
+      <div className="relative z-[1] flex items-center justify-center text-center">
+        {showTimeline && (
+          <div
+            className={cn(
+              "absolute left-1/2 w-px -translate-x-1/2 bg-border/60",
+              isFirst && !isLast && "top-1/2 -bottom-2.5",
+              !isFirst && !isLast && "-top-2.5 -bottom-2.5",
+              !isFirst && isLast && "-top-2.5 bottom-1/2",
+            )}
+            aria-hidden="true"
+          />
+        )}
+        <div className="relative z-10 mx-auto w-[74px] rounded-xl border border-border bg-background px-2 py-3 shadow-subtle">
           <p className="font-display text-[1.75rem] leading-none text-foreground">{dateParts.day}</p>
           <p className="mt-1.5 font-mono text-[0.58rem] tracking-[0.12em] text-primary/80">{dateParts.month}</p>
           <p className="mt-0.5 font-mono text-[0.58rem] text-muted-foreground/50">{dateParts.year}</p>
@@ -350,7 +391,9 @@ function JournalListSkeleton() {
     <div className="space-y-5">
       {Array.from({ length: 3 }).map((_, index) => (
         <div key={index} className="grid grid-cols-[116px_minmax(0,1fr)] gap-5">
-          <Skeleton className="mx-auto mt-5 h-[84px] w-[74px] rounded-xl" />
+          <div className="flex items-center justify-center">
+            <Skeleton className="h-[84px] w-[74px] rounded-xl" />
+          </div>
           <div className="rounded-xl border border-border bg-card px-6 py-6 shadow-raised">
             <Skeleton className="h-3 w-48" />
             <Skeleton className="mt-3 h-7 w-2/5" />

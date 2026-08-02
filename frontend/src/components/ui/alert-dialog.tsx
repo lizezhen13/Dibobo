@@ -13,14 +13,17 @@ export function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
   return (
     <AlertDialogPrimitive.Portal>
-      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-[fade-in_180ms_ease-out]" />
-      <AlertDialogPrimitive.Content
-        className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[min(480px,calc(100vw-64px))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
-          className,
-        )}
-        {...props}
-      />
+      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] data-[state=closed]:animate-[fade-out_150ms_ease-in] data-[state=open]:animate-[fade-in_180ms_ease-out]" />
+      {/* 使用 flex 容器居中弹窗，避免 transform 与动画 keyframes 冲突导致左上角闪现 */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <AlertDialogPrimitive.Content
+          className={cn(
+            "w-[min(480px,calc(100vw-64px))] rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[dialog-out_150ms_ease-in] data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
+            className,
+          )}
+          {...props}
+        />
+      </div>
     </AlertDialogPrimitive.Portal>
   );
 }

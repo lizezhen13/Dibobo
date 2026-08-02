@@ -2,6 +2,13 @@ export type HoldingStatus = "open" | "closed";
 export type AssetType = "a_share" | "fund_etf";
 export type MarketStatus = "交易中" | "午间休市" | "已收盘" | "休市" | "未知";
 
+export interface HoldingsFilters {
+  keyword: string;
+  asset_type: AssetType | "";
+  opened_from: string;
+  opened_to: string;
+}
+
 export interface DataSourceSummary {
   state: "ready" | "not_configured" | "authentication_failed" | "rate_limited" | "unavailable";
   name: string | null;
