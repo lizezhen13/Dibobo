@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, Protocol
 
 from app.data_sources.domain import (
     DividendEventResult,
@@ -24,6 +24,14 @@ class DataSourceError(RuntimeError):
         self.code = code
         self.user_message = user_message
         self.request_id = request_id
+
+
+class UpstreamRequestControl(Protocol):
+    async def before_request(self, capability: str) -> None: ...
+
+    async def record_success(self, capability: str) -> None: ...
+
+    async def record_failure(self, capability: str, code: int) -> None: ...
 
 
 class DataSourceAdapter(ABC):

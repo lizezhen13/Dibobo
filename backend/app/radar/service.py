@@ -1,53 +1,136 @@
+import hashlib
+import json
 import logging
 import math
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import ColumnElement, and_, case, func, literal, or_, select
+from sqlalchemy import case, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.models import DataSource, RadarMetric, RadarSearch, RadarSnapshot, User
+from app.core.models import (
+    DataSource,
+    RadarIndicatorCache,
+    RadarSearchJob,
+    User,
+)
+from app.core.models import RadarSearchResult as RadarSearchResultRow
 from app.core.security import ApiKeyCipher
 from app.data_sources.base import DataSourceError
 from app.data_sources.domain import Instrument, SecurityQuoteBatch
 from app.data_sources.fuyao import FuyaoAdapter
 from app.overview.service import get_cached_calendar, resolve_market_status
 from app.radar.schemas import (
-    RadarFilters,
     RadarQuoteItem,
     RadarQuotesResponse,
     RadarResultItem,
+    RadarSearchQueuedResponse,
     RadarSearchRequest,
     RadarSearchResponse,
+    RadarSearchStatusResponse,
+    RadarSortField,
     RadarStatusResponse,
+    SortDirection,
 )
+from app.radar.upstream_control import RadarUpstreamController
 
 logger = logging.getLogger(__name__)
 
 SORT_COLUMNS: dict[str, Any] = {
-    "latest": RadarMetric.latest,
-    "change_percent": RadarMetric.change_percent,
-    "total_market_cap": RadarMetric.total_market_cap,
-    "dividend_yield_ttm": RadarMetric.dividend_yield_ttm,
-    "pb_mrq": RadarMetric.pb_mrq,
-    "roe_weighted": RadarMetric.roe_weighted,
-    "consecutive_dividend_years": RadarMetric.consecutive_dividend_years,
-}
-FILTER_COLUMNS: dict[str, Any] = {
-    "total_market_cap": RadarMetric.total_market_cap,
-    "dividend_yield_ttm": RadarMetric.dividend_yield_ttm,
-    "pb_mrq": RadarMetric.pb_mrq,
-    "roe_weighted": RadarMetric.roe_weighted,
+    "latest": RadarSearchResultRow.latest,
+    "change_percent": RadarSearchResultRow.change_percent,
+    "total_market_cap": RadarSearchResultRow.total_market_cap,
+    "dividend_yield_ttm": RadarSearchResultRow.dividend_yield_ttm,
+    "pb_mrq": RadarSearchResultRow.pb_mrq,
+    "roe_weighted": RadarSearchResultRow.roe_weighted,
+    "consecutive_dividend_years": RadarSearchResultRow.consecutive_dividend_years,
 }
 
 
 def _as_utc(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def _search_fingerprint(payload: RadarSearchRequest) -> str:
+    canonical = json.dumps(
+        payload.model_dump(mode="json"),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+async def recover_stale_search_jobs(db: AsyncSession, settings: Settings) -> int:
+    now = datetime.now(UTC)
+    queued_cutoff = now - timedelta(seconds=settings.radar_queued_stale_seconds)
+    running_cutoff = now - timedelta(minutes=settings.radar_running_stale_minutes)
+    result = await db.execute(
+        update(RadarSearchJob)
+        .where(
+            or_(
+                (
+                    (RadarSearchJob.state == "queued")
+                    & (RadarSearchJob.created_at < queued_cutoff)
+                ),
+                (
+                    (RadarSearchJob.state == "running")
+                    & (RadarSearchJob.started_at.is_not(None))
+                    & (RadarSearchJob.started_at < running_cutoff)
+                ),
+            )
+        )
+        .values(
+            state="failed",
+            stage="failed",
+            stage_message="后台检索任务已失去执行器",
+            error_summary="检索任务异常中断，请重新搜索",
+            completed_at=now,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    await db.commit()
+    return int(result.rowcount or 0)
+
+
+async def mark_search_failed(
+    db: AsyncSession,
+    search_id: uuid.UUID,
+    message: str,
+) -> None:
+    await db.execute(
+        update(RadarSearchJob)
+        .where(
+            RadarSearchJob.id == search_id,
+            RadarSearchJob.state.in_(("queued", "running")),
+        )
+        .values(
+            state="failed",
+            stage="failed",
+            stage_message="后台检索任务异常退出",
+            error_summary=message,
+            completed_at=datetime.now(UTC),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    await db.commit()
+
+
+async def mark_search_waiting(db: AsyncSession, search_id: uuid.UUID) -> None:
+    job = await db.get(RadarSearchJob, search_id)
+    if job is None or job.state != "queued":
+        return
+    job.state = "running"
+    job.stage = "queued"
+    job.stage_message = "等待同一数据源的检索任务完成"
+    job.started_at = datetime.now(UTC)
+    await db.commit()
 
 
 async def get_active_source(db: AsyncSession, user: User) -> DataSource | None:
@@ -73,268 +156,265 @@ async def get_radar_status(db: AsyncSession, user: User) -> RadarStatusResponse:
             message="当前版本尚不支持该数据源类型",
         )
 
-    latest_attempt = await db.scalar(
-        select(RadarSnapshot)
-        .where(RadarSnapshot.data_source_id == source.id)
-        .order_by(RadarSnapshot.started_at.desc())
-        .limit(1)
+    cache_count = int(
+        await db.scalar(
+            select(func.count())
+            .select_from(RadarIndicatorCache)
+            .where(
+                RadarIndicatorCache.data_source_id == source.id,
+                RadarIndicatorCache.is_active_universe.is_(True),
+            )
+        )
+        or 0
     )
-    ready = await db.scalar(
-        select(RadarSnapshot)
-        .where(
-            RadarSnapshot.data_source_id == source.id,
-            RadarSnapshot.status == "ready",
+    cache_updated_at = await db.scalar(
+        select(func.max(RadarIndicatorCache.updated_at)).where(
+            RadarIndicatorCache.data_source_id == source.id,
+            RadarIndicatorCache.is_active_universe.is_(True),
         )
-        .order_by(RadarSnapshot.completed_at.desc())
-        .limit(1)
     )
-    total_market_cap_supported = source.capabilities.get("total_market_cap") == "supported"
-    if latest_attempt is None:
-        return RadarStatusResponse(
-            state="not_synced",
-            data_source_name=source.name,
-            message="尚未生成全市场指标快照，首次同步可能需要较长时间",
-            total_market_cap_supported=total_market_cap_supported,
-        )
-    if latest_attempt.status == "building":
-        return RadarStatusResponse(
-            state="syncing",
-            data_source_name=source.name,
-            message="正在后台同步代码表、估值、财务与分红数据",
-            snapshot_id=ready.id if ready else latest_attempt.id,
-            snapshot_time=ready.as_of if ready else None,
-            started_at=latest_attempt.started_at,
-            completed_at=ready.completed_at if ready else None,
-            instrument_count=latest_attempt.instrument_count,
-            eligible_count=ready.eligible_count if ready else 0,
-            incomplete_count=ready.incomplete_count if ready else 0,
-            excluded_count=ready.excluded_count if ready else latest_attempt.excluded_count,
-            total_market_cap_supported=total_market_cap_supported,
-            can_search=ready is not None,
-        )
-    if latest_attempt.status == "failed":
-        return RadarStatusResponse(
-            state="partial_failed" if ready else "failed",
-            data_source_name=source.name,
-            message=(
-                f"最新同步失败，继续使用上次完整快照：{latest_attempt.error_summary}"
-                if ready
-                else latest_attempt.error_summary or "雷达指标同步失败"
-            ),
-            snapshot_id=ready.id if ready else latest_attempt.id,
-            snapshot_time=ready.as_of if ready else None,
-            started_at=latest_attempt.started_at,
-            completed_at=ready.completed_at if ready else latest_attempt.completed_at,
-            instrument_count=ready.instrument_count if ready else latest_attempt.instrument_count,
-            eligible_count=ready.eligible_count if ready else 0,
-            incomplete_count=ready.incomplete_count if ready else 0,
-            excluded_count=ready.excluded_count if ready else latest_attempt.excluded_count,
-            total_market_cap_supported=total_market_cap_supported,
-            can_search=ready is not None,
-        )
-    snapshot = ready or latest_attempt
     return RadarStatusResponse(
         state="ready",
         data_source_name=source.name,
-        message="完整指标快照可用",
-        snapshot_id=snapshot.id,
-        snapshot_time=snapshot.as_of,
-        started_at=snapshot.started_at,
-        completed_at=snapshot.completed_at,
-        instrument_count=snapshot.instrument_count,
-        eligible_count=snapshot.eligible_count,
-        incomplete_count=snapshot.incomplete_count,
-        excluded_count=snapshot.excluded_count,
-        total_market_cap_supported=total_market_cap_supported,
+        message="按需检索引擎已就绪；搜索时只刷新缺失或过期指标",
+        cache_instrument_count=cache_count,
+        cache_updated_at=cache_updated_at,
+        total_market_cap_supported=source.capabilities.get("total_market_cap") == "supported",
         can_search=True,
     )
 
 
-def _filter_clauses(
-    filters: RadarFilters,
-) -> tuple[list[ColumnElement[bool]], ColumnElement[bool]]:
-    clauses: list[ColumnElement[bool]] = []
-    missing_checks: list[ColumnElement[bool]] = []
-    for name, column in FILTER_COLUMNS.items():
-        number_range = getattr(filters, name)
-        if number_range.minimum is None and number_range.maximum is None:
-            continue
-        known_conditions: list[ColumnElement[bool]] = []
-        unit_multiplier = 100_000_000 if name == "total_market_cap" else 1
-        if number_range.minimum is not None:
-            known_conditions.append(column >= number_range.minimum * unit_multiplier)
-        if number_range.maximum is not None:
-            known_conditions.append(column <= number_range.maximum * unit_multiplier)
-        clauses.append(or_(column.is_(None), and_(*known_conditions)))
-        missing_checks.append(column.is_(None))
-    return clauses, or_(*missing_checks) if missing_checks else literal(False)
+async def create_search_job(
+    db: AsyncSession,
+    user: User,
+    payload: RadarSearchRequest,
+    settings: Settings,
+) -> tuple[RadarSearchJob, RadarSearchQueuedResponse, bool]:
+    source = await get_active_source(db, user)
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="请先启用数据源")
+    if source.provider_type not in {"fuyao", "fuyao_compatible"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="当前版本尚不支持该数据源类型",
+        )
+    market_cap_range = payload.filters.total_market_cap
+    if (
+        market_cap_range.minimum is not None
+        or market_cap_range.maximum is not None
+        or payload.sort_by == "total_market_cap"
+    ) and source.capabilities.get("total_market_cap") != "supported":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="当前数据源暂不支持总市值筛选",
+        )
 
+    await recover_stale_search_jobs(db, settings)
+    now = datetime.now(UTC)
+    await db.execute(
+        delete(RadarSearchJob)
+        .where(RadarSearchJob.expires_at <= now)
+        .execution_options(synchronize_session=False)
+    )
+    fingerprint = _search_fingerprint(payload)
+    ready_cutoff = now - timedelta(seconds=settings.radar_search_reuse_seconds)
+    active_cutoff = now - timedelta(minutes=settings.radar_running_stale_minutes)
+    reusable = await db.scalar(
+        select(RadarSearchJob)
+        .where(
+            RadarSearchJob.user_id == user.id,
+            RadarSearchJob.data_source_id == source.id,
+            RadarSearchJob.request_fingerprint == fingerprint,
+            RadarSearchJob.expires_at > now,
+            or_(
+                (
+                    RadarSearchJob.state.in_(("queued", "running"))
+                    & (RadarSearchJob.created_at >= active_cutoff)
+                ),
+                (
+                    (RadarSearchJob.state == "ready")
+                    & (RadarSearchJob.completed_at.is_not(None))
+                    & (RadarSearchJob.completed_at >= ready_cutoff)
+                ),
+            ),
+        )
+        .order_by(RadarSearchJob.created_at.desc())
+        .limit(1)
+    )
+    if reusable is not None:
+        state = reusable.state if reusable.state in {"queued", "running", "ready"} else "queued"
+        return (
+            reusable,
+            RadarSearchQueuedResponse(
+                search_id=reusable.id,
+                state=state,  # type: ignore[arg-type]
+                message="已复用相同条件的检索任务",
+            ),
+            False,
+        )
 
-def _sort_clauses(
-    missing: ColumnElement[bool],
-    sort_by: str,
-    sort_direction: str,
-) -> list[Any]:
-    column = SORT_COLUMNS[sort_by]
-    direction = column.asc() if sort_direction == "asc" else column.desc()
-    return [
-        case((missing, 1), else_=0).asc(),
-        case((column.is_(None), 1), else_=0).asc(),
-        direction,
-        RadarMetric.thscode.asc(),
-    ]
+    job = RadarSearchJob(
+        user_id=user.id,
+        data_source_id=source.id,
+        state="queued",
+        stage="queued",
+        request_fingerprint=fingerprint,
+        stage_message="检索任务等待后台执行",
+        filters=payload.filters.model_dump(mode="json"),
+        sort_by=payload.sort_by,
+        sort_direction=payload.sort_direction,
+        current_page=1,
+        page_size=payload.page_size,
+        expires_at=now + timedelta(hours=24),
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    response = RadarSearchQueuedResponse(
+        search_id=job.id,
+        message="实时检索任务已进入后台队列",
+    )
+    return job, response, True
 
 
 async def _owned_search(
     db: AsyncSession,
     user: User,
     search_id: uuid.UUID,
-) -> RadarSearch:
-    search = await db.scalar(
-        select(RadarSearch).where(
-            RadarSearch.id == search_id,
-            RadarSearch.user_id == user.id,
+) -> RadarSearchJob:
+    job = await db.scalar(
+        select(RadarSearchJob).where(
+            RadarSearchJob.id == search_id,
+            RadarSearchJob.user_id == user.id,
         )
     )
-    if search is None or _as_utc(search.expires_at) <= datetime.now(UTC):
+    if job is None or _as_utc(job.expires_at) <= datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="筛选快照已过期，请重新筛选",
+            detail="筛选结果已过期，请重新搜索",
         )
-    return search
+    return job
 
 
-def _is_result_incomplete(metric: RadarMetric, filters: RadarFilters) -> bool:
-    for name in FILTER_COLUMNS:
-        number_range = getattr(filters, name)
-        if (
-            number_range.minimum is not None or number_range.maximum is not None
-        ) and getattr(metric, name) is None:
-            return True
-    return False
+def _search_status(job: RadarSearchJob) -> RadarSearchStatusResponse:
+    return RadarSearchStatusResponse(
+        search_id=job.id,
+        state=job.state,  # type: ignore[arg-type]
+        stage=job.stage,  # type: ignore[arg-type]
+        message=job.stage_message,
+        processed_count=job.processed_count,
+        candidate_count=job.candidate_count,
+        total_results=job.total_results,
+        incomplete_results=job.incomplete_results,
+        stale_results=job.stale_results,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        expires_at=job.expires_at,
+        error_summary=job.error_summary,
+    )
 
 
-def _result_item(metric: RadarMetric, filters: RadarFilters) -> RadarResultItem:
+async def get_search_status(
+    db: AsyncSession,
+    user: User,
+    search_id: uuid.UUID,
+) -> RadarSearchStatusResponse:
+    return _search_status(await _owned_search(db, user, search_id))
+
+
+def _sort_clauses(sort_by: str, sort_direction: str) -> list[Any]:
+    column = SORT_COLUMNS[sort_by]
+    direction = column.asc() if sort_direction == "asc" else column.desc()
+    return [
+        case((RadarSearchResultRow.data_incomplete.is_(True), 1), else_=0).asc(),
+        case((RadarSearchResultRow.data_stale.is_(True), 1), else_=0).asc(),
+        case((column.is_(None), 1), else_=0).asc(),
+        direction,
+        RadarSearchResultRow.thscode.asc(),
+    ]
+
+
+def _result_item(row: RadarSearchResultRow) -> RadarResultItem:
     return RadarResultItem(
-        thscode=metric.thscode,
-        ticker=metric.ticker,
-        name=metric.name,
-        exchange=metric.exchange,
-        latest=float(metric.latest) if metric.latest is not None else None,
-        change_percent=(
-            float(metric.change_percent) if metric.change_percent is not None else None
-        ),
+        thscode=row.thscode,
+        ticker=row.ticker,
+        name=row.name,
+        exchange=row.exchange,
+        latest=float(row.latest) if row.latest is not None else None,
+        change_percent=float(row.change_percent) if row.change_percent is not None else None,
         total_market_cap=(
-            float(metric.total_market_cap) / 100_000_000
-            if metric.total_market_cap is not None
+            float(row.total_market_cap) / 100_000_000
+            if row.total_market_cap is not None
             else None
         ),
         dividend_yield_ttm=(
-            float(metric.dividend_yield_ttm)
-            if metric.dividend_yield_ttm is not None
-            else None
+            float(row.dividend_yield_ttm) if row.dividend_yield_ttm is not None else None
         ),
-        pb_mrq=float(metric.pb_mrq) if metric.pb_mrq is not None else None,
-        roe_weighted=(
-            float(metric.roe_weighted) if metric.roe_weighted is not None else None
-        ),
-        roe_report_period=metric.roe_report_period,
-        consecutive_dividend_years=metric.consecutive_dividend_years,
-        metric_time=metric.metric_time,
-        quoted_at=metric.quoted_at,
-        data_incomplete=_is_result_incomplete(metric, filters),
-        missing_reasons=metric.missing_reasons,
+        pb_mrq=float(row.pb_mrq) if row.pb_mrq is not None else None,
+        roe_weighted=float(row.roe_weighted) if row.roe_weighted is not None else None,
+        roe_report_period=row.roe_report_period,
+        consecutive_dividend_years=row.consecutive_dividend_years,
+        metric_time=row.metric_time,
+        quoted_at=row.quoted_at,
+        data_incomplete=row.data_incomplete,
+        data_stale=row.data_stale,
+        missing_reasons=row.missing_reasons,
+        stale_fields=row.stale_fields,
     )
 
 
-async def search_radar(
+async def get_search_results(
     db: AsyncSession,
     user: User,
-    payload: RadarSearchRequest,
+    search_id: uuid.UUID,
+    page: int,
+    sort_by: RadarSortField,
+    sort_direction: SortDirection,
 ) -> RadarSearchResponse:
-    if payload.search_id is not None:
-        search = await _owned_search(db, user, payload.search_id)
-        filters = RadarFilters.model_validate(search.filters)
-        snapshot = await db.get(RadarSnapshot, search.snapshot_id)
-        if snapshot is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="雷达指标快照不存在")
-    else:
-        source = await get_active_source(db, user)
-        if source is None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="请先启用数据源")
-        filters = payload.filters
-        market_cap_range = filters.total_market_cap
-        if (
-            market_cap_range.minimum is not None or market_cap_range.maximum is not None
-        ) and source.capabilities.get("total_market_cap") != "supported":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="当前数据源暂不支持总市值筛选",
-            )
-        snapshot = await db.scalar(
-            select(RadarSnapshot)
-            .where(
-                RadarSnapshot.data_source_id == source.id,
-                RadarSnapshot.status == "ready",
-            )
-            .order_by(RadarSnapshot.completed_at.desc())
-            .limit(1)
+    job = await _owned_search(db, user, search_id)
+    if job.state == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=job.error_summary or "实时检索失败，请重新搜索",
         )
-        if snapshot is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="完整雷达指标快照尚未就绪",
-            )
-        search = RadarSearch(
-            user_id=user.id,
-            data_source_id=source.id,
-            snapshot_id=snapshot.id,
-            filters=filters.model_dump(mode="json"),
-            sort_by=payload.sort_by,
-            sort_direction=payload.sort_direction,
-            current_page=payload.page,
-            page_size=payload.page_size,
-            expires_at=datetime.now(UTC) + timedelta(hours=24),
+    if job.state != "ready" or job.completed_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="实时检索尚未完成",
         )
-        db.add(search)
 
-    clauses, missing = _filter_clauses(filters)
-    where = [RadarMetric.snapshot_id == snapshot.id, *clauses]
-    total = int(await db.scalar(select(func.count()).select_from(RadarMetric).where(*where)) or 0)
-    incomplete_total = int(
-        await db.scalar(
-            select(func.count()).select_from(RadarMetric).where(*where, missing)
+    if sort_by != job.sort_by or sort_direction != job.sort_direction:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="更换排序指标需要重新执行按需检索",
         )
-        or 0
+
+    rows = list(
+        (
+            await db.scalars(
+                select(RadarSearchResultRow)
+                .where(RadarSearchResultRow.search_id == job.id)
+                .order_by(*_sort_clauses(sort_by, sort_direction))
+                .offset((page - 1) * job.page_size)
+                .limit(job.page_size)
+            )
+        ).all()
     )
-    statement = (
-        select(RadarMetric)
-        .where(*where)
-        .order_by(*_sort_clauses(missing, payload.sort_by, payload.sort_direction))
-        .offset((payload.page - 1) * payload.page_size)
-        .limit(payload.page_size)
-    )
-    metrics = list((await db.scalars(statement)).all())
-    search.sort_by = payload.sort_by
-    search.sort_direction = payload.sort_direction
-    search.current_page = payload.page
-    search.page_size = payload.page_size
-    search.total_results = total
-    search.incomplete_results = incomplete_total
+    job.current_page = page
     await db.commit()
-    await db.refresh(search)
     return RadarSearchResponse(
-        search_id=search.id,
-        snapshot_id=snapshot.id,
-        snapshot_time=snapshot.as_of,
-        page=payload.page,
-        page_size=payload.page_size,
-        total=total,
-        pages=math.ceil(total / payload.page_size) if total else 0,
-        incomplete_total=incomplete_total,
-        sort_by=payload.sort_by,
-        sort_direction=payload.sort_direction,
-        items=[_result_item(metric, filters) for metric in metrics],
+        search_id=job.id,
+        searched_at=job.completed_at,
+        page=page,
+        page_size=job.page_size,
+        total=job.total_results,
+        pages=math.ceil(job.total_results / job.page_size) if job.total_results else 0,
+        incomplete_total=job.incomplete_results,
+        stale_total=job.stale_results,
+        sort_by=sort_by,
+        sort_direction=sort_direction,
+        items=[_result_item(row) for row in rows],
     )
 
 
@@ -358,39 +438,46 @@ async def get_radar_quotes(
     cache: Redis,
     user: User,
     search_id: uuid.UUID,
-    page: int | None,
+    page: int,
+    sort_by: RadarSortField,
+    sort_direction: SortDirection,
     settings: Settings,
 ) -> RadarQuotesResponse:
-    search = await _owned_search(db, user, search_id)
-    if page is not None:
-        search.current_page = page
-        await db.commit()
-    filters = RadarFilters.model_validate(search.filters)
-    clauses, missing = _filter_clauses(filters)
-    statement = (
-        select(RadarMetric)
-        .where(RadarMetric.snapshot_id == search.snapshot_id, *clauses)
-        .order_by(*_sort_clauses(missing, search.sort_by, search.sort_direction))
-        .offset((search.current_page - 1) * search.page_size)
-        .limit(search.page_size)
+    job = await _owned_search(db, user, search_id)
+    if sort_by != job.sort_by or sort_direction != job.sort_direction:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="更换排序指标需要重新执行按需检索",
+        )
+    if job.state != "ready":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="实时检索尚未完成")
+    rows = list(
+        (
+            await db.scalars(
+                select(RadarSearchResultRow)
+                .where(RadarSearchResultRow.search_id == job.id)
+                .order_by(*_sort_clauses(sort_by, sort_direction))
+                .offset((page - 1) * job.page_size)
+                .limit(job.page_size)
+            )
+        ).all()
     )
-    metrics = list((await db.scalars(statement)).all())
-    source = await db.get(DataSource, search.data_source_id)
+    source = await db.get(DataSource, job.data_source_id)
     static_items = [
         RadarQuoteItem(
-            thscode=item.thscode,
-            latest=float(item.latest) if item.latest is not None else None,
+            thscode=row.thscode,
+            latest=float(row.latest) if row.latest is not None else None,
             change_percent=(
-                float(item.change_percent) if item.change_percent is not None else None
+                float(row.change_percent) if row.change_percent is not None else None
             ),
-            quoted_at=item.quoted_at,
+            quoted_at=row.quoted_at,
         )
-        for item in metrics
+        for row in rows
     ]
-    if source is None or source.provider_type not in {"fuyao", "fuyao_compatible"} or not metrics:
+    if source is None or source.provider_type not in {"fuyao", "fuyao_compatible"} or not rows:
         return RadarQuotesResponse(
-            search_id=search.id,
-            page=search.current_page,
+            search_id=job.id,
+            page=page,
             market_status="未知",
             polling_enabled=False,
             refresh_seconds=settings.quote_refresh_seconds,
@@ -402,31 +489,30 @@ async def get_radar_quotes(
         api_key = cipher.decrypt(source.api_key_ciphertext)
     except ValueError:
         return RadarQuotesResponse(
-            search_id=search.id,
-            page=search.current_page,
+            search_id=job.id,
+            page=page,
             market_status="未知",
             polling_enabled=False,
             refresh_seconds=settings.quote_refresh_seconds,
             stale=True,
             items=static_items,
         )
+
     instruments = [
         Instrument(
-            thscode=item.thscode,
-            ticker=item.ticker,
-            name=item.name,
+            thscode=row.thscode,
+            ticker=row.ticker,
+            name=row.name,
             asset_type="a_share",
-            exchange=item.exchange,  # type: ignore[arg-type]
+            exchange=row.exchange,  # type: ignore[arg-type]
         )
-        for item in metrics
+        for row in rows
     ]
     signature = ",".join(item.thscode for item in instruments)
     cache_key = f"quotes:radar:{source.id}:{signature}"
     stale_key = f"quotes:radar:last-success:{source.id}:{signature}"
     cached = await _cache_get(cache, cache_key)
-    batch: SecurityQuoteBatch | None = (
-        SecurityQuoteBatch.model_validate_json(cached) if cached else None
-    )
+    batch = SecurityQuoteBatch.model_validate_json(cached) if cached else None
     stale = False
     market_status = "未知"
     try:
@@ -434,6 +520,8 @@ async def get_radar_quotes(
             source.base_url,
             api_key,
             settings.upstream_timeout_seconds,
+            request_concurrency=settings.upstream_concurrency,
+            request_control=RadarUpstreamController(cache, source.id, settings),
         ) as adapter:
             calendar = await get_cached_calendar(cache, source, adapter)
             market_status = resolve_market_status(datetime.now(UTC), calendar.dates)
@@ -460,8 +548,8 @@ async def get_radar_quotes(
                         raise
     except DataSourceError:
         return RadarQuotesResponse(
-            search_id=search.id,
-            page=search.current_page,
+            search_id=job.id,
+            page=page,
             market_status=market_status,
             polling_enabled=False,
             refresh_seconds=settings.quote_refresh_seconds,
@@ -470,22 +558,49 @@ async def get_radar_quotes(
         )
 
     quotes = {item.thscode: item for item in batch.quotes} if batch else {}
+    if quotes and not stale:
+        cache_rows = list(
+            (
+                await db.scalars(
+                    select(RadarIndicatorCache).where(
+                        RadarIndicatorCache.data_source_id == source.id,
+                        RadarIndicatorCache.thscode.in_(quotes),
+                    )
+                )
+            ).all()
+        )
+        fetched_at = datetime.now(UTC)
+        for cache_row in cache_rows:
+            quote = quotes.get(cache_row.thscode)
+            if quote is None:
+                continue
+            cache_row.latest = Decimal(str(quote.latest)) if quote.latest is not None else None
+            cache_row.change_percent = (
+                Decimal(str(quote.change_percent))
+                if quote.change_percent is not None
+                else None
+            )
+            cache_row.quoted_at = quote.quoted_at
+            cache_row.quote_status = "available" if quote.latest is not None else "not_available"
+            cache_row.quote_fetched_at = fetched_at
+        await db.commit()
+
     return RadarQuotesResponse(
-        search_id=search.id,
-        page=search.current_page,
+        search_id=job.id,
+        page=page,
         market_status=market_status,
         polling_enabled=market_status == "交易中",
         refresh_seconds=settings.quote_refresh_seconds,
         stale=stale,
         items=[
             RadarQuoteItem(
-                thscode=item.thscode,
-                latest=quotes[item.thscode].latest if item.thscode in quotes else None,
+                thscode=row.thscode,
+                latest=quotes[row.thscode].latest if row.thscode in quotes else None,
                 change_percent=(
-                    quotes[item.thscode].change_percent if item.thscode in quotes else None
+                    quotes[row.thscode].change_percent if row.thscode in quotes else None
                 ),
-                quoted_at=quotes[item.thscode].quoted_at if item.thscode in quotes else None,
+                quoted_at=quotes[row.thscode].quoted_at if row.thscode in quotes else None,
             )
-            for item in metrics
+            for row in rows
         ],
     )

@@ -116,6 +116,8 @@ async def invalidate_data_source_cache(cache: Redis, source_id: object) -> None:
         for pattern in (
             f"quotes:holding:{source_id}:*",
             f"quotes:holding:last-success:{source_id}:*",
+            f"quotes:radar:{source_id}:*",
+            f"quotes:radar:last-success:{source_id}:*",
             f"overview:{source_id}:*",
             f"overview:last-success:{source_id}:*",
         ):

@@ -8,7 +8,7 @@ import {
   ArrowUpDown,
   CheckCircle2,
   CircleDashed,
-  DatabaseZap,
+  Database,
   Filter,
   Info,
   LoaderCircle,
@@ -30,15 +30,16 @@ import { formatDateTime, formatPercent, formatPoint, movementClass } from "../..
 import { cn } from "../../lib/utils";
 import {
   useRadarQuotesQuery,
-  useRadarSearchMutation,
+  useRadarResultsQuery,
+  useRadarSearchStatusQuery,
   useRadarStatusQuery,
-  useStartRadarSyncMutation,
+  useStartRadarSearchMutation,
 } from "./queries";
 import type {
   RadarFilters,
   RadarResultItem,
-  RadarSearchPayload,
   RadarSearchResult,
+  RadarSearchStatus,
   RadarSortField,
   RadarStatus,
   SortDirection,
@@ -98,12 +99,34 @@ const FILTER_META: Array<{
 
 export function RadarPage() {
   const statusQuery = useRadarStatusQuery();
-  const startSync = useStartRadarSyncMutation();
-  const searchMutation = useRadarSearchMutation();
+  const startSearch = useStartRadarSearchMutation();
   const [draft, setDraft] = useState<FilterDraft>(EMPTY_FILTERS);
+  const [activeFilters, setActiveFilters] = useState<RadarFilters | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [result, setResult] = useState<RadarSearchResult | null>(null);
-  const quotes = useRadarQuotesQuery(result?.search_id ?? null, result?.page ?? 1);
+  const [searchId, setSearchId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<RadarSortField>("dividend_yield_ttm");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const searchStatusQuery = useRadarSearchStatusQuery(searchId);
+  const searchStatus = searchStatusQuery.data;
+  const searchReady = searchStatus?.state === "ready";
+  const resultsQuery = useRadarResultsQuery(
+    searchId,
+    searchReady,
+    page,
+    sortBy,
+    sortDirection,
+  );
+  const result = resultsQuery.data?.search_id === searchId ? resultsQuery.data : null;
+  const quotes = useRadarQuotesQuery(
+    searchId,
+    searchReady,
+    page,
+    sortBy,
+    sortDirection,
+  );
+  const searchRunning =
+    startSearch.isPending || searchStatus?.state === "queued" || searchStatus?.state === "running";
 
   const quoteMap = useMemo(
     () => new Map((quotes.data?.items ?? []).map((item) => [item.thscode, item])),
@@ -125,43 +148,61 @@ export function RadarPage() {
     [quoteMap, result?.items],
   );
 
-  const runSearch = (
-    options: Partial<Pick<RadarSearchPayload, "page" | "sort_by" | "sort_direction">> = {},
-    preserveSnapshot = false,
-  ) => {
+  const runSearch = () => {
     const filters = parseFilters(draft);
     if (typeof filters === "string") {
       setValidationError(filters);
       return;
     }
     setValidationError(null);
-    const payload: RadarSearchPayload = {
-      filters,
-      page: options.page ?? 1,
-      page_size: 20,
-      sort_by: options.sort_by ?? result?.sort_by ?? "dividend_yield_ttm",
-      sort_direction: options.sort_direction ?? result?.sort_direction ?? "desc",
-      ...(preserveSnapshot && result ? { search_id: result.search_id } : {}),
-    };
-    searchMutation.mutate(payload, { onSuccess: setResult });
+    startSearch.mutate(
+      {
+        filters,
+        page_size: 20,
+        sort_by: sortBy,
+        sort_direction: sortDirection,
+      },
+      {
+        onSuccess: (queued) => {
+          setActiveFilters(filters);
+          setSearchId(queued.search_id);
+          setPage(1);
+        },
+      },
+    );
   };
 
   const changeSort = (field: RadarSortField) => {
-    if (!result) return;
+    if (!result || !activeFilters || searchRunning) return;
+    if (field === "total_market_cap" && !statusQuery.data?.total_market_cap_supported) return;
     const direction: SortDirection =
-      result.sort_by === field && result.sort_direction === "desc" ? "asc" : "desc";
-    runSearch({ page: 1, sort_by: field, sort_direction: direction }, true);
+      sortBy === field && sortDirection === "desc" ? "asc" : "desc";
+    startSearch.mutate(
+      {
+        filters: activeFilters,
+        page_size: 20,
+        sort_by: field,
+        sort_direction: direction,
+      },
+      {
+        onSuccess: (queued) => {
+          setSortBy(field);
+          setSortDirection(direction);
+          setSearchId(queued.search_id);
+          setPage(1);
+        },
+      },
+    );
   };
 
   const columns = useMemo(
     () => createColumns(result, changeSort),
     // changeSort intentionally follows the latest result state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [result],
+    [result, sortBy, sortDirection],
   );
 
   const status = statusQuery.data;
-  const canSync = status && !["not_configured", "unsupported"].includes(status.state);
 
   return (
     <div className="mx-auto w-full max-w-[1580px] animate-enter">
@@ -178,7 +219,7 @@ export function RadarPage() {
             在不完整的数据里，保留诚实的答案
           </h1>
           <p className="mt-2.5 max-w-3xl text-[0.95rem] leading-relaxed text-muted-foreground">
-            以总市值、股息率、PB 与 ROE 交叉筛选沪深北 A 股；缺失指标不被误判为失败，而是留在结果末端供你复核。
+            搜索时批量刷新行情与估值，只为候选股补齐 ROE 和分红；缺失指标不被误判为失败，而是留在结果末端供你复核。
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -189,22 +230,8 @@ export function RadarPage() {
             disabled={statusQuery.isFetching}
           >
             <RefreshCw className={cn(statusQuery.isFetching && "animate-spin")} size={13} />
-            刷新状态
+            刷新缓存状态
           </Button>
-          {canSync && (
-            <Button
-              size="sm"
-              onClick={() => startSync.mutate()}
-              disabled={startSync.isPending || status?.state === "syncing"}
-            >
-              {status?.state === "syncing" ? (
-                <LoaderCircle className="animate-spin" size={14} />
-              ) : (
-                <DatabaseZap size={14} />
-              )}
-              {status?.state === "syncing" ? "同步进行中" : "同步最新快照"}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -214,11 +241,6 @@ export function RadarPage() {
         isError={statusQuery.isError}
         onRetry={() => void statusQuery.refetch()}
       />
-      {startSync.isError && (
-        <div className="mt-3 flex items-center gap-2 border-l-2 border-danger bg-danger/8 px-4 py-2.5 text-[0.8rem] text-danger">
-          <AlertTriangle size={14} /> {startSync.error.message}
-        </div>
-      )}
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)_330px] gap-5">
         <section className="overflow-hidden rounded-xl border border-border bg-card shadow-raised">
@@ -230,7 +252,7 @@ export function RadarPage() {
               <div>
                 <h2 className="font-display text-[1.25rem] tracking-tight">筛选矩阵</h2>
                 <p className="mt-0.5 text-[0.78rem] text-muted-foreground">
-                  所有已填写条件以 AND 连接 · 区间包含边界
+                  所有条件以 AND 连接 · 搜索时按需刷新过期指标
                 </p>
               </div>
             </div>
@@ -277,14 +299,19 @@ export function RadarPage() {
                   <AlertTriangle size={14} /> {validationError}
                 </p>
               )}
-              {searchMutation.isError && (
+              {startSearch.isError && (
                 <p className="flex items-center gap-2 text-[0.8rem] text-danger">
-                  <AlertTriangle size={14} /> {searchMutation.error.message}
+                  <AlertTriangle size={14} /> {startSearch.error.message}
                 </p>
               )}
-              {!validationError && !searchMutation.isError && (
+              {searchStatus?.state === "failed" && (
+                <p className="flex items-center gap-2 text-[0.8rem] text-danger">
+                  <AlertTriangle size={14} /> {searchStatus.error_summary ?? "实时检索失败"}
+                </p>
+              )}
+              {!validationError && !startSearch.isError && searchStatus?.state !== "failed" && (
                 <p className="flex items-center gap-2 text-[0.75rem] text-muted-foreground/60">
-                  <Info size={13} /> 空值表示不限制；已知值不满足会被排除
+                  <Info size={13} /> 空条件优先复用缓存；缺失或过期指标才访问上游
                 </p>
               )}
             </div>
@@ -301,15 +328,15 @@ export function RadarPage() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => runSearch({}, false)}
-                disabled={!status?.can_search || searchMutation.isPending}
+                onClick={runSearch}
+                disabled={!status?.can_search || searchRunning}
               >
-                {searchMutation.isPending ? (
+                {searchRunning ? (
                   <LoaderCircle className="animate-spin" size={14} />
                 ) : (
                   <ScanSearch size={14} />
                 )}
-                {result ? "重新筛选" : "开始筛选"}
+                {searchRunning ? "实时检索中" : searchId ? "重新检索" : "开始实时检索"}
               </Button>
             </div>
           </div>
@@ -344,16 +371,22 @@ export function RadarPage() {
               <span className="font-mono text-foreground/80">股息率 ↓</span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[0.75rem] text-muted-foreground">
-              <span>结果快照</span>
-              <span className="font-mono text-foreground/80">24H</span>
+              <span>指标获取</span>
+              <span className="font-mono text-foreground/80">按需 + 缓存</span>
             </div>
             <div className="mt-3 flex items-center justify-between text-[0.75rem] text-muted-foreground">
               <span>行情刷新</span>
               <span className="font-mono text-foreground/80">交易中 5S</span>
             </div>
+            <div className="mt-3 flex items-center justify-between text-[0.75rem] text-muted-foreground">
+              <span>结果冻结</span>
+              <span className="font-mono text-foreground/80">24H</span>
+            </div>
           </div>
         </aside>
       </div>
+
+      {searchStatus && <SearchProgressPanel status={searchStatus} />}
 
       <section className="mt-8">
         <ResultHeading result={result} quotes={quotes.data} />
@@ -365,22 +398,22 @@ export function RadarPage() {
         <DataTable
           columns={columns}
           data={liveItems}
-          isLoading={searchMutation.isPending && !result}
+          isLoading={(searchRunning || resultsQuery.isFetching) && !result}
           getRowId={(item) => item.thscode}
-          empty={<ResultEmpty hasSearch={Boolean(result)} canSearch={Boolean(status?.can_search)} />}
+          empty={<ResultEmpty hasSearch={Boolean(searchId)} canSearch={Boolean(status?.can_search)} />}
         />
         {result && result.total > 0 && (
           <Pagination
             result={result}
-            pending={searchMutation.isPending}
-            onPage={(page) => runSearch({ page }, true)}
+            pending={resultsQuery.isFetching}
+            onPage={setPage}
           />
         )}
       </section>
 
       <div className="mt-6 flex items-center justify-between border-t border-border pt-4 font-mono text-[0.68rem] tracking-[0.08em] text-muted-foreground/50">
         <span>UNIVERSE · 沪 / 深 / 北 A 股 · 排除 ST、退市整理与无有效行情标的</span>
-        <span>仅作条件筛选 · 不构成评分、推荐或投资建议</span>
+        <span>ON-DEMAND CACHE · 仅作条件筛选 · 不构成投资建议</span>
       </div>
     </div>
   );
@@ -418,17 +451,12 @@ function RadarStatusPanel({
       </div>
     );
   }
-  const readyLike = status.can_search;
   const stateLabel: Record<RadarStatus["state"], string> = {
     not_configured: "未配置",
-    not_synced: "待同步",
-    syncing: "同步中",
-    ready: "快照可用",
-    partial_failed: "沿用旧快照",
-    failed: "同步失败",
+    ready: "检索就绪",
     unsupported: "暂不支持",
   };
-  const tone = status.state === "failed" ? "danger" : status.state === "partial_failed" ? "warning" : readyLike ? "success" : "neutral";
+  const tone = status.can_search ? "success" : "neutral";
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-border bg-card shadow-raised">
@@ -447,7 +475,7 @@ function RadarStatusPanel({
             <span className="absolute left-[63%] top-[26%] size-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(239,97,42,.8)]" />
           </div>
           <span className="absolute bottom-3 font-mono text-[0.56rem] tracking-[0.15em] text-muted-foreground/35">
-            SNAPSHOT ARRAY
+            ON-DEMAND CACHE
           </span>
         </div>
         <div className="flex items-center justify-between gap-8 px-7 py-5">
@@ -459,11 +487,14 @@ function RadarStatusPanel({
               </span>
             </div>
             <h2 className="mt-3 font-display text-[1.35rem] tracking-tight">
-              {readyLike ? "全市场指标底稿已装载" : status.message}
+              {status.can_search ? "按需指标检索引擎已就绪" : status.message}
             </h2>
-            {readyLike && (
+            {status.can_search && (
               <p className="mt-1.5 text-[0.82rem] leading-relaxed text-muted-foreground">
-                {status.message} · 业务时点 {formatDateTime(status.snapshot_time)}
+                {status.message}
+                {status.cache_updated_at
+                  ? ` · 最近缓存写入 ${formatDateTime(status.cache_updated_at)}`
+                  : " · 首次搜索将建立指标缓存"}
               </p>
             )}
             {status.state === "not_configured" && (
@@ -473,12 +504,96 @@ function RadarStatusPanel({
             )}
           </div>
           <div className="grid shrink-0 grid-cols-4 divide-x divide-border">
-            <StatusMetric label="股票池" value={status.instrument_count || null} />
-            <StatusMetric label="可筛标的" value={status.eligible_count || null} />
-            <StatusMetric label="规则排除" value={status.excluded_count || null} />
+            <StatusMetric label="缓存标的" value={status.cache_instrument_count || null} />
+            <StatusMetric label="PB 缓存" value="5M" />
+            <StatusMetric label="财务缓存" value="24H" />
             <StatusMetric
               label="总市值能力"
               value={status.total_market_cap_supported ? "READY" : "N/A"}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SearchProgressPanel({ status }: { status: RadarSearchStatus }) {
+  const stageLabel: Record<RadarSearchStatus["stage"], string> = {
+    queued: "等待执行",
+    universe: "代码池",
+    quotes: "实时行情",
+    valuation: "PB 估值",
+    fundamentals: "ROE / 分红",
+    finalizing: "三值筛选",
+    ready: "结果冻结",
+    failed: "检索失败",
+  };
+  const baseProgress: Record<RadarSearchStatus["stage"], number> = {
+    queued: 4,
+    universe: 12,
+    quotes: 28,
+    valuation: 42,
+    fundamentals: 48,
+    finalizing: 94,
+    ready: 100,
+    failed: 100,
+  };
+  const candidateProgress =
+    status.stage === "fundamentals" && status.candidate_count > 0
+      ? (status.processed_count / status.candidate_count) * 44
+      : 0;
+  const progress = Math.min(100, baseProgress[status.stage] + candidateProgress);
+  const tone =
+    status.state === "failed" ? "danger" : status.state === "ready" ? "success" : "warning";
+
+  return (
+    <section className="relative mt-5 overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+      <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
+      <div className="flex items-center justify-between gap-8 px-6 py-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <span
+            className={cn(
+              "grid size-10 shrink-0 place-items-center rounded-full border",
+              status.state === "failed"
+                ? "border-danger/30 bg-danger/10 text-danger"
+                : status.state === "ready"
+                  ? "border-success/30 bg-success/10 text-success"
+                  : "border-primary/30 bg-primary/10 text-primary",
+            )}
+          >
+            {status.state === "queued" || status.state === "running" ? (
+              <LoaderCircle className="animate-spin" size={16} />
+            ) : status.state === "ready" ? (
+              <CheckCircle2 size={16} />
+            ) : (
+              <AlertTriangle size={16} />
+            )}
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <Badge variant={tone}>{stageLabel[status.stage]}</Badge>
+              <span className="font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground/45">
+                SEARCH {status.search_id.slice(0, 8).toUpperCase()}
+              </span>
+            </div>
+            <p className="mt-1.5 truncate text-[0.82rem] text-muted-foreground">
+              {status.error_summary ?? status.message ?? "正在准备实时检索"}
+            </p>
+          </div>
+        </div>
+        <div className="w-[360px] shrink-0">
+          <div className="flex items-center justify-between font-mono text-[0.62rem] text-muted-foreground/55">
+            <span>{status.processed_count.toLocaleString("zh-CN")} / {status.candidate_count.toLocaleString("zh-CN")}</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-500",
+                status.state === "failed" ? "bg-danger" : "bg-primary",
+              )}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
@@ -602,6 +717,11 @@ function ResultHeading({
             <span>
               数据不完整 <strong className="font-mono font-medium text-warning">{result.incomplete_total}</strong> 只
             </span>
+            {result.stale_total > 0 && (
+              <span>
+                使用旧缓存 <strong className="font-mono font-medium text-primary">{result.stale_total}</strong> 只
+              </span>
+            )}
             <span className="h-3 w-px bg-border" />
           </>
         )}
@@ -624,14 +744,14 @@ function createColumns(
   onSort: (field: RadarSortField) => void,
 ): ColumnDef<RadarResultItem, unknown>[] {
   const sortable = (label: string, field: RadarSortField) => () => (
-      <SortHeader
-        label={label}
-        field={field}
-        activeField={result?.sort_by}
-        direction={result?.sort_direction}
-        onSort={onSort}
-      />
-    );
+    <SortHeader
+      label={label}
+      field={field}
+      activeField={result?.sort_by}
+      direction={result?.sort_direction}
+      onSort={onSort}
+    />
+  );
   return [
     {
       id: "instrument",
@@ -719,8 +839,15 @@ function createColumns(
       header: "数据完整性",
       cell: ({ row }) =>
         row.original.data_incomplete ? (
-          <Badge variant="warning" title={row.original.missing_reasons.join("；")}>
+          <Badge
+            variant="warning"
+            title={[...row.original.missing_reasons, ...row.original.stale_fields.map((field) => `${field}使用旧缓存`)].join("；")}
+          >
             <CircleDashed size={11} className="mr-1" /> 数据不完整
+          </Badge>
+        ) : row.original.data_stale ? (
+          <Badge variant="warning" title={`${row.original.stale_fields.join("、")}使用旧缓存`}>
+            <RefreshCw size={11} className="mr-1" /> 使用旧缓存
           </Badge>
         ) : (
           <Badge variant="success">
@@ -731,7 +858,7 @@ function createColumns(
     },
     {
       id: "metric_time",
-      header: "指标快照",
+      header: "搜索冻结",
       cell: ({ row }) => (
         <span className="text-[0.72rem] text-muted-foreground">
           {formatCompactTime(row.original.metric_time)}
@@ -781,17 +908,17 @@ function ResultEmpty({ hasSearch, canSearch }: { hasSearch: boolean; canSearch: 
     <div className="grid min-h-64 place-items-center px-6 py-14 text-center">
       <div>
         <span className="mx-auto grid size-12 place-items-center rounded-full border border-border bg-secondary text-muted-foreground/60">
-          {hasSearch ? <ScanSearch size={19} /> : canSearch ? <Sparkles size={19} /> : <DatabaseZap size={19} />}
+          {hasSearch ? <ScanSearch size={19} /> : canSearch ? <Sparkles size={19} /> : <Database size={19} />}
         </span>
         <h3 className="mt-4 font-display text-[1.35rem] tracking-tight text-foreground">
-          {hasSearch ? "当前条件没有命中标的" : canSearch ? "设置条件，启动第一次扫描" : "等待完整指标快照"}
+          {hasSearch ? "当前条件没有命中标的" : canSearch ? "设置条件，启动按需检索" : "等待数据源配置"}
         </h3>
         <p className="mx-auto mt-2 max-w-lg text-[0.85rem] leading-6 text-muted-foreground">
           {hasSearch
             ? "放宽一个或多个区间后重新筛选；空区间代表不限制。"
             : canSearch
-              ? "也可以保留全部条件为空，先查看当前可用的完整股票池。"
-              : "红利雷达不会在点击筛选时逐只请求全市场数据，请先完成后台同步。"}
+              ? "条件为空时优先复用缓存；缺失或过期的指标会在后台按需补齐。"
+              : "请先在系统设置中测试并启用受支持的数据源。"}
         </p>
       </div>
     </div>

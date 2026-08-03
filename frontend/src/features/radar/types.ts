@@ -1,11 +1,16 @@
-export type RadarSyncState =
-  | "not_configured"
-  | "not_synced"
-  | "syncing"
+export type RadarAvailabilityState = "not_configured" | "ready" | "unsupported";
+
+export type RadarSearchState = "queued" | "running" | "ready" | "failed";
+
+export type RadarSearchStage =
+  | "queued"
+  | "universe"
+  | "quotes"
+  | "valuation"
+  | "fundamentals"
+  | "finalizing"
   | "ready"
-  | "partial_failed"
-  | "failed"
-  | "unsupported";
+  | "failed";
 
 export type RadarSortField =
   | "latest"
@@ -31,28 +36,43 @@ export interface RadarFilters {
 }
 
 export interface RadarStatus {
-  state: RadarSyncState;
+  state: RadarAvailabilityState;
   data_source_name: string | null;
   message: string | null;
-  snapshot_id: string | null;
-  snapshot_time: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  instrument_count: number;
-  eligible_count: number;
-  incomplete_count: number;
-  excluded_count: number;
+  cache_instrument_count: number;
+  cache_updated_at: string | null;
   total_market_cap_supported: boolean;
   can_search: boolean;
 }
 
 export interface RadarSearchPayload {
-  search_id?: string;
   filters: RadarFilters;
-  page: number;
   page_size: number;
   sort_by: RadarSortField;
   sort_direction: SortDirection;
+}
+
+export interface RadarSearchQueued {
+  search_id: string;
+  state: "queued" | "running" | "ready";
+  message: string;
+}
+
+export interface RadarSearchStatus {
+  search_id: string;
+  state: RadarSearchState;
+  stage: RadarSearchStage;
+  message: string | null;
+  processed_count: number;
+  candidate_count: number;
+  total_results: number;
+  incomplete_results: number;
+  stale_results: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  expires_at: string;
+  error_summary: string | null;
 }
 
 export interface RadarResultItem {
@@ -71,18 +91,20 @@ export interface RadarResultItem {
   metric_time: string | null;
   quoted_at: string | null;
   data_incomplete: boolean;
+  data_stale: boolean;
   missing_reasons: string[];
+  stale_fields: string[];
 }
 
 export interface RadarSearchResult {
   search_id: string;
-  snapshot_id: string;
-  snapshot_time: string;
+  searched_at: string;
   page: number;
   page_size: number;
   total: number;
   pages: number;
   incomplete_total: number;
+  stale_total: number;
   sort_by: RadarSortField;
   sort_direction: SortDirection;
   items: RadarResultItem[];

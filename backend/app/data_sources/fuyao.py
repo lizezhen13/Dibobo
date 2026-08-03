@@ -1,10 +1,11 @@
 import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import Any, Literal
 
 import httpx
 
-from app.data_sources.base import DataSourceAdapter, DataSourceError
+from app.data_sources.base import DataSourceAdapter, DataSourceError, UpstreamRequestControl
 from app.data_sources.domain import (
     DividendEvent,
     DividendEventResult,
@@ -39,6 +40,8 @@ ERROR_MESSAGES = {
     5002: "数据源响应超时，正在保留最后成功数据",
     5003: "数据源暂时不可用，正在保留最后成功数据",
 }
+
+logger = logging.getLogger(__name__)
 
 FUYAO_CAPABILITIES = {
     "instrument_search": "supported",
@@ -76,6 +79,20 @@ def _optional_integer(value: object) -> int | None:
     return int(value)
 
 
+def _capability_for_path(path: str) -> str:
+    if "/financials/indicators" in path:
+        return "financial_roe"
+    if "/corporate-actions/" in path:
+        return "corporate_action_dividend"
+    if "/valuations/" in path:
+        return "valuation_pb"
+    if "/prices/snapshot" in path:
+        return "a_share_quote"
+    if "/tickers/list" in path:
+        return "instrument_list"
+    return path
+
+
 def _security_quotes(data: dict[str, Any]) -> list[SecurityQuote]:
     quoted_at = _timestamp_to_datetime(data.get("timestamp"))
     items = data.get("item")
@@ -98,12 +115,21 @@ def _security_quotes(data: dict[str, Any]) -> list[SecurityQuote]:
 
 
 class FuyaoAdapter(DataSourceAdapter):
-    def __init__(self, base_url: str, api_key: str, timeout_seconds: float) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        timeout_seconds: float,
+        request_concurrency: int = 4,
+        request_control: UpstreamRequestControl | None = None,
+    ) -> None:
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"X-api-key": api_key, "Accept": "application/json"},
             timeout=timeout_seconds,
         )
+        self._request_semaphore = asyncio.Semaphore(request_concurrency)
+        self._request_control = request_control
 
     async def __aenter__(self) -> "FuyaoAdapter":
         return self
@@ -111,7 +137,11 @@ class FuyaoAdapter(DataSourceAdapter):
     async def __aexit__(self, *_: object) -> None:
         await self._client.aclose()
 
-    async def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
+    async def _get_uncontrolled(
+        self,
+        path: str,
+        params: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         try:
             response = await self._client.get(path, params=params)
             response.raise_for_status()
@@ -136,6 +166,29 @@ class FuyaoAdapter(DataSourceAdapter):
         if not isinstance(data, dict):
             raise DataSourceError(5003, "数据源响应缺少业务数据", request_id)
         data["_request_id"] = request_id
+        return data
+
+    async def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
+        capability = _capability_for_path(path)
+        if self._request_control is not None:
+            await self._request_control.before_request(capability)
+        try:
+            async with self._request_semaphore:
+                data = await self._get_uncontrolled(path, params)
+        except DataSourceError as exc:
+            if self._request_control is not None:
+                await self._request_control.record_failure(capability, exc.code)
+            logger.warning(
+                "Fuyao request failed",
+                extra={
+                    "capability": capability,
+                    "error_code": exc.code,
+                    "request_id": exc.request_id,
+                },
+            )
+            raise
+        if self._request_control is not None:
+            await self._request_control.record_success(capability)
         return data
 
     async def get_index_quotes(self, thscodes: list[str]) -> IndexQuoteBatch:

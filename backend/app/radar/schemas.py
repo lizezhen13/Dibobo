@@ -4,14 +4,17 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-RadarSyncState = Literal[
-    "not_configured",
-    "not_synced",
-    "syncing",
+RadarAvailabilityState = Literal["not_configured", "ready", "unsupported"]
+RadarSearchState = Literal["queued", "running", "ready", "failed"]
+RadarSearchStage = Literal[
+    "queued",
+    "universe",
+    "quotes",
+    "valuation",
+    "fundamentals",
+    "finalizing",
     "ready",
-    "partial_failed",
     "failed",
-    "unsupported",
 ]
 RadarSortField = Literal[
     "latest",
@@ -44,28 +47,43 @@ class RadarFilters(BaseModel):
 
 
 class RadarStatusResponse(BaseModel):
-    state: RadarSyncState
+    state: RadarAvailabilityState
     data_source_name: str | None = None
     message: str | None = None
-    snapshot_id: uuid.UUID | None = None
-    snapshot_time: datetime | None = None
-    started_at: datetime | None = None
-    completed_at: datetime | None = None
-    instrument_count: int = 0
-    eligible_count: int = 0
-    incomplete_count: int = 0
-    excluded_count: int = 0
+    cache_instrument_count: int = 0
+    cache_updated_at: datetime | None = None
     total_market_cap_supported: bool = False
     can_search: bool = False
 
 
 class RadarSearchRequest(BaseModel):
-    search_id: uuid.UUID | None = None
     filters: RadarFilters = Field(default_factory=RadarFilters)
-    page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
     sort_by: RadarSortField = "dividend_yield_ttm"
     sort_direction: SortDirection = "desc"
+
+
+class RadarSearchQueuedResponse(BaseModel):
+    search_id: uuid.UUID
+    state: Literal["queued", "running", "ready"] = "queued"
+    message: str
+
+
+class RadarSearchStatusResponse(BaseModel):
+    search_id: uuid.UUID
+    state: RadarSearchState
+    stage: RadarSearchStage
+    message: str | None = None
+    processed_count: int = 0
+    candidate_count: int = 0
+    total_results: int = 0
+    incomplete_results: int = 0
+    stale_results: int = 0
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    expires_at: datetime
+    error_summary: str | None = None
 
 
 class RadarResultItem(BaseModel):
@@ -84,18 +102,20 @@ class RadarResultItem(BaseModel):
     metric_time: datetime | None = None
     quoted_at: datetime | None = None
     data_incomplete: bool = False
+    data_stale: bool = False
     missing_reasons: list[str] = Field(default_factory=list)
+    stale_fields: list[str] = Field(default_factory=list)
 
 
 class RadarSearchResponse(BaseModel):
     search_id: uuid.UUID
-    snapshot_id: uuid.UUID
-    snapshot_time: datetime
+    searched_at: datetime
     page: int
     page_size: int
     total: int
     pages: int
     incomplete_total: int
+    stale_total: int
     sort_by: RadarSortField
     sort_direction: SortDirection
     items: list[RadarResultItem]
@@ -116,9 +136,3 @@ class RadarQuotesResponse(BaseModel):
     refresh_seconds: int
     stale: bool = False
     items: list[RadarQuoteItem]
-
-
-class RadarSyncQueuedResponse(BaseModel):
-    snapshot_id: uuid.UUID
-    state: Literal["syncing"] = "syncing"
-    message: str

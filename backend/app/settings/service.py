@@ -4,12 +4,12 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.models import DataSource, User
+from app.core.models import DataSource, RadarIndicatorCache, RadarSearchJob, User
 from app.core.security import ApiKeyCipher
 from app.data_sources.base import DataSourceError
 from app.data_sources.fuyao import FUYAO_CAPABILITIES, FuyaoAdapter
@@ -146,6 +146,14 @@ async def update_source(
 
     if connectivity_changed:
         _reset_connection_status(source)
+        await db.execute(
+            delete(RadarSearchJob).where(RadarSearchJob.data_source_id == source.id)
+        )
+        await db.execute(
+            delete(RadarIndicatorCache).where(
+                RadarIndicatorCache.data_source_id == source.id
+            )
+        )
 
     try:
         await db.commit()
