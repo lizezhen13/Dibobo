@@ -1,9 +1,12 @@
 import {
   BookOpenText,
+  CalendarDays,
   ChevronRight,
   CircleUserRound,
   Gauge,
+  LineChart,
   LogOut,
+  Newspaper,
   Radar,
   Settings,
   WalletCards,
@@ -18,10 +21,13 @@ import { Button } from "./ui/button";
 
 const navigation = [
   { to: "/overview", label: "总览面板", icon: Gauge, number: "01" },
-  { to: "/holdings", label: "持仓管理", icon: WalletCards, number: "02" },
-  { to: "/radar", label: "红利雷达", icon: Radar, number: "03" },
-  { to: "/journals", label: "投资日记", icon: BookOpenText, number: "04" },
-  { to: "/settings", label: "系统设置", icon: Settings, number: "05" },
+  { to: "/news", label: "财经资讯", icon: Newspaper, number: "02" },
+  { to: "/holdings", label: "持仓管理", icon: WalletCards, number: "03" },
+  { to: "/review", label: "复盘分析", icon: LineChart, number: "04" },
+  { to: "/radar", label: "红利雷达", icon: Radar, number: "05" },
+  { to: "/calendar", label: "事件日历", icon: CalendarDays, number: "06" },
+  { to: "/journals", label: "投资日记", icon: BookOpenText, number: "07" },
+  { to: "/settings", label: "系统设置", icon: Settings, number: "08" },
 ] as const;
 
 export function AppShell() {

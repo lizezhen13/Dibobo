@@ -16,7 +16,6 @@ from app.core.models import DataSource, User
 from app.core.security import ApiKeyCipher
 from app.data_sources.base import DataSourceError
 from app.data_sources.domain import (
-    DragonTigerBatch,
     HotStockBatch,
     IndexCatalogBatch,
     IndexQuoteBatch,
@@ -28,14 +27,11 @@ from app.data_sources.fuyao import FuyaoAdapter
 from app.overview.schemas import (
     DataSourceSummary,
     DistributionBin,
-    DragonTigerItem,
-    DragonTigerSummary,
     HotStockItem,
     IndexCard,
     IndustryIndexItem,
     IndustrySnapshot,
     MarketBreadthSnapshot,
-    OverviewDragonTigerResponse,
     OverviewHotStocksResponse,
     OverviewIndicesResponse,
     OverviewIndustriesResponse,
@@ -52,7 +48,6 @@ FIXED_INDICES = (
 )
 
 HOT_STOCK_REFRESH_SECONDS = 31
-DRAGON_TIGER_REFRESH_SECONDS = 61
 MARKET_BREADTH_REFRESH_SECONDS = 47
 INDUSTRY_REFRESH_SECONDS = 83
 INDUSTRY_CATALOG_CACHE_SECONDS = 12 * 60 * 60
@@ -413,7 +408,7 @@ async def get_overview_hot_stocks(
         cache_namespace="hot-stocks",
         refresh_seconds=HOT_STOCK_REFRESH_SECONDS,
         model_type=HotStockBatch,
-        fetcher=lambda adapter, _: adapter.get_hot_stock_list("day"),
+        fetcher=lambda adapter, _: adapter.get_hot_stock_list("hour"),
     )
     batch = load.data
     return OverviewHotStocksResponse(
@@ -424,71 +419,6 @@ async def get_overview_hot_stocks(
         stale=load.stale,
         updated_at=batch.quoted_at if batch else None,
         items=[HotStockItem(**item.model_dump()) for item in batch.items] if batch else [],
-    )
-
-
-def _dragon_tiger_items(batch: DragonTigerBatch) -> list[DragonTigerItem]:
-    day_items = [item for item in batch.items if item.range_days == 1]
-    candidates = day_items or batch.items
-    by_code = {}
-    for item in candidates:
-        current = by_code.get(item.thscode)
-        if current is None or abs(item.net_value or 0) > abs(current.net_value or 0):
-            by_code[item.thscode] = item
-    ranked = sorted(by_code.values(), key=lambda item: abs(item.net_value or 0), reverse=True)
-    return [
-        DragonTigerItem(
-            thscode=item.thscode,
-            ticker=item.ticker,
-            name=item.name,
-            change=item.change,
-            net_value=item.net_value,
-            net_rate=item.net_rate,
-            hot_rank=item.hot_rank,
-            range_days=item.range_days,
-            org_net_value=item.org_net_value,
-            hot_money_net_value=item.hot_money_net_value,
-            limit_reason=item.limit_reason,
-        )
-        for item in ranked[:12]
-    ]
-
-
-async def get_overview_dragon_tiger(
-    db: AsyncSession,
-    cache: Redis,
-    user: User,
-    settings: Settings,
-) -> OverviewDragonTigerResponse:
-    load = await _load_module(
-        db,
-        cache,
-        user,
-        settings,
-        cache_namespace="dragon-tiger",
-        refresh_seconds=DRAGON_TIGER_REFRESH_SECONDS,
-        model_type=DragonTigerBatch,
-        fetcher=lambda adapter, _: adapter.get_dragon_tiger_list("all"),
-    )
-    batch = load.data
-    records = [item for item in batch.items if item.range_days == 1] if batch else []
-    if batch and not records:
-        records = batch.items
-    summary = DragonTigerSummary(
-        net_value=sum(item.net_value or 0 for item in records),
-        org_net_value=sum(item.org_net_value or 0 for item in records),
-        hot_money_net_value=sum(item.hot_money_net_value or 0 for item in records),
-    )
-    return OverviewDragonTigerResponse(
-        data_source=load.data_source,
-        market_status=load.market_status,
-        polling_enabled=load.polling_enabled,
-        refresh_seconds=load.refresh_seconds,
-        stale=load.stale,
-        updated_at=batch.quoted_at if batch else None,
-        trade_date=batch.trade_date if batch else None,
-        summary=summary,
-        items=_dragon_tiger_items(batch) if batch else [],
     )
 
 

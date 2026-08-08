@@ -65,32 +65,6 @@ class OverviewHotStocksResponse(OverviewModuleResponse):
     items: list[HotStockItem]
 
 
-class DragonTigerItem(BaseModel):
-    thscode: str
-    ticker: str
-    name: str
-    change: float | None = None
-    net_value: float | None = None
-    net_rate: float | None = None
-    hot_rank: int | None = None
-    range_days: int | None = None
-    org_net_value: float | None = None
-    hot_money_net_value: float | None = None
-    limit_reason: str | None = None
-
-
-class DragonTigerSummary(BaseModel):
-    net_value: float = 0
-    org_net_value: float = 0
-    hot_money_net_value: float = 0
-
-
-class OverviewDragonTigerResponse(OverviewModuleResponse):
-    trade_date: str | None = None
-    summary: DragonTigerSummary
-    items: list[DragonTigerItem]
-
-
 class IndustryIndexItem(BaseModel):
     thscode: str
     name: str

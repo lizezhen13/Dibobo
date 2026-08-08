@@ -9,8 +9,6 @@ from app.data_sources.base import DataSourceAdapter, DataSourceError, UpstreamRe
 from app.data_sources.domain import (
     DividendEvent,
     DividendEventResult,
-    DragonTigerBatch,
-    DragonTigerStock,
     HotStock,
     HotStockBatch,
     IndexCatalogBatch,
@@ -52,7 +50,6 @@ FUYAO_CAPABILITIES = {
     "industry_index": "supported",
     "market_breadth": "supported",
     "market_hot_list": "supported",
-    "dragon_tiger": "supported",
     "valuation_pb": "supported",
     "financial_roe": "supported",
     "corporate_action_dividend": "supported",
@@ -511,56 +508,6 @@ class FuyaoAdapter(DataSourceAdapter):
                 )
             )
         return HotStockBatch(
-            items=stocks,
-            quoted_at=_timestamp_to_datetime(data.get("timestamp")),
-            fetched_at=datetime.now(UTC),
-        )
-
-    async def get_dragon_tiger_list(
-        self,
-        board_type: Literal["all", "org", "hot_money"] = "all",
-    ) -> DragonTigerBatch:
-        data = await self._get(
-            "/api/a-share/special-data/dragon-tiger-list",
-            params={"board_type": board_type},
-        )
-        raw_items = data.get("stock_items")
-        items = raw_items if isinstance(raw_items, list) else []
-        stocks: list[DragonTigerStock] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            thscode = item.get("thscode")
-            ticker = item.get("ticker")
-            name = item.get("name")
-            if (
-                not isinstance(thscode, str)
-                or not isinstance(ticker, str)
-                or not isinstance(name, str)
-            ):
-                continue
-            limit_reason = item.get("limit_reason")
-            stocks.append(
-                DragonTigerStock(
-                    thscode=thscode.upper(),
-                    ticker=ticker,
-                    name=name,
-                    change=_optional_number(item.get("change")),
-                    net_value=_optional_number(item.get("net_value")),
-                    net_rate=_optional_number(item.get("net_rate")),
-                    hot_rank=_optional_integer(item.get("hot_rank")),
-                    buy_value=_optional_number(item.get("buy_value")),
-                    sell_value=_optional_number(item.get("sell_value")),
-                    limit_reason=limit_reason if isinstance(limit_reason, str) else None,
-                    range_days=_optional_integer(item.get("range_days")),
-                    org_net_value=_optional_number(item.get("org_net_value")),
-                    hot_money_net_value=_optional_number(item.get("hot_money_net_value")),
-                )
-            )
-        return DragonTigerBatch(
-            trade_date=data.get("trade_date") if isinstance(data.get("trade_date"), str) else None,
-            count=_optional_integer(data.get("count")) or 0,
-            stock_count=_optional_integer(data.get("stock_count")) or 0,
             items=stocks,
             quoted_at=_timestamp_to_datetime(data.get("timestamp")),
             fetched_at=datetime.now(UTC),

@@ -25,8 +25,8 @@ export function IndustryDetailCard({
 
   return (
     <OverviewPanel
-      title="行业明细"
-      label="INDUSTRY DETAIL"
+      title="行业板块"
+      label="INDUSTRY SECTOR"
       updatedAt={data?.updated_at}
       stale={data?.stale}
       isFetching={query.isFetching}

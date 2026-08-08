@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "../../lib/api";
 import type {
-  OverviewDragonTiger,
   OverviewHotStocks,
   OverviewIndices,
   OverviewIndustries,
@@ -15,7 +14,6 @@ export const overviewQueryKey = ["overview"] as const;
 const initialDelay = {
   indices: 0,
   hotStocks: 650,
-  dragonTiger: 1450,
   marketBreadth: 2450,
   industries: 3600,
 } as const;
@@ -74,14 +72,6 @@ export function useHotStocksQuery() {
     "hot-stocks",
     "/api/overview/hot-stocks",
     initialDelay.hotStocks,
-  );
-}
-
-export function useDragonTigerQuery() {
-  return useOverviewModule<OverviewDragonTiger>(
-    "dragon-tiger",
-    "/api/overview/dragon-tiger",
-    initialDelay.dragonTiger,
   );
 }
 

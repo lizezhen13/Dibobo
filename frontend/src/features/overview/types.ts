@@ -62,30 +62,6 @@ export interface OverviewHotStocks extends OverviewModuleData {
   items: HotStockItem[];
 }
 
-export interface DragonTigerItem {
-  thscode: string;
-  ticker: string;
-  name: string;
-  change: number | null;
-  net_value: number | null;
-  net_rate: number | null;
-  hot_rank: number | null;
-  range_days: number | null;
-  org_net_value: number | null;
-  hot_money_net_value: number | null;
-  limit_reason: string | null;
-}
-
-export interface OverviewDragonTiger extends OverviewModuleData {
-  trade_date: string | null;
-  summary: {
-    net_value: number;
-    org_net_value: number;
-    hot_money_net_value: number;
-  };
-  items: DragonTigerItem[];
-}
-
 export interface IndustryIndexItem {
   thscode: string;
   name: string;

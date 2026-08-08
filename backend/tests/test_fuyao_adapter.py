@@ -223,51 +223,6 @@ async def test_fuyao_hot_stock_list_mapping() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fuyao_dragon_tiger_mapping() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/a-share/special-data/dragon-tiger-list"
-        assert request.url.params["board_type"] == "all"
-        return httpx.Response(
-            200,
-            json={
-                "code": 0,
-                "message": "success",
-                "data": {
-                    "timestamp": 1782921600000,
-                    "trade_date": "2026-07-01",
-                    "count": 1,
-                    "stock_count": 1,
-                    "stock_items": [
-                        {
-                            "thscode": "002407.SZ",
-                            "ticker": "002407",
-                            "name": "多氟多",
-                            "change": 0.09994,
-                            "net_value": 1786253128.23,
-                            "org_net_value": 300000000,
-                            "hot_money_net_value": 180000000,
-                            "range_days": 1,
-                        }
-                    ],
-                },
-            },
-        )
-
-    adapter = FuyaoAdapter("https://example.test", "secret", 5)
-    await adapter._client.aclose()
-    adapter._client = httpx.AsyncClient(
-        base_url="https://example.test",
-        transport=httpx.MockTransport(handler),
-    )
-    async with adapter:
-        result = await adapter.get_dragon_tiger_list()
-
-    assert result.trade_date == "2026-07-01"
-    assert result.items[0].change == 0.09994
-    assert result.items[0].net_value == 1786253128.23
-
-
-@pytest.mark.asyncio
 async def test_fuyao_index_catalog_mapping() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/api/a-share-index/catalog/ths-index-list"

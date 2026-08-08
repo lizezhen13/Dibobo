@@ -3,7 +3,6 @@ from typing import Literal, Protocol
 
 from app.data_sources.domain import (
     DividendEventResult,
-    DragonTigerBatch,
     HotStockBatch,
     IndexCatalogBatch,
     IndexQuoteBatch,
@@ -85,13 +84,6 @@ class DataSourceAdapter(ABC):
         self,
         period: Literal["day", "hour"] = "day",
     ) -> HotStockBatch:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_dragon_tiger_list(
-        self,
-        board_type: Literal["all", "org", "hot_money"] = "all",
-    ) -> DragonTigerBatch:
         raise NotImplementedError
 
     @abstractmethod

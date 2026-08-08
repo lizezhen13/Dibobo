@@ -51,29 +51,32 @@ export function MarketBreadthCard({
       ) : data.bins.length === 0 ? (
         <PanelState kind="empty" />
       ) : (
-        <div className="flex h-full min-h-0 flex-col px-5 pb-4 pt-3">
-          <div className="min-h-0 flex-1 overflow-x-auto">
-            <div className="grid h-full min-h-[170px] min-w-[650px] grid-cols-11 gap-2 border-b border-border/70 px-1">
+        <div className="flex h-full min-h-0 flex-col px-4 pb-4 pt-2">
+          <div className="min-h-0 flex-1">
+            {/* 柱状分布图自适应卡片宽度，无需横向滚动 */}
+            <div className="grid h-full min-h-[170px] grid-cols-11 gap-1 border-b border-border/70">
               {data.bins.map((bin, index) => {
-                const height = bin.count === 0 ? 2 : Math.max(5, (bin.count / maxCount) * 100);
+                // 柱高上限留到 88%，保证最高柱与顶部数字之间有明显空隙
+                const height = bin.count === 0 ? 2 : Math.max(5, (bin.count / maxCount) * 88);
                 return (
                   <div key={bin.key} className="grid min-w-0 grid-rows-[22px_minmax(90px,1fr)_28px]">
                     <span
                       className={cn(
-                        "self-end text-center font-mono text-[11px] tracking-normal text-muted-foreground",
+                        "self-end truncate text-center font-mono text-[11px] tracking-tight text-muted-foreground",
                         index < 5 && "text-market-down",
                         index > 5 && "text-market-up",
                       )}
                     >
                       {bin.count.toLocaleString("zh-CN")}
                     </span>
-                    <div className="flex min-h-0 items-end justify-center px-1.5">
+                    {/* 底部留白，加大柱子与刻度标签之间的空隙 */}
+                    <div className="flex min-h-0 items-end justify-center px-0.5 pb-2.5">
                       <div
                         className={cn("w-full max-w-10 rounded-t-[3px] opacity-90", binTone(index, data.bins.length))}
                         style={{ height: `${height}%` }}
                       />
                     </div>
-                    <span className="self-center whitespace-nowrap text-center font-mono text-[10px] tracking-normal text-muted-foreground/55">
+                    <span className="self-center truncate whitespace-nowrap text-center font-mono text-[10px] tracking-tight text-muted-foreground/55">
                       {bin.label}
                     </span>
                   </div>
@@ -100,24 +103,35 @@ export function MarketBreadthCard({
                 title={`上涨 ${data.up_count} 家`}
               />
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-2 sm:grid-cols-6">
-              {[
-                ["下跌", data.down_count, "text-market-down"],
-                ["平盘", data.flat_count, "text-muted-foreground"],
-                ["上涨", data.up_count, "text-market-up"],
-                ["≤ -9.8%", data.strong_down_count, "text-market-down"],
-                ["≥ 9.8%", data.strong_up_count, "text-market-up"],
-              ].map(([label, value, tone]) => (
-                <div key={label as string} className="min-w-0">
+            {/* 底部指标：上涨/下跌/平盘·涨停·跌停/全市场成交额，分格展示 */}
+            <div className="mt-3 grid grid-cols-4 divide-x divide-border/70 overflow-hidden rounded-md border border-border/70 bg-muted/20">
+              {(
+                [
+                  ["上涨", data.up_count, "text-market-up"],
+                  ["下跌", data.down_count, "text-market-down"],
+                ] as const
+              ).map(([label, value, tone]) => (
+                <div key={label} className="min-w-0 px-3 py-2.5">
                   <p className="truncate text-[10px] text-muted-foreground/55">{label}</p>
-                  <p className={cn("mt-0.5 truncate font-mono text-[13px] font-medium tracking-normal", tone as string)}>
-                    {(value as number).toLocaleString("zh-CN")}
+                  <p className={cn("mt-1 truncate font-mono text-[15px] font-semibold tracking-normal", tone)}>
+                    {value.toLocaleString("zh-CN")}
+                    <span className="ml-1 text-[10px] font-normal text-muted-foreground/50">家</span>
                   </p>
                 </div>
               ))}
-              <div className="min-w-0 text-right">
-                <p className="truncate text-[10px] text-muted-foreground/55">成交额</p>
-                <p className="mt-0.5 truncate font-mono text-[11px] tracking-normal text-foreground/75">
+              <div className="min-w-0 px-3 py-2.5">
+                <p className="truncate text-[10px] text-muted-foreground/55">涨停 / 平盘 / 跌停</p>
+                <p className="mt-1 truncate font-mono text-[15px] font-semibold tracking-normal">
+                  <span className="text-market-up">{data.strong_up_count.toLocaleString("zh-CN")}</span>
+                  <span className="mx-1 text-muted-foreground/40">/</span>
+                  <span className="text-muted-foreground">{data.flat_count.toLocaleString("zh-CN")}</span>
+                  <span className="mx-1 text-muted-foreground/40">/</span>
+                  <span className="text-market-down">{data.strong_down_count.toLocaleString("zh-CN")}</span>
+                </p>
+              </div>
+              <div className="min-w-0 px-3 py-2.5">
+                <p className="truncate text-[10px] text-muted-foreground/55">全市场成交额</p>
+                <p className="mt-1 truncate font-mono text-[15px] font-semibold tracking-normal text-foreground/85">
                   {formatMoney(data.turnover)}
                 </p>
               </div>

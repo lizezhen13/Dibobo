@@ -31,7 +31,7 @@ export function HotStocksCard({
   return (
     <OverviewPanel
       title="市场人气榜"
-      label="24H HOT LIST"
+      label="HOUR HOT LIST"
       updatedAt={data?.updated_at}
       stale={data?.stale}
       isFetching={query.isFetching}
@@ -56,7 +56,7 @@ export function HotStocksCard({
             <span className="text-right">趋势</span>
           </div>
           <div className="min-h-0 flex-1 divide-y divide-border/65 overflow-y-auto">
-            {data.items.slice(0, 10).map((item) => {
+            {data.items.slice(0, 30).map((item) => {
               const TrendIcon = trendIcon[item.rank_trend];
               const trendTone =
                 item.rank_trend === "up"

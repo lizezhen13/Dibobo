@@ -62,7 +62,7 @@ export function IndicesPanel({
           </Button>
         </div>
       }
-      className="min-h-[220px]"
+      className="min-h-[190px]"
     >
       {query.isPending ? (
         <PanelState kind="loading" className="min-h-[166px]" />
@@ -73,7 +73,7 @@ export function IndicesPanel({
       ) : data.data_source.state !== "ready" ? (
         <PanelState kind="unavailable" message={data.data_source.message} className="min-h-[166px]" />
       ) : (
-        <div className="grid h-full grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4">
+        <div className="grid grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4">
           {data.indices.map((index, ordinal) => (
             <IndexCard key={index.thscode} data={index} ordinal={ordinal + 1} />
           ))}

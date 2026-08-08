@@ -14,7 +14,7 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
         : ArrowDownRight;
 
   return (
-    <article className="relative min-w-0 border-b border-border/80 p-4 last:border-b-0 min-[900px]:border-r min-[900px]:[&:nth-child(even)]:border-r-0 min-[900px]:[&:nth-last-child(-n+2)]:border-b-0 min-[1400px]:border-b-0 min-[1400px]:border-r min-[1400px]:[&:nth-child(even)]:border-r min-[1400px]:last:border-r-0">
+    <article className="relative min-w-0 border-b border-border/80 px-3.5 pt-2.5 pb-1.5 last:border-b-0 min-[900px]:border-r min-[900px]:[&:nth-child(even)]:border-r-0 min-[900px]:[&:nth-last-child(-n+2)]:border-b-0 min-[1400px]:border-b-0 min-[1400px]:border-r min-[1400px]:[&:nth-child(even)]:border-r min-[1400px]:last:border-r-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -22,10 +22,10 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
               {String(ordinal).padStart(2, "0")}
             </span>
             <h3 className="truncate text-[15px] font-semibold tracking-normal text-foreground">{data.name}</h3>
+            <span className="shrink-0 font-mono text-[11px] tracking-normal text-muted-foreground/55">
+              {data.thscode}
+            </span>
           </div>
-          <p className="mt-0.5 font-mono text-[11px] tracking-normal text-muted-foreground/55">
-            {data.thscode}
-          </p>
         </div>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/65">
           <span
@@ -38,10 +38,10 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
         </span>
       </div>
 
-      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
+      <div className="mt-3 flex min-w-0 items-end justify-between gap-3">
         <p
           className={cn(
-            "min-w-0 truncate font-mono text-[28px] font-medium leading-none tracking-normal",
+            "min-w-0 truncate font-mono text-[26px] font-medium leading-none tracking-normal",
             data.latest === null ? "text-muted-foreground" : movement,
           )}
         >
@@ -53,7 +53,7 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2.5 border-t border-border/70 pt-3">
+      <div className="mt-2.5 grid grid-cols-2 gap-x-5 gap-y-1.5 border-t border-border/70 pt-2">
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <span className="shrink-0 text-[11px] text-muted-foreground/60">涨跌额</span>
           <span className={cn("truncate font-mono text-xs tracking-normal", movement)}>
