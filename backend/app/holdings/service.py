@@ -7,7 +7,6 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +15,13 @@ from app.core.config import Settings
 from app.core.models import DataSource, Holding, User
 from app.core.security import ApiKeyCipher
 from app.data_sources.base import DataSourceError
-from app.data_sources.domain import AssetType, Instrument, MarketStatus, SecurityQuote, SecurityQuoteBatch
+from app.data_sources.domain import (
+    AssetType,
+    Instrument,
+    MarketStatus,
+    SecurityQuote,
+    SecurityQuoteBatch,
+)
 from app.data_sources.fuyao import FuyaoAdapter
 from app.holdings.schemas import (
     HoldingCreate,
@@ -167,10 +172,12 @@ async def get_owned_holding(
     db: AsyncSession,
     user: User,
     holding_id: uuid.UUID,
+    portfolio_id: uuid.UUID | None = None,
 ) -> Holding:
-    holding = await db.scalar(
-        select(Holding).where(Holding.id == holding_id, Holding.user_id == user.id)
-    )
+    filters = [Holding.id == holding_id, Holding.user_id == user.id]
+    if portfolio_id is not None:
+        filters.append(Holding.portfolio_id == portfolio_id)
+    holding = await db.scalar(select(Holding).where(*filters))
     if holding is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="持仓记录不存在")
     return holding
@@ -181,10 +188,17 @@ async def create_holding(
     user: User,
     payload: HoldingCreate,
     instrument: Instrument,
+    portfolio_id: uuid.UUID | None = None,
 ) -> Holding:
+    if portfolio_id is None:
+        from app.portfolios.service import ensure_default_portfolio
+
+        portfolio_id = (await ensure_default_portfolio(db, user)).id
+
     existing = await db.scalar(
         select(Holding).where(
             Holding.user_id == user.id,
+            Holding.portfolio_id == portfolio_id,
             Holding.thscode == instrument.thscode,
             Holding.status == "open",
         )
@@ -197,6 +211,7 @@ async def create_holding(
 
     holding = Holding(
         user_id=user.id,
+        portfolio_id=portfolio_id,
         thscode=instrument.thscode,
         ticker=instrument.ticker,
         name=instrument.name,
@@ -230,8 +245,9 @@ async def update_holding(
     user: User,
     holding_id: uuid.UUID,
     payload: HoldingUpdate,
+    portfolio_id: uuid.UUID | None = None,
 ) -> Holding:
-    holding = await get_owned_holding(db, user, holding_id)
+    holding = await get_owned_holding(db, user, holding_id, portfolio_id=portfolio_id)
     if holding.status == "closed":
         if payload.model_fields_set - {"note"}:
             raise HTTPException(
@@ -265,8 +281,9 @@ async def delete_holding(
     db: AsyncSession,
     user: User,
     holding_id: uuid.UUID,
+    portfolio_id: uuid.UUID | None = None,
 ) -> None:
-    holding = await get_owned_holding(db, user, holding_id)
+    holding = await get_owned_holding(db, user, holding_id, portfolio_id=portfolio_id)
     await db.delete(holding)
     await db.commit()
     logger.info(
@@ -520,9 +537,12 @@ async def list_holdings(
     asset_type: AssetType | None = None,
     opened_from: date | None = None,
     opened_to: date | None = None,
+    portfolio_id: uuid.UUID | None = None,
 ) -> HoldingsListResponse:
     # 构造基础查询条件
     where_clauses = [Holding.user_id == user.id, Holding.status == holding_status]
+    if portfolio_id is not None:
+        where_clauses.append(Holding.portfolio_id == portfolio_id)
 
     # 代码 / 名称模糊匹配
     if keyword:
@@ -576,11 +596,15 @@ async def get_holding_summary(
     cache: Redis,
     user: User,
     settings: Settings,
+    portfolio_id: uuid.UUID | None = None,
 ) -> HoldingSummaryResponse:
+    where_clauses = [Holding.user_id == user.id, Holding.status == "open"]
+    if portfolio_id is not None:
+        where_clauses.append(Holding.portfolio_id == portfolio_id)
     holdings = list(
         (
             await db.scalars(
-                select(Holding).where(Holding.user_id == user.id, Holding.status == "open")
+                select(Holding).where(*where_clauses)
             )
         ).all()
     )

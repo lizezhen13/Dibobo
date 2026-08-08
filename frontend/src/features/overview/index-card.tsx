@@ -45,7 +45,7 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
             data.latest === null ? "text-muted-foreground" : movement,
           )}
         >
-          {formatPoint(data.latest)}
+          {formatPoint(data.latest, { group: false })}
         </p>
         <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[13px] tracking-normal", movement)}>
           <DirectionIcon size={14} />
@@ -57,7 +57,7 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <span className="shrink-0 text-[11px] text-muted-foreground/60">涨跌额</span>
           <span className={cn("truncate font-mono text-xs tracking-normal", movement)}>
-            {formatSignedPoint(data.change)}
+            {formatSignedPoint(data.change, { group: false })}
           </span>
         </div>
         <div className="flex min-w-0 items-baseline justify-between gap-2">
@@ -69,13 +69,13 @@ export function IndexCard({ data, ordinal }: { data: IndexCardData; ordinal: num
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <span className="shrink-0 text-[11px] text-muted-foreground/60">最低</span>
           <span className="truncate font-mono text-xs tracking-normal text-foreground/80">
-            {formatPoint(data.low)}
+            {formatPoint(data.low, { group: false })}
           </span>
         </div>
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <span className="shrink-0 text-[11px] text-muted-foreground/60">最高</span>
           <span className="truncate font-mono text-xs tracking-normal text-foreground/80">
-            {formatPoint(data.high)}
+            {formatPoint(data.high, { group: false })}
           </span>
         </div>
       </div>

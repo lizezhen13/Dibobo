@@ -9,6 +9,21 @@ export interface HoldingsFilters {
   opened_to: string;
 }
 
+export interface Portfolio {
+  id: string;
+  name: string;
+  note: string | null;
+  is_default: boolean;
+  sort_order: number;
+  open_holding_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioList {
+  items: Portfolio[];
+}
+
 export interface DataSourceSummary {
   state: "ready" | "not_configured" | "authentication_failed" | "rate_limited" | "unavailable";
   name: string | null;
@@ -85,5 +100,16 @@ export interface HoldingUpdatePayload {
   average_cost?: number;
   quantity?: number;
   opened_on?: string;
+  note?: string | null;
+}
+
+export interface PortfolioCreatePayload {
+  name: string;
+  note: string | null;
+  is_default: boolean;
+}
+
+export interface PortfolioUpdatePayload {
+  name?: string;
   note?: string | null;
 }

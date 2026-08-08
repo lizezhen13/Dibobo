@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, LoaderCircle, Search, ShieldAlert } from "lucide-react";
+import { Check, LoaderCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -53,6 +53,7 @@ interface HoldingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   holding: Holding | null;
+  portfolioId?: string;
 }
 
 function todayInShanghai(): string {
@@ -64,9 +65,9 @@ function todayInShanghai(): string {
   }).format(new Date());
 }
 
-export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProps) {
-  const createMutation = useCreateHoldingMutation();
-  const updateMutation = useUpdateHoldingMutation();
+export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: HoldingDialogProps) {
+  const createMutation = useCreateHoldingMutation(portfolioId);
+  const updateMutation = useUpdateHoldingMutation(portfolioId);
   const [instrumentQuery, setInstrumentQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument | null>(null);
@@ -112,7 +113,7 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
     });
     createMutation.reset();
     updateMutation.reset();
-  }, [open, holding]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, holding, portfolioId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -307,13 +308,6 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
                 />
               </Field>
 
-              {!isClosed && (
-                <div className="flex gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
-                  <ShieldAlert className="mt-0.5 shrink-0 text-primary/90" size={16} />
-                  V1 只维护持仓快照，不录入逐笔交易、卖出价格、佣金或已实现盈亏。
-                </div>
-              )}
-
               {errorMessage && (
                 <div role="alert" className="rounded-lg border-l-4 border-market-up bg-market-up/6 px-4 py-3 text-[0.9rem] text-danger">
                   {errorMessage}
@@ -322,10 +316,10 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+              <Button type="button" variant="ghost" className="!text-[12px]" onClick={() => onOpenChange(false)} disabled={isPending}>
                 取消
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" className="!text-[12px]" disabled={isPending}>
                 {isPending && <LoaderCircle className="animate-spin" size={15} />}
                 {isClosed ? "保存备注" : isEditing ? "保存修改" : "保存持仓"}
               </Button>
@@ -343,8 +337,9 @@ export function HoldingDialog({ open, onOpenChange, holding }: HoldingDialogProp
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>返回修改</AlertDialogCancel>
+            <AlertDialogCancel className="!text-[12px]" disabled={isPending}>返回修改</AlertDialogCancel>
             <AlertDialogAction
+              className="!text-[12px]"
               disabled={isPending}
               onClick={(event) => {
                 event.preventDefault();

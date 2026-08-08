@@ -9,6 +9,7 @@ import {
   Newspaper,
   Radar,
   Settings,
+  Star,
   WalletCards,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -22,12 +23,13 @@ import { Button } from "./ui/button";
 const navigation = [
   { to: "/overview", label: "总览面板", icon: Gauge, number: "01" },
   { to: "/news", label: "财经资讯", icon: Newspaper, number: "02" },
-  { to: "/holdings", label: "持仓管理", icon: WalletCards, number: "03" },
-  { to: "/review", label: "复盘分析", icon: LineChart, number: "04" },
-  { to: "/radar", label: "红利雷达", icon: Radar, number: "05" },
-  { to: "/calendar", label: "事件日历", icon: CalendarDays, number: "06" },
-  { to: "/journals", label: "投资日记", icon: BookOpenText, number: "07" },
-  { to: "/settings", label: "系统设置", icon: Settings, number: "08" },
+  { to: "/watchlist", label: "自选管理", icon: Star, number: "03" },
+  { to: "/portfolios", label: "投资组合", icon: WalletCards, number: "04" },
+  { to: "/review", label: "复盘分析", icon: LineChart, number: "05" },
+  { to: "/radar", label: "红利雷达", icon: Radar, number: "06" },
+  { to: "/calendar", label: "事件日历", icon: CalendarDays, number: "07" },
+  { to: "/journals", label: "投资日记", icon: BookOpenText, number: "08" },
+  { to: "/settings", label: "系统设置", icon: Settings, number: "09" },
 ] as const;
 
 export function AppShell() {

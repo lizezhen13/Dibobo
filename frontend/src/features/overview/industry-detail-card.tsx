@@ -83,7 +83,7 @@ export function IndustryDetailCard({
                       </p>
                     </td>
                     <td className="truncate px-2 py-2 text-right font-mono text-xs tracking-normal text-foreground/78">
-                      {formatPoint(item.latest)}
+                      {formatPoint(item.latest, { group: false })}
                     </td>
                     <td className={cn("truncate px-2 py-2 text-right font-mono text-xs tracking-normal", movementClass(item.change_percent))}>
                       {formatPercent(item.change_percent)}

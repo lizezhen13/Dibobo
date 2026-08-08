@@ -191,6 +191,7 @@ async def test_holding_formulas_cover_missing_quote_and_zero_cost(db: AsyncSessi
     )
     zero_cost = Holding(
         user_id=user.id,
+        portfolio_id=priced.portfolio_id,
         thscode="000001.SZ",
         ticker="000001",
         name="平安银行",

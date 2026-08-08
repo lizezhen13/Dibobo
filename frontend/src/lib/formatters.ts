@@ -1,16 +1,17 @@
 export const MISSING_VALUE = "暂无数据";
 
-export function formatPoint(value: number | null): string {
+export function formatPoint(value: number | null, options?: { group?: boolean }): string {
   if (value === null) return MISSING_VALUE;
   return new Intl.NumberFormat("zh-CN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
+    useGrouping: options?.group ?? true,
   }).format(value);
 }
 
-export function formatSignedPoint(value: number | null): string {
+export function formatSignedPoint(value: number | null, options?: { group?: boolean }): string {
   if (value === null) return MISSING_VALUE;
-  const formatted = formatPoint(Math.abs(value));
+  const formatted = formatPoint(Math.abs(value), options);
   if (value > 0) return `+${formatted}`;
   if (value < 0) return `-${formatted}`;
   return formatted;

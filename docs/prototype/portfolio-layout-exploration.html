@@ -1,0 +1,2251 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>投资组合 · 页面布局探索</title>
+    <meta
+      name="description"
+      content="Dibobo 投资组合功能的四种页面布局方向探索"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #111419;
+        --ink-soft: #1b2027;
+        --muted: #8e969f;
+        --paper: #f3eee6;
+        --paper-deep: #e8e0d4;
+        --paper-line: #d5cbbd;
+        --orange: #ff6a3d;
+        --orange-dark: #db4c25;
+        --acid: #d9ff62;
+        --mint: #83e0cc;
+        --sky: #8ab8ff;
+        --red: #f15b45;
+        --green: #35c08e;
+        --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+        --sans: "Manrope", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        --serif: "Noto Serif SC", Georgia, serif;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: #f6f3ee;
+        background: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      a {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .atlas {
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 88% 4%, rgba(255, 106, 61, 0.13), transparent 26rem),
+          linear-gradient(180deg, #111419 0%, #0d0f12 100%);
+      }
+
+      .page-shell {
+        width: min(1480px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+        gap: 56px;
+        align-items: end;
+        padding: 68px 0 46px;
+      }
+
+      .eyebrow,
+      .section-kicker,
+      .board-index,
+      .mini-label,
+      .mono {
+        font-family: var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--acid);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .eyebrow::before {
+        width: 28px;
+        height: 1px;
+        content: "";
+        background: var(--acid);
+      }
+
+      .hero h1 {
+        max-width: 760px;
+        margin: 20px 0 18px;
+        font-size: clamp(42px, 7vw, 92px);
+        line-height: 0.97;
+        letter-spacing: -0.08em;
+        font-weight: 800;
+      }
+
+      .hero h1 em {
+        color: var(--orange);
+        font-family: var(--serif);
+        font-style: normal;
+        font-weight: 700;
+        letter-spacing: -0.12em;
+      }
+
+      .hero-copy {
+        max-width: 630px;
+        margin: 0;
+        color: #a7adb3;
+        font-size: 15px;
+        line-height: 1.85;
+      }
+
+      .decision-panel {
+        position: relative;
+        padding: 22px 24px 24px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: var(--shadow);
+      }
+
+      .decision-panel::before {
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        width: 58px;
+        height: 3px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .decision-caption {
+        display: block;
+        margin-bottom: 14px;
+        color: #939aa2;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .decision-value {
+        display: block;
+        min-height: 30px;
+        color: #fffaf4;
+        font-family: var(--serif);
+        font-size: 25px;
+        line-height: 1.25;
+      }
+
+      .decision-meta {
+        display: block;
+        margin-top: 9px;
+        color: #8d959f;
+        font-size: 12px;
+      }
+
+      .reset-button {
+        margin-top: 20px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #cdd1d4;
+        background: transparent;
+        font-size: 12px;
+        transition: 180ms ease;
+      }
+
+      .reset-button:hover {
+        border-color: var(--orange);
+        color: #fff;
+      }
+
+      .layout-nav {
+        position: sticky;
+        z-index: 10;
+        top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        background: rgba(17, 20, 25, 0.86);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(18px);
+      }
+
+      .layout-nav a {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 14px 16px;
+        color: #a0a7ad;
+        border: 1px solid transparent;
+        transition: 180ms ease;
+      }
+
+      .layout-nav a:hover,
+      .layout-nav a.active {
+        color: #fff;
+        border-color: rgba(255, 106, 61, 0.5);
+        background: rgba(255, 106, 61, 0.09);
+      }
+
+      .layout-nav strong {
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .layout-nav span {
+        font-size: 13px;
+      }
+
+      .layout-nav small {
+        color: #737b83;
+        font-size: 11px;
+      }
+
+      .exploration-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 35px 0 22px;
+        color: #7f878f;
+        font-size: 12px;
+      }
+
+      .exploration-note span:last-child {
+        color: #5e666e;
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .layout-stack {
+        display: grid;
+        gap: 36px;
+        padding-bottom: 80px;
+      }
+
+      .layout-board {
+        scroll-margin-top: 98px;
+        position: relative;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: #171b21;
+        box-shadow: 0 32px 100px rgba(0, 0, 0, 0.28);
+      }
+
+      .layout-board::after {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 105px;
+        height: 5px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .board-meta {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 25px;
+      }
+
+      .board-meta-left {
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+      }
+
+      .board-index {
+        min-width: 54px;
+        padding-top: 4px;
+        color: var(--orange);
+        font-size: 11px;
+      }
+
+      .board-meta h2 {
+        margin: 0;
+        color: #fffaf4;
+        font-size: 20px;
+        letter-spacing: -0.04em;
+      }
+
+      .board-meta p {
+        max-width: 660px;
+        margin: 7px 0 0;
+        color: #899199;
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .choose-layout {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #e9e4dc;
+        background: transparent;
+        font-size: 12px;
+        transition: 180ms ease;
+      }
+
+      .choose-layout::after {
+        width: 6px;
+        height: 6px;
+        content: "";
+        border: 1px solid currentColor;
+        border-radius: 50%;
+      }
+
+      .choose-layout:hover,
+      .choose-layout.selected {
+        border-color: var(--orange);
+        color: #111419;
+        background: var(--orange);
+      }
+
+      .choose-layout.selected::after {
+        background: currentColor;
+      }
+
+      .mock-window {
+        min-height: 540px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .mock-window-bar {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 34px;
+        padding: 0 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #69717a;
+        background: rgba(255, 255, 255, 0.035);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .window-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #5f6770;
+      }
+
+      .window-dot:first-child {
+        background: var(--orange);
+      }
+
+      /* Direction A — command deck */
+
+      .board-a {
+        background:
+          linear-gradient(135deg, rgba(255, 106, 61, 0.07), transparent 27%),
+          #171b21;
+      }
+
+      .mock-a {
+        display: grid;
+        grid-template-columns: 205px minmax(0, 1fr);
+        min-height: 506px;
+        color: #e9eceb;
+        background: #0f1216;
+      }
+
+      .a-sidebar {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 22px 17px 18px;
+        border-right: 1px solid #2a3037;
+        background: #14181d;
+      }
+
+      .a-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #f5f4ef;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -0.07em;
+      }
+
+      .a-brand small {
+        margin-left: 3px;
+        color: #6f7780;
+        font-family: var(--mono);
+        font-size: 7px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+      }
+
+      .brand-mark {
+        display: inline-block;
+        width: 17px;
+        height: 17px;
+        border-radius: 5px 5px 5px 1px;
+        background: var(--orange);
+        transform: rotate(-9deg);
+      }
+
+      .a-menu-label {
+        margin: 40px 10px 12px;
+        color: #5f6871;
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.12em;
+      }
+
+      .a-menu {
+        display: grid;
+        gap: 3px;
+      }
+
+      .a-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 10px;
+        color: #899199;
+        font-size: 11px;
+      }
+
+      .a-menu-item.active {
+        color: #fff;
+        background: #242a31;
+      }
+
+      .a-menu-icon {
+        width: 13px;
+        height: 13px;
+        border: 1px solid currentColor;
+        opacity: 0.75;
+      }
+
+      .a-sidebar-bottom {
+        display: grid;
+        gap: 5px;
+        margin-top: auto;
+        padding: 13px 10px;
+        border-top: 1px solid #2a3037;
+        color: #667078;
+        font-size: 9px;
+      }
+
+      .a-sidebar-bottom strong {
+        color: var(--green);
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+      }
+
+      .a-content {
+        min-width: 0;
+        padding: 22px 24px 28px;
+      }
+
+      .mock-topline,
+      .a-intro,
+      .a-table-head,
+      .a-row,
+      .a-insight-head,
+      .b-top,
+      .b-card-head,
+      .b-total,
+      .c-bar,
+      .c-panel-head,
+      .d-running,
+      .d-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .mock-topline {
+        padding-bottom: 16px;
+        border-bottom: 1px solid #292f36;
+        color: #f4f5f2;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .mock-topline small {
+        margin-left: 8px;
+        color: #6e7780;
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 400;
+      }
+
+      .mock-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .mock-action {
+        padding: 6px 9px;
+        border: 1px solid #30363d;
+        color: #8e969d;
+        background: transparent;
+        font-size: 9px;
+      }
+
+      .a-intro {
+        align-items: flex-end;
+        padding: 27px 0 23px;
+      }
+
+      .a-intro .mini-label {
+        color: var(--orange);
+        font-size: 8px;
+      }
+
+      .a-intro h3 {
+        margin: 8px 0 5px;
+        color: #fff;
+        font-size: 27px;
+        letter-spacing: -0.07em;
+      }
+
+      .a-intro p {
+        margin: 0;
+        color: #7e8790;
+        font-size: 10px;
+      }
+
+      .a-performance {
+        text-align: right;
+      }
+
+      .a-performance strong {
+        display: block;
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 24px;
+        font-weight: 500;
+        letter-spacing: -0.08em;
+      }
+
+      .a-performance span {
+        color: #7b848d;
+        font-size: 9px;
+      }
+
+      .a-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 19px;
+      }
+
+      .a-metric {
+        padding: 14px;
+        border: 1px solid #2a3037;
+        background: #171c21;
+      }
+
+      .a-metric span {
+        display: block;
+        margin-bottom: 8px;
+        color: #7a838c;
+        font-size: 9px;
+      }
+
+      .a-metric strong {
+        color: #f4f3ee;
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .a-body-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(170px, 0.8fr);
+        gap: 12px;
+      }
+
+      .a-table,
+      .a-insight {
+        min-width: 0;
+        border: 1px solid #2a3037;
+        background: #14181d;
+      }
+
+      .a-table-head {
+        padding: 13px 14px;
+        border-bottom: 1px solid #2a3037;
+        color: #e9eceb;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .a-table-head span {
+        color: #68717a;
+        font-family: var(--mono);
+        font-size: 8px;
+        font-weight: 400;
+      }
+
+      .a-row {
+        padding: 13px 14px;
+        border-bottom: 1px solid #252b31;
+      }
+
+      .a-row:last-child {
+        border-bottom: 0;
+      }
+
+      .a-stock {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .stock-badge {
+        display: grid;
+        flex: 0 0 auto;
+        width: 23px;
+        height: 23px;
+        place-items: center;
+        border-radius: 7px;
+        color: #12161a;
+        background: var(--acid);
+        font-family: var(--mono);
+        font-size: 7px;
+        font-weight: 600;
+      }
+
+      .stock-badge.blue {
+        color: #fff;
+        background: #557dbf;
+      }
+
+      .stock-badge.orange {
+        color: #fff;
+        background: var(--orange);
+      }
+
+      .stock-badge.mint {
+        background: var(--mint);
+      }
+
+      .stock-name {
+        min-width: 0;
+      }
+
+      .stock-name strong,
+      .stock-name span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .stock-name strong {
+        color: #eceeea;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .stock-name span {
+        margin-top: 3px;
+        color: #657079;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .a-number {
+        min-width: 60px;
+        color: #dfe3df;
+        font-family: var(--mono);
+        font-size: 10px;
+        text-align: right;
+      }
+
+      .a-number.positive {
+        color: var(--red);
+      }
+
+      .a-number.negative {
+        color: var(--green);
+      }
+
+      .a-insight {
+        padding: 16px;
+      }
+
+      .a-insight-head {
+        align-items: flex-start;
+        padding-bottom: 13px;
+        border-bottom: 1px solid #2a3037;
+      }
+
+      .a-insight-head h4 {
+        margin: 0;
+        color: #f0f2ed;
+        font-size: 11px;
+      }
+
+      .a-insight-head span {
+        color: var(--acid);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .a-insight p {
+        margin: 18px 0 20px;
+        color: #8e969e;
+        font-size: 10px;
+        line-height: 1.7;
+      }
+
+      .a-progress {
+        display: grid;
+        gap: 10px;
+      }
+
+      .a-progress-line {
+        display: grid;
+        gap: 5px;
+      }
+
+      .a-progress-line div {
+        display: flex;
+        justify-content: space-between;
+        color: #79838b;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .a-progress-line i {
+        display: block;
+        height: 4px;
+        overflow: hidden;
+        background: #293038;
+      }
+
+      .a-progress-line i::after {
+        display: block;
+        width: var(--width);
+        height: 100%;
+        content: "";
+        background: var(--color, var(--orange));
+      }
+
+      /* Direction B — strategy card wall */
+
+      .board-b {
+        border-color: rgba(236, 225, 211, 0.55);
+        background: #cfc4b4;
+      }
+
+      .board-b .board-meta h2,
+      .board-b .board-meta p {
+        color: var(--ink);
+      }
+
+      .board-b .board-meta p {
+        color: #625e57;
+      }
+
+      .board-b .board-index {
+        color: var(--orange-dark);
+      }
+
+      .board-b .choose-layout {
+        border-color: rgba(17, 20, 25, 0.28);
+        color: var(--ink);
+      }
+
+      .board-b .choose-layout:hover,
+      .board-b .choose-layout.selected {
+        border-color: var(--ink);
+        color: #f5eee3;
+        background: var(--ink);
+      }
+
+      .mock-b {
+        padding: 26px;
+        color: var(--ink);
+        background: var(--paper);
+      }
+
+      .b-top {
+        align-items: flex-end;
+        padding-bottom: 22px;
+        border-bottom: 2px solid var(--ink);
+      }
+
+      .b-top small,
+      .b-top .mini-label {
+        color: #78736a;
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .b-top h3 {
+        margin: 8px 0 0;
+        font-family: var(--serif);
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: -0.08em;
+      }
+
+      .b-top-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .b-top-actions button {
+        padding: 8px 11px;
+        border: 1px solid var(--paper-line);
+        color: #4d4b46;
+        background: transparent;
+        font-size: 10px;
+      }
+
+      .b-top-actions button:last-child {
+        border-color: var(--ink);
+        color: var(--paper);
+        background: var(--ink);
+      }
+
+      .b-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 11px;
+        padding: 24px 0 16px;
+      }
+
+      .b-card {
+        min-height: 188px;
+        padding: 17px;
+        border: 1px solid var(--paper-line);
+        background: #eee7dc;
+        transition: 180ms ease;
+      }
+
+      .b-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 30px rgba(49, 39, 27, 0.11);
+      }
+
+      .b-card.featured {
+        color: #fffaf4;
+        border-color: var(--ink);
+        background: var(--ink);
+      }
+
+      .b-card.new-card {
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: 9px;
+        border-style: dashed;
+        color: #777269;
+        background: transparent;
+      }
+
+      .b-card.new-card strong {
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 18px;
+      }
+
+      .new-plus {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid #a39b8f;
+        border-radius: 50%;
+        font-size: 18px;
+      }
+
+      .b-card-head {
+        align-items: flex-start;
+      }
+
+      .b-card-head strong {
+        font-size: 13px;
+      }
+
+      .b-card-head span {
+        padding: 4px 6px;
+        color: var(--orange-dark);
+        background: rgba(255, 106, 61, 0.12);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .featured .b-card-head span {
+        color: var(--acid);
+        background: rgba(217, 255, 98, 0.12);
+      }
+
+      .b-card-title {
+        margin: 26px 0 3px;
+        font-family: var(--serif);
+        font-size: 24px;
+        letter-spacing: -0.08em;
+      }
+
+      .b-card-sub {
+        color: #858078;
+        font-size: 10px;
+      }
+
+      .featured .b-card-sub {
+        color: #92969a;
+      }
+
+      .b-card-metrics {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 25px;
+        padding-top: 12px;
+        border-top: 1px solid var(--paper-line);
+      }
+
+      .featured .b-card-metrics {
+        border-color: #30363d;
+      }
+
+      .b-card-metrics span,
+      .b-card-metrics strong {
+        display: block;
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .b-card-metrics span {
+        margin-bottom: 4px;
+        color: #8d867c;
+      }
+
+      .featured .b-card-metrics span {
+        color: #7a8288;
+      }
+
+      .b-card-metrics strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      .featured .b-card-metrics strong {
+        color: #fff;
+      }
+
+      .b-total {
+        align-items: flex-end;
+        padding: 18px 0 0;
+        border-top: 1px solid var(--paper-line);
+      }
+
+      .b-total p {
+        margin: 0;
+        color: #7b766e;
+        font-size: 11px;
+      }
+
+      .b-total strong {
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 31px;
+        letter-spacing: -0.08em;
+      }
+
+      .b-total em {
+        margin-left: 10px;
+        color: var(--orange-dark);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-style: normal;
+      }
+
+      /* Direction C — allocation matrix */
+
+      .board-c {
+        border-color: #374247;
+        background:
+          linear-gradient(110deg, rgba(131, 224, 204, 0.08), transparent 32%),
+          #172126;
+      }
+
+      .board-c::after {
+        background: var(--mint);
+      }
+
+      .board-c .board-index {
+        color: var(--mint);
+      }
+
+      .board-c .choose-layout:hover,
+      .board-c .choose-layout.selected {
+        border-color: var(--mint);
+        color: #122025;
+        background: var(--mint);
+      }
+
+      .mock-c {
+        min-height: 506px;
+        color: #e7efeb;
+        background: #0e171c;
+      }
+
+      .c-bar {
+        padding: 18px 22px;
+        border-bottom: 1px solid #2c3b40;
+      }
+
+      .c-bar h3 {
+        margin: 0;
+        color: #eef5ef;
+        font-size: 13px;
+        letter-spacing: -0.04em;
+      }
+
+      .c-bar h3 span {
+        margin-left: 9px;
+        color: #6a7d7e;
+        font-family: var(--mono);
+        font-size: 8px;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+
+      .c-tabs {
+        display: flex;
+        gap: 18px;
+        color: #738586;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .c-tabs span.active {
+        color: var(--mint);
+      }
+
+      .c-main {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.35fr);
+        gap: 1px;
+        min-height: 450px;
+        background: #2c3b40;
+      }
+
+      .c-allocation,
+      .c-ledger {
+        min-width: 0;
+        padding: 23px;
+        background: #101a1f;
+      }
+
+      .c-ledger {
+        background: #0e171c;
+      }
+
+      .c-panel-head {
+        align-items: flex-start;
+        margin-bottom: 22px;
+      }
+
+      .c-panel-head h4 {
+        margin: 0;
+        color: #e8f0ec;
+        font-size: 11px;
+      }
+
+      .c-panel-head span {
+        color: #6e8381;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .c-donut-wrap {
+        display: flex;
+        align-items: center;
+        gap: 23px;
+        padding: 7px 0 25px;
+      }
+
+      .c-donut {
+        display: grid;
+        flex: 0 0 auto;
+        width: 146px;
+        height: 146px;
+        place-items: center;
+        border-radius: 50%;
+        background: conic-gradient(
+          var(--mint) 0 41%,
+          var(--acid) 41% 63%,
+          var(--sky) 63% 78%,
+          #46545a 78% 100%
+        );
+      }
+
+      .c-donut::after {
+        width: 94px;
+        height: 94px;
+        content: "";
+        border-radius: 50%;
+        background: #101a1f;
+      }
+
+      .c-donut-label {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        gap: 3px;
+        width: 88px;
+        text-align: center;
+      }
+
+      .c-donut-label strong {
+        color: #eff6ef;
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: -0.1em;
+      }
+
+      .c-donut-label span {
+        color: #758887;
+        font-size: 8px;
+      }
+
+      .c-legend {
+        display: grid;
+        gap: 11px;
+        min-width: 120px;
+      }
+
+      .c-legend-row {
+        display: grid;
+        grid-template-columns: 8px 1fr auto;
+        gap: 7px;
+        align-items: center;
+        color: #9aa8a5;
+        font-size: 9px;
+      }
+
+      .c-legend-row i {
+        width: 7px;
+        height: 7px;
+        background: var(--mint);
+      }
+
+      .c-legend-row:nth-child(2) i {
+        background: var(--acid);
+      }
+
+      .c-legend-row:nth-child(3) i {
+        background: var(--sky);
+      }
+
+      .c-legend-row:nth-child(4) i {
+        background: #46545a;
+      }
+
+      .c-legend-row strong {
+        color: #e7efeb;
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 500;
+      }
+
+      .c-bars {
+        display: grid;
+        gap: 15px;
+        padding-top: 19px;
+        border-top: 1px solid #2c3b40;
+      }
+
+      .c-bar-row {
+        display: grid;
+        gap: 7px;
+      }
+
+      .c-bar-row > div {
+        display: flex;
+        justify-content: space-between;
+        color: #869795;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .c-track {
+        height: 7px;
+        background: #28363b;
+      }
+
+      .c-track span {
+        display: block;
+        width: var(--width);
+        height: 100%;
+        background: var(--color);
+      }
+
+      .c-ledger .c-panel-head {
+        margin-bottom: 13px;
+      }
+
+      .c-ledger-head,
+      .c-ledger-row {
+        display: grid;
+        grid-template-columns: minmax(135px, 1.5fr) 0.7fr 0.7fr 0.7fr;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .c-ledger-head {
+        padding: 11px 0;
+        border-top: 1px solid #2c3b40;
+        border-bottom: 1px solid #2c3b40;
+        color: #5e7271;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .c-ledger-row {
+        padding: 15px 0;
+        border-bottom: 1px solid #243137;
+      }
+
+      .c-symbol {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .c-symbol i {
+        display: block;
+        flex: 0 0 auto;
+        width: 5px;
+        height: 26px;
+        background: var(--mint);
+      }
+
+      .c-symbol:nth-child(2) i {
+        background: var(--acid);
+      }
+
+      .c-symbol strong,
+      .c-symbol span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .c-symbol strong {
+        color: #e7efeb;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .c-symbol span {
+        margin-top: 4px;
+        color: #647675;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .c-cell {
+        color: #c2ceca;
+        font-family: var(--mono);
+        font-size: 9px;
+        text-align: right;
+      }
+
+      .c-cell.positive {
+        color: var(--red);
+      }
+
+      .c-ledger-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+        padding: 13px 14px;
+        border: 1px solid #2c3b40;
+        color: #788987;
+        background: #101a1f;
+        font-size: 9px;
+      }
+
+      .c-ledger-foot strong {
+        color: var(--mint);
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 500;
+      }
+
+      /* Direction D — editorial ledger */
+
+      .board-d {
+        border-color: #ddd3c4;
+        background: #e1d7c8;
+      }
+
+      .board-d .board-meta h2,
+      .board-d .board-meta p {
+        color: var(--ink);
+      }
+
+      .board-d .board-meta p {
+        color: #6d665d;
+      }
+
+      .board-d .board-index {
+        color: #6e65d6;
+      }
+
+      .board-d .choose-layout {
+        border-color: rgba(17, 20, 25, 0.25);
+        color: var(--ink);
+      }
+
+      .board-d .choose-layout:hover,
+      .board-d .choose-layout.selected {
+        border-color: #6e65d6;
+        color: #fff;
+        background: #6e65d6;
+      }
+
+      .mock-d {
+        display: grid;
+        grid-template-columns: 136px minmax(0, 1fr);
+        min-height: 506px;
+        color: var(--ink);
+        background: #f8f4ec;
+      }
+
+      .d-rail {
+        display: flex;
+        flex-direction: column;
+        padding: 24px 17px;
+        border-right: 1px solid #d4c8b8;
+        background: #ece4d7;
+      }
+
+      .d-rail-number {
+        color: #6e65d6;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      .d-rail-title {
+        margin-top: 55px;
+        writing-mode: vertical-rl;
+        color: #83796d;
+        font-family: var(--serif);
+        font-size: 20px;
+        letter-spacing: 0.12em;
+      }
+
+      .d-rail-bottom {
+        display: grid;
+        gap: 6px;
+        margin-top: auto;
+        color: #83796d;
+        font-family: var(--mono);
+        font-size: 8px;
+        line-height: 1.6;
+      }
+
+      .d-main {
+        min-width: 0;
+        padding: 26px 32px 29px;
+      }
+
+      .d-running {
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--ink);
+        color: #8d8378;
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+      }
+
+      .d-running strong {
+        color: #6e65d6;
+        font-weight: 500;
+      }
+
+      .d-title-row {
+        align-items: flex-end;
+        padding: 24px 0 19px;
+      }
+
+      .d-title-row small {
+        color: #887e74;
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .d-title-row h3 {
+        margin: 7px 0 0;
+        font-family: var(--serif);
+        font-size: clamp(30px, 4vw, 47px);
+        line-height: 0.95;
+        letter-spacing: -0.1em;
+      }
+
+      .d-return {
+        text-align: right;
+      }
+
+      .d-return strong {
+        display: block;
+        color: #6e65d6;
+        font-family: var(--mono);
+        font-size: 23px;
+        font-weight: 500;
+      }
+
+      .d-return span {
+        color: #887e74;
+        font-size: 9px;
+      }
+
+      .d-story {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.6fr);
+        gap: 34px;
+        padding: 21px 0 25px;
+        border-top: 1px solid var(--ink);
+        border-bottom: 1px solid #d4c8b8;
+      }
+
+      .d-story h4 {
+        margin: 0 0 10px;
+        font-family: var(--serif);
+        font-size: 20px;
+        letter-spacing: -0.08em;
+      }
+
+      .d-story p {
+        margin: 0;
+        color: #6d665d;
+        font-size: 11px;
+        line-height: 1.8;
+      }
+
+      .d-facts {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .d-fact {
+        padding-left: 11px;
+        border-left: 2px solid #6e65d6;
+      }
+
+      .d-fact span,
+      .d-fact strong {
+        display: block;
+      }
+
+      .d-fact span {
+        margin-bottom: 6px;
+        color: #948a7f;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .d-fact strong {
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 17px;
+      }
+
+      .d-holdings {
+        padding-top: 20px;
+      }
+
+      .d-holdings-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 9px;
+      }
+
+      .d-holdings-head h4 {
+        margin: 0;
+        font-family: var(--serif);
+        font-size: 17px;
+      }
+
+      .d-holdings-head span {
+        color: #8b8175;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .d-stock-row {
+        display: grid;
+        grid-template-columns: minmax(150px, 1.4fr) 0.7fr 0.7fr 0.7fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 0;
+        border-top: 1px solid #d4c8b8;
+      }
+
+      .d-stock-row > span {
+        color: #766e64;
+        font-family: var(--mono);
+        font-size: 9px;
+        text-align: right;
+      }
+
+      .d-stock-name strong,
+      .d-stock-name small {
+        display: block;
+      }
+
+      .d-stock-name strong {
+        color: var(--ink);
+        font-size: 10px;
+      }
+
+      .d-stock-name small {
+        margin-top: 4px;
+        color: #988e83;
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .d-stock-row > span.positive {
+        color: #ca4b32;
+      }
+
+      .d-quote {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #6e65d6 !important;
+      }
+
+      .d-quote::before {
+        width: 4px;
+        height: 4px;
+        content: "";
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .footer-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 26px 0 62px;
+        color: #646c74;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      .footer-note strong {
+        color: #c6cbd0;
+        font-weight: 600;
+      }
+
+      .footer-note span {
+        color: #505860;
+        font-family: var(--mono);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 1000px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+
+        .decision-panel {
+          max-width: 500px;
+        }
+
+        .mock-a {
+          grid-template-columns: 165px minmax(0, 1fr);
+        }
+
+        .a-body-grid,
+        .c-main {
+          grid-template-columns: 1fr;
+        }
+
+        .c-main {
+          min-height: auto;
+        }
+
+        .c-allocation,
+        .c-ledger {
+          min-height: 300px;
+        }
+
+        .d-story {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page-shell {
+          width: min(100% - 28px, 1480px);
+        }
+
+        .hero {
+          padding-top: 40px;
+        }
+
+        .hero h1 {
+          font-size: clamp(40px, 14vw, 68px);
+        }
+
+        .layout-nav {
+          position: relative;
+          top: 0;
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .layout-board {
+          padding: 18px;
+        }
+
+        .board-meta {
+          display: grid;
+          gap: 16px;
+        }
+
+        .choose-layout {
+          justify-self: start;
+        }
+
+        .mock-a {
+          display: block;
+        }
+
+        .a-sidebar {
+          display: none;
+        }
+
+        .a-content {
+          padding: 18px 15px 22px;
+        }
+
+        .mock-actions {
+          display: none;
+        }
+
+        .a-intro {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .a-performance {
+          text-align: left;
+        }
+
+        .a-metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .a-row {
+          gap: 7px;
+        }
+
+        .a-number {
+          min-width: 50px;
+        }
+
+        .mock-b {
+          padding: 17px;
+        }
+
+        .b-top {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .b-card-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .b-card {
+          min-height: 160px;
+        }
+
+        .c-bar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .c-donut-wrap {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .c-donut {
+          width: 128px;
+          height: 128px;
+        }
+
+        .c-donut::after {
+          width: 82px;
+          height: 82px;
+        }
+
+        .c-donut-label {
+          width: 77px;
+        }
+
+        .c-ledger-head,
+        .c-ledger-row,
+        .d-stock-row {
+          grid-template-columns: minmax(120px, 1.4fr) repeat(3, 0.6fr);
+          gap: 6px;
+        }
+
+        .c-allocation,
+        .c-ledger {
+          padding: 18px 15px;
+        }
+
+        .mock-d {
+          display: block;
+        }
+
+        .d-rail {
+          display: none;
+        }
+
+        .d-main {
+          padding: 19px 17px 24px;
+        }
+
+        .d-title-row {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 17px;
+        }
+
+        .d-return {
+          text-align: left;
+        }
+
+        .d-facts {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .footer-note {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="atlas">
+      <div class="page-shell">
+        <header class="hero">
+          <div>
+            <div class="eyebrow">Dibobo · Portfolio layout atlas</div>
+            <h1>投资组合<br /><em>四种页面构图</em></h1>
+            <p class="hero-copy">
+              同一组产品信息，四种不同的信息层级与视觉气质。先选定你更喜欢的“看盘方式”，再进入投资组合页面的正式开发。
+            </p>
+          </div>
+          <aside class="decision-panel">
+            <span class="decision-caption">Current direction</span>
+            <strong class="decision-value" id="selection" aria-live="polite">尚未选择布局</strong>
+            <span class="decision-meta" id="selection-meta">点击任意方案中的“选择此方向”</span>
+            <button class="reset-button" id="reset-selection" type="button">清除选择</button>
+          </aside>
+        </header>
+
+        <nav class="layout-nav" aria-label="布局方案导航">
+          <a class="active" href="#layout-a">
+            <strong>01</strong>
+            <span>Command Deck</span>
+            <small>高密度控制台</small>
+          </a>
+          <a href="#layout-b">
+            <strong>02</strong>
+            <span>Strategy Wall</span>
+            <small>组合卡片墙</small>
+          </a>
+          <a href="#layout-c">
+            <strong>03</strong>
+            <span>Allocation Matrix</span>
+            <small>配置矩阵</small>
+          </a>
+          <a href="#layout-d">
+            <strong>04</strong>
+            <span>Editorial Ledger</span>
+            <small>策略账本</small>
+          </a>
+        </nav>
+
+        <div class="exploration-note">
+          <span>下方四个页面均使用同一组模拟数据，仅展示布局与信息层级差异。</span>
+          <span>STATIC EXPLORATION · 2026.08</span>
+        </div>
+
+        <main class="layout-stack">
+          <article class="layout-board board-a" id="layout-a">
+            <div class="board-meta">
+              <div class="board-meta-left">
+                <div class="board-index">01 / A</div>
+                <div>
+                  <h2>Command Deck · 高密度控制台</h2>
+                  <p>左侧固定组合导航，右侧聚焦当前组合；适合频繁查看持仓、行情和组合核心指标。</p>
+                </div>
+              </div>
+              <button
+                class="choose-layout"
+                type="button"
+                data-layout="01 · Command Deck"
+              >
+                选择此方向
+              </button>
+            </div>
+
+            <div class="mock-window">
+              <div class="mock-window-bar">
+                <span class="window-dot"></span>
+                <span class="window-dot"></span>
+                <span class="window-dot"></span>
+                portfolio / command deck
+              </div>
+              <div class="mock-a">
+                <aside class="a-sidebar">
+                  <div class="a-brand">
+                    <span class="brand-mark"></span>
+                    dibobo
+                    <small>invest</small>
+                  </div>
+                  <div class="a-menu-label">Workspace</div>
+                  <div class="a-menu">
+                    <div class="a-menu-item active"><span class="a-menu-icon"></span>投资组合</div>
+                    <div class="a-menu-item"><span class="a-menu-icon"></span>自选行情</div>
+                    <div class="a-menu-item"><span class="a-menu-icon"></span>市场扫描</div>
+                  </div>
+                  <div class="a-menu-label">My portfolios</div>
+                  <div class="a-menu">
+                    <div class="a-menu-item active"><span class="a-menu-icon"></span>长期红利</div>
+                    <div class="a-menu-item"><span class="a-menu-icon"></span>ETF 轮动</div>
+                    <div class="a-menu-item"><span class="a-menu-icon"></span>核心成长</div>
+                  </div>
+                  <div class="a-sidebar-bottom">
+                    <span>行情同步状态</span>
+                    <strong>● LIVE / 16:05:21</strong>
+                  </div>
+                </aside>
+
+                <section class="a-content">
+                  <div class="mock-topline">
+                    <div>我的投资组合 <small>3 ACTIVE</small></div>
+                    <div class="mock-actions">
+                      <button class="mock-action" type="button">导入持仓</button>
+                      <button class="mock-action" type="button">+ 新建组合</button>
+                    </div>
+                  </div>
+
+                  <div class="a-intro">
+                    <div>
+                      <div class="mini-label">Selected portfolio</div>
+                      <h3>长期红利</h3>
+                      <p>稳健增值 · 目标年化 8–10% · 4 个持仓标的</p>
+                    </div>
+                    <div class="a-performance">
+                      <strong>+12.82%</strong>
+                      <span>组合累计收益 · 对比上日 +0.84%</span>
+                    </div>
+                  </div>
+
+                  <div class="a-metrics">
+                    <div class="a-metric"><span>组合市值</span><strong>¥ 286,420</strong></div>
+                    <div class="a-metric"><span>持仓成本</span><strong>¥ 253,880</strong></div>
+                    <div class="a-metric"><span>当前收益</span><strong class="a-number positive">+32,540</strong></div>
+                    <div class="a-metric"><span>仓位占比</span><strong>86.4%</strong></div>
+                  </div>
+
+                  <div class="a-body-grid">
+                    <section class="a-table">
+                      <div class="a-table-head"><span>POSITIONS</span><span>4 / 6 positions</span></div>
+                      <div class="a-row">
+                        <div class="a-stock"><span class="stock-badge orange">茅</span><div class="stock-name"><strong>贵州茅台</strong><span>600519.SH · 1,200 股</span></div></div>
+                        <span class="a-number">¥ 1,492.00</span>
+                        <span class="a-number positive">+2.31%</span>
+                      </div>
+                      <div class="a-row">
+                        <div class="a-stock"><span class="stock-badge blue">招</span><div class="stock-name"><strong>招商银行</strong><span>600036.SH · 5,000 股</span></div></div>
+                        <span class="a-number">¥ 38.42</span>
+                        <span class="a-number positive">+1.18%</span>
+                      </div>
+                      <div class="a-row">
+                        <div class="a-stock"><span class="stock-badge mint">红</span><div class="stock-name"><strong>中证红利 ETF</strong><span>515180.SH · 16,000 份</span></div></div>
+                        <span class="a-number">¥ 1.284</span>
+                        <span class="a-number negative">−0.46%</span>
+                      </div>
+                      <div class="a-row">
+                        <div class="a-stock"><span class="stock-badge">沪</span><div class="stock-name"><strong>沪深 300 ETF</strong><span>510300.SH · 12,000 份</span></div></div>
+                        <span class="a-number">¥ 4.036</span>
+                        <span class="a-number positive">+0.73%</span>
+                      </div>
+                    </section>
+
+                    <aside class="a-insight">
+                      <div class="a-insight-head"><h4>组合概览</h4><span>LIVE</span></div>
+                      <p>当前组合偏向大盘价值，核心仓位贡献了今日主要涨幅。</p>
+                      <div class="a-progress">
+                        <div class="a-progress-line"><div><span>大盘价值</span><span>48%</span></div><i style="--width: 48%; --color: var(--orange)"></i></div>
+                        <div class="a-progress-line"><div><span>红利因子</span><span>32%</span></div><i style="--width: 32%; --color: var(--acid)"></i></div>
+                        <div class="a-progress-line"><div><span>宽基 ETF</span><span>20%</span></div><i style="--width: 20%; --color: var(--mint)"></i></div>
+                      </div>
+                    </aside>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+
+          <article class="layout-board board-b" id="layout-b">
+            <div class="board-meta">
+              <div class="board-meta-left">
+                <div class="board-index">02 / B</div>
+                <div>
+                  <h2>Strategy Wall · 组合卡片墙</h2>
+                  <p>先看所有组合的状态，再进入某一个组合；适合组合数量较多、需要快速对比的场景。</p>
+                </div>
+              </div>
+              <button
+                class="choose-layout"
+                type="button"
+                data-layout="02 · Strategy Wall"
+              >
+                选择此方向
+              </button>
+            </div>
+
+            <div class="mock-window">
+              <div class="mock-window-bar" style="color: #777067; background: rgba(17, 20, 25, 0.05); border-color: #d5cbbd">
+                <span class="window-dot" style="background: #db4c25"></span>
+                <span class="window-dot" style="background: #b6ac9d"></span>
+                <span class="window-dot" style="background: #b6ac9d"></span>
+                portfolio / strategy wall
+              </div>
+              <div class="mock-b">
+                <div class="b-top">
+                  <div>
+                    <div class="mini-label">Portfolio dashboard / 2026</div>
+                    <h3>我的投资组合</h3>
+                  </div>
+                  <div class="b-top-actions">
+                    <button type="button">筛选 / 3</button>
+                    <button type="button">+ 新建组合</button>
+                  </div>
+                </div>
+
+                <div class="b-card-grid">
+                  <article class="b-card featured">
+                    <div class="b-card-head"><strong>长期红利</strong><span>ACTIVE</span></div>
+                    <div class="b-card-title">¥ 286,420</div>
+                    <div class="b-card-sub">稳健增值 · 4 个持仓</div>
+                    <div class="b-card-metrics">
+                      <div><span>累计收益</span><strong>+12.82%</strong></div>
+                      <div><span>今日收益</span><strong>+0.84%</strong></div>
+                      <div><span>仓位</span><strong>86.4%</strong></div>
+                    </div>
+                  </article>
+                  <article class="b-card">
+                    <div class="b-card-head"><strong>ETF 轮动</strong><span>ACTIVE</span></div>
+                    <div class="b-card-title">¥ 158,960</div>
+                    <div class="b-card-sub">趋势跟随 · 3 个持仓</div>
+                    <div class="b-card-metrics">
+                      <div><span>累计收益</span><strong>+8.45%</strong></div>
+                      <div><span>今日收益</span><strong>−0.24%</strong></div>
+                      <div><span>仓位</span><strong>72.0%</strong></div>
+                    </div>
+                  </article>
+                  <article class="b-card">
+                    <div class="b-card-head"><strong>核心成长</strong><span>ACTIVE</span></div>
+                    <div class="b-card-title">¥ 92,380</div>
+                    <div class="b-card-sub">长期持有 · 2 个持仓</div>
+                    <div class="b-card-metrics">
+                      <div><span>累计收益</span><strong>+5.20%</strong></div>
+                      <div><span>今日收益</span><strong>+1.06%</strong></div>
+                      <div><span>仓位</span><strong>94.2%</strong></div>
+                    </div>
+                  </article>
+                  <article class="b-card new-card">
+                    <span class="new-plus">+</span>
+                    <strong>新建投资组合</strong>
+                    <span style="font-size: 10px">从一个策略开始</span>
+                  </article>
+                </div>
+
+                <div class="b-total">
+                  <p>组合总资产 · 3 个组合合计</p>
+                  <div><strong>¥ 537,760</strong><em>+10.21% YTD</em></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="layout-board board-c" id="layout-c">
+            <div class="board-meta">
+              <div class="board-meta-left">
+                <div class="board-index">03 / C</div>
+                <div>
+                  <h2>Allocation Matrix · 配置矩阵</h2>
+                  <p>把“组合由什么组成”放在第一屏；适合更关注仓位结构、风险分散和持仓比例的用户。</p>
+                </div>
+              </div>
+              <button
+                class="choose-layout"
+                type="button"
+                data-layout="03 · Allocation Matrix"
+              >
+                选择此方向
+              </button>
+            </div>
+
+            <div class="mock-window">
+              <div class="mock-window-bar" style="background: #132026; border-color: #2c3b40; color: #6b8180">
+                <span class="window-dot" style="background: #83e0cc"></span>
+                <span class="window-dot" style="background: #52676a"></span>
+                <span class="window-dot" style="background: #52676a"></span>
+                portfolio / allocation matrix
+              </div>
+              <div class="mock-c">
+                <div class="c-bar">
+                  <h3>长期红利 <span>PORTFOLIO 01 · LIVE</span></h3>
+                  <div class="c-tabs"><span class="active">配置</span><span>持仓</span><span>交易记录</span><span>备注</span></div>
+                </div>
+                <div class="c-main">
+                  <section class="c-allocation">
+                    <div class="c-panel-head"><h4>组合构成</h4><span>BY SECTOR</span></div>
+                    <div class="c-donut-wrap">
+                      <div style="position: relative; width: 146px; height: 146px">
+                        <div class="c-donut"></div>
+                        <div class="c-donut-label"><strong>¥286K</strong><span>当前市值</span></div>
+                      </div>
+                      <div class="c-legend">
+                        <div class="c-legend-row"><i></i><span>消费</span><strong>41%</strong></div>
+                        <div class="c-legend-row"><i></i><span>金融</span><strong>22%</strong></div>
+                        <div class="c-legend-row"><i></i><span>宽基 ETF</span><strong>15%</strong></div>
+                        <div class="c-legend-row"><i></i><span>现金 / 其他</span><strong>22%</strong></div>
+                      </div>
+                    </div>
+                    <div class="c-bars">
+                      <div class="c-bar-row"><div><span>贵州茅台</span><span>29.4%</span></div><div class="c-track"><span style="--width: 74%; --color: var(--mint)"></span></div></div>
+                      <div class="c-bar-row"><div><span>招商银行</span><span>18.7%</span></div><div class="c-track"><span style="--width: 52%; --color: var(--acid)"></span></div></div>
+                      <div class="c-bar-row"><div><span>中证红利 ETF</span><span>16.1%</span></div><div class="c-track"><span style="--width: 45%; --color: var(--sky)"></span></div></div>
+                    </div>
+                  </section>
+
+                  <section class="c-ledger">
+                    <div class="c-panel-head"><h4>持仓矩阵</h4><span>MARKET VALUE / RETURN</span></div>
+                    <div class="c-ledger-head"><span>标的</span><span>市值</span><span>占比</span><span>收益</span></div>
+                    <div class="c-ledger-row">
+                      <div class="c-symbol"><i style="background: var(--orange)"></i><div><strong>贵州茅台</strong><span>600519.SH</span></div></div>
+                      <span class="c-cell">¥84.1K</span><span class="c-cell">29.4%</span><span class="c-cell positive">+18.6%</span>
+                    </div>
+                    <div class="c-ledger-row">
+                      <div class="c-symbol"><i style="background: var(--acid)"></i><div><strong>招商银行</strong><span>600036.SH</span></div></div>
+                      <span class="c-cell">¥53.5K</span><span class="c-cell">18.7%</span><span class="c-cell positive">+10.2%</span>
+                    </div>
+                    <div class="c-ledger-row">
+                      <div class="c-symbol"><i style="background: var(--sky)"></i><div><strong>中证红利 ETF</strong><span>515180.SH</span></div></div>
+                      <span class="c-cell">¥46.1K</span><span class="c-cell">16.1%</span><span class="c-cell">−2.4%</span>
+                    </div>
+                    <div class="c-ledger-row">
+                      <div class="c-symbol"><i style="background: #64757a"></i><div><strong>沪深 300 ETF</strong><span>510300.SH</span></div></div>
+                      <span class="c-cell">¥42.7K</span><span class="c-cell">14.9%</span><span class="c-cell positive">+6.8%</span>
+                    </div>
+                    <div class="c-ledger-foot"><span>前四大持仓占组合</span><strong>79.1%</strong></div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="layout-board board-d" id="layout-d">
+            <div class="board-meta">
+              <div class="board-meta-left">
+                <div class="board-index">04 / D</div>
+                <div>
+                  <h2>Editorial Ledger · 策略账本</h2>
+                  <p>以组合说明和策略叙事作为入口，数据退到正文下方；适合重视投资理由和长期复盘的场景。</p>
+                </div>
+              </div>
+              <button
+                class="choose-layout"
+                type="button"
+                data-layout="04 · Editorial Ledger"
+              >
+                选择此方向
+              </button>
+            </div>
+
+            <div class="mock-window">
+              <div class="mock-window-bar" style="color: #8b8074; background: #ece4d7; border-color: #d4c8b8">
+                <span class="window-dot" style="background: #6e65d6"></span>
+                <span class="window-dot" style="background: #beb3a5"></span>
+                <span class="window-dot" style="background: #beb3a5"></span>
+                portfolio / editorial ledger
+              </div>
+              <div class="mock-d">
+                <aside class="d-rail">
+                  <div class="d-rail-number">04 / 24</div>
+                  <div class="d-rail-title">投资组合</div>
+                  <div class="d-rail-bottom"><span>PRIVATE WORKSPACE</span><span>MARKET · CN A / ETF</span><span>SYNCED 16:05</span></div>
+                </aside>
+                <section class="d-main">
+                  <div class="d-running"><span>PORTFOLIO NOTEBOOK / 2026.08.08</span><strong>MARKET OPEN</strong></div>
+                  <div class="d-title-row">
+                    <div><small>我的投资组合 · 01</small><h3>长期红利</h3></div>
+                    <div class="d-return"><strong>+12.82%</strong><span>自建仓以来 · 组合累计收益</span></div>
+                  </div>
+
+                  <div class="d-story">
+                    <div>
+                      <h4>把时间站在优质资产一边。</h4>
+                      <p>以高质量消费、金融与宽基 ETF 作为底仓，保持适度现金缓冲。这个组合不追逐每一根 K 线，而是记录那些值得长期持有的判断。</p>
+                    </div>
+                    <div class="d-facts">
+                      <div class="d-fact"><span>组合市值</span><strong>¥286,420</strong></div>
+                      <div class="d-fact"><span>持仓标的</span><strong>04</strong></div>
+                      <div class="d-fact"><span>目标年化</span><strong>8–10%</strong></div>
+                      <div class="d-fact"><span>现金比例</span><strong>13.6%</strong></div>
+                    </div>
+                  </div>
+
+                  <div class="d-holdings">
+                    <div class="d-holdings-head"><h4>当前持仓</h4><span>MARKET VALUE / DAY CHANGE / WEIGHT</span></div>
+                    <div class="d-stock-row"><div class="d-stock-name"><strong>贵州茅台</strong><small>600519.SH · 消费</small></div><span>¥84.1K</span><span class="positive">+2.31%</span><span class="d-quote">29.4%</span></div>
+                    <div class="d-stock-row"><div class="d-stock-name"><strong>招商银行</strong><small>600036.SH · 金融</small></div><span>¥53.5K</span><span class="positive">+1.18%</span><span class="d-quote">18.7%</span></div>
+                    <div class="d-stock-row"><div class="d-stock-name"><strong>中证红利 ETF</strong><small>515180.SH · ETF</small></div><span>¥46.1K</span><span>−0.46%</span><span class="d-quote">16.1%</span></div>
+                    <div class="d-stock-row"><div class="d-stock-name"><strong>沪深 300 ETF</strong><small>510300.SH · ETF</small></div><span>¥42.7K</span><span class="positive">+0.73%</span><span class="d-quote">14.9%</span></div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+        </main>
+
+        <footer class="footer-note">
+          <div><strong>选择提示：</strong> A 适合高频管理，B 适合总览对比，C 适合配置分析，D 适合策略复盘。</div>
+          <span>STATIC MOCK DATA · NO PRODUCT LOGIC</span>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const selection = document.getElementById("selection");
+        const selectionMeta = document.getElementById("selection-meta");
+        const resetButton = document.getElementById("reset-selection");
+        const choiceButtons = document.querySelectorAll(".choose-layout");
+        const navLinks = document.querySelectorAll(".layout-nav a");
+        const boards = document.querySelectorAll(".layout-board");
+
+        choiceButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            choiceButtons.forEach((item) => {
+              item.classList.remove("selected");
+              item.textContent = "选择此方向";
+            });
+
+            button.classList.add("selected");
+            button.textContent = "已选择此方向";
+            selection.textContent = button.dataset.layout;
+            selectionMeta.textContent = "已记录选择 · 确认后可进入正式页面开发";
+          });
+        });
+
+        resetButton.addEventListener("click", () => {
+          choiceButtons.forEach((button) => {
+            button.classList.remove("selected");
+            button.textContent = "选择此方向";
+          });
+          selection.textContent = "尚未选择布局";
+          selectionMeta.textContent = "点击任意方案中的“选择此方向”";
+        });
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              navLinks.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`));
+            });
+          },
+          { rootMargin: "-18% 0px -68% 0px", threshold: 0 }
+        );
+
+        boards.forEach((board) => observer.observe(board));
+      })();
+    </script>
+  </body>
+</html>

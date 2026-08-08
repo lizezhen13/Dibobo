@@ -54,6 +54,9 @@ class User(TimestampMixin, Base):
     holdings: Mapped[list["Holding"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    portfolios: Mapped[list["Portfolio"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     journals: Mapped[list["Journal"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -115,12 +118,40 @@ class DataSource(TimestampMixin, Base):
     user: Mapped[User] = relationship(back_populates="data_sources")
 
 
+class Portfolio(TimestampMixin, Base):
+    __tablename__ = "portfolios"
+    __table_args__ = (
+        Index(
+            "uq_portfolios_default_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_default"),
+            sqlite_where=text("is_default = 1"),
+        ),
+        Index("ix_portfolios_user_sort", "user_id", "sort_order"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="portfolios")
+    holdings: Mapped[list["Holding"]] = relationship(
+        back_populates="portfolio", cascade="all, delete-orphan"
+    )
+
+
 class Holding(TimestampMixin, Base):
     __tablename__ = "holdings"
     __table_args__ = (
         Index(
-            "uq_holdings_open_user_thscode",
-            "user_id",
+            "uq_holdings_open_portfolio_thscode",
+            "portfolio_id",
             "thscode",
             unique=True,
             postgresql_where=text("status = 'open'"),
@@ -131,6 +162,9 @@ class Holding(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    portfolio_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("portfolios.id", ondelete="CASCADE"), index=True, nullable=False
     )
     thscode: Mapped[str] = mapped_column(String(20), nullable=False)
     ticker: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -145,6 +179,7 @@ class Holding(TimestampMixin, Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="holdings")
+    portfolio: Mapped[Portfolio] = relationship(back_populates="holdings")
 
 
 class Journal(TimestampMixin, Base):

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
 import type {
@@ -10,11 +10,101 @@ import type {
   HoldingSummary,
   HoldingUpdatePayload,
   Instrument,
+  Portfolio,
+  PortfolioCreatePayload,
+  PortfolioList,
+  PortfolioUpdatePayload,
 } from "./types";
+
+export const portfoliosQueryKey = ["portfolios"] as const;
 
 export const holdingsQueryKey = (status: HoldingStatus, filters: HoldingsFilters) =>
   ["holdings", status, filters] as const;
 export const holdingSummaryQueryKey = ["holdings", "summary"] as const;
+
+export const portfolioHoldingsQueryKey = (
+  portfolioId: string,
+  status: HoldingStatus,
+  filters: HoldingsFilters,
+) => ["portfolios", portfolioId, "holdings", status, filters] as const;
+
+export const portfolioSummaryQueryKey = (portfolioId: string) =>
+  ["portfolios", portfolioId, "summary"] as const;
+
+export function usePortfoliosQuery() {
+  return useQuery({
+    queryKey: portfoliosQueryKey,
+    queryFn: () => apiFetch<PortfolioList>("/api/portfolios"),
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
+
+export function usePortfolioHoldingsQuery(
+  portfolioId: string | undefined,
+  status: HoldingStatus,
+  filters: HoldingsFilters,
+) {
+  return useQuery({
+    queryKey: portfolioId
+      ? portfolioHoldingsQueryKey(portfolioId, status, filters)
+      : ["portfolios", "empty", "holdings", status, filters],
+    queryFn: () => {
+      const params = new URLSearchParams({ status });
+      const trimmedKeyword = filters.keyword.trim();
+      if (trimmedKeyword) params.set("keyword", trimmedKeyword);
+      if (filters.asset_type) params.set("asset_type", filters.asset_type);
+      if (filters.opened_from) params.set("opened_from", filters.opened_from);
+      if (filters.opened_to) params.set("opened_to", filters.opened_to);
+      return apiFetch<HoldingsList>(
+        `/api/portfolios/${portfolioId}/holdings?${params.toString()}`,
+      );
+    },
+    enabled: Boolean(portfolioId),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return status === "open" && data?.polling_enabled && !document.hidden
+        ? data.refresh_seconds * 1000
+        : false;
+    },
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
+
+export function usePortfolioSummaryQuery(portfolioId: string | undefined) {
+  return useQuery({
+    queryKey: portfolioId
+      ? portfolioSummaryQueryKey(portfolioId)
+      : ["portfolios", "empty", "summary"],
+    queryFn: () => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`),
+    enabled: Boolean(portfolioId),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+    },
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
+
+export function usePortfolioSummariesQuery(portfolioIds: string[]) {
+  return useQueries({
+    queries: portfolioIds.map((portfolioId) => ({
+      queryKey: portfolioSummaryQueryKey(portfolioId),
+      queryFn: () => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`),
+      refetchInterval: (query: Query<HoldingSummary>) => {
+        const data = query.state.data;
+        return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+      },
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    })),
+  });
+}
 
 export function useHoldingsQuery(status: HoldingStatus, filters: HoldingsFilters) {
   return useQuery({
@@ -69,14 +159,64 @@ function useInvalidateHoldings() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: ["holdings"] });
+    void queryClient.invalidateQueries({ queryKey: portfoliosQueryKey });
   };
 }
 
-export function useCreateHoldingMutation() {
+export function useCreateHoldingMutation(portfolioId?: string) {
   const invalidate = useInvalidateHoldings();
   return useMutation({
     mutationFn: (payload: HoldingCreatePayload) =>
-      apiFetch<Holding>("/api/holdings", {
+      apiFetch<Holding>(
+        portfolioId ? `/api/portfolios/${portfolioId}/holdings` : "/api/holdings",
+        {
+        method: "POST",
+        body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateHoldingMutation(portfolioId?: string) {
+  const invalidate = useInvalidateHoldings();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: HoldingUpdatePayload }) =>
+      apiFetch<Holding>(
+        portfolioId ? `/api/portfolios/${portfolioId}/holdings/${id}` : `/api/holdings/${id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteHoldingMutation(portfolioId?: string) {
+  const invalidate = useInvalidateHoldings();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ message: string }>(
+        portfolioId ? `/api/portfolios/${portfolioId}/holdings/${id}` : `/api/holdings/${id}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+function useInvalidatePortfolios() {
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: portfoliosQueryKey });
+  };
+}
+
+export function useCreatePortfolioMutation() {
+  const invalidate = useInvalidatePortfolios();
+  return useMutation({
+    mutationFn: (payload: PortfolioCreatePayload) =>
+      apiFetch<Portfolio>("/api/portfolios", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
@@ -84,11 +224,11 @@ export function useCreateHoldingMutation() {
   });
 }
 
-export function useUpdateHoldingMutation() {
-  const invalidate = useInvalidateHoldings();
+export function useUpdatePortfolioMutation() {
+  const invalidate = useInvalidatePortfolios();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: HoldingUpdatePayload }) =>
-      apiFetch<Holding>(`/api/holdings/${id}`, {
+    mutationFn: ({ id, payload }: { id: string; payload: PortfolioUpdatePayload }) =>
+      apiFetch<Portfolio>(`/api/portfolios/${id}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       }),
@@ -96,11 +236,32 @@ export function useUpdateHoldingMutation() {
   });
 }
 
-export function useDeleteHoldingMutation() {
-  const invalidate = useInvalidateHoldings();
+export function useDeletePortfolioMutation() {
+  const invalidate = useInvalidatePortfolios();
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<{ message: string }>(`/api/holdings/${id}`, { method: "DELETE" }),
+      apiFetch<{ message: string }>(`/api/portfolios/${id}`, { method: "DELETE" }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetDefaultPortfolioMutation() {
+  const invalidate = useInvalidatePortfolios();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<Portfolio>(`/api/portfolios/${id}/default`, { method: "POST" }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReorderPortfoliosMutation() {
+  const invalidate = useInvalidatePortfolios();
+  return useMutation({
+    mutationFn: (portfolioIds: string[]) =>
+      apiFetch<PortfolioList>("/api/portfolios/order", {
+        method: "PATCH",
+        body: JSON.stringify({ portfolio_ids: portfolioIds }),
+      }),
     onSuccess: invalidate,
   });
 }

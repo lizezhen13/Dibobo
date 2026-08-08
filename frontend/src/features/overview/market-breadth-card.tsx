@@ -34,7 +34,7 @@ export function MarketBreadthCard({
       toolbar={
         data ? (
           <span className="hidden font-mono text-[11px] tracking-normal text-muted-foreground/60 sm:inline">
-            {data.valid_count.toLocaleString("zh-CN")} 家
+            {data.valid_count} 家
           </span>
         ) : null
       }
@@ -67,7 +67,7 @@ export function MarketBreadthCard({
                         index > 5 && "text-market-up",
                       )}
                     >
-                      {bin.count.toLocaleString("zh-CN")}
+                      {bin.count}
                     </span>
                     {/* 底部留白，加大柱子与刻度标签之间的空隙 */}
                     <div className="flex min-h-0 items-end justify-center px-0.5 pb-2.5">
@@ -114,7 +114,7 @@ export function MarketBreadthCard({
                 <div key={label} className="min-w-0 px-3 py-2.5">
                   <p className="truncate text-[10px] text-muted-foreground/55">{label}</p>
                   <p className={cn("mt-1 truncate font-mono text-[15px] font-semibold tracking-normal", tone)}>
-                    {value.toLocaleString("zh-CN")}
+                    {value}
                     <span className="ml-1 text-[10px] font-normal text-muted-foreground/50">家</span>
                   </p>
                 </div>
@@ -122,11 +122,11 @@ export function MarketBreadthCard({
               <div className="min-w-0 px-3 py-2.5">
                 <p className="truncate text-[10px] text-muted-foreground/55">涨停 / 平盘 / 跌停</p>
                 <p className="mt-1 truncate font-mono text-[15px] font-semibold tracking-normal">
-                  <span className="text-market-up">{data.strong_up_count.toLocaleString("zh-CN")}</span>
+                  <span className="text-market-up">{data.strong_up_count}</span>
                   <span className="mx-1 text-muted-foreground/40">/</span>
-                  <span className="text-muted-foreground">{data.flat_count.toLocaleString("zh-CN")}</span>
+                  <span className="text-muted-foreground">{data.flat_count}</span>
                   <span className="mx-1 text-muted-foreground/40">/</span>
-                  <span className="text-market-down">{data.strong_down_count.toLocaleString("zh-CN")}</span>
+                  <span className="text-market-down">{data.strong_down_count}</span>
                 </p>
               </div>
               <div className="min-w-0 px-3 py-2.5">

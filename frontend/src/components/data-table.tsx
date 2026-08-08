@@ -22,6 +22,9 @@ interface DataTableProps<TData> {
   empty: ReactNode;
   isLoading?: boolean;
   getRowId?: (row: TData) => string;
+  className?: string;
+  stickyHeader?: boolean;
+  centered?: boolean;
 }
 
 export function DataTable<TData>({
@@ -30,6 +33,9 @@ export function DataTable<TData>({
   empty,
   isLoading = false,
   getRowId,
+  className,
+  stickyHeader = false,
+  centered = false,
 }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
@@ -39,10 +45,17 @@ export function DataTable<TData>({
   });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-raised">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-max border-collapse text-left text-sm">
-          <thead className="border-b border-border bg-secondary/60">
+    <div
+      className={cn(
+        stickyHeader
+          ? "h-full overflow-auto rounded-xl border border-border bg-card shadow-raised"
+          : "overflow-hidden rounded-xl border border-border bg-card shadow-raised",
+        className,
+      )}
+    >
+      <div className={stickyHeader ? "overflow-visible" : "overflow-x-auto"}>
+        <table className={cn("w-full min-w-max border-collapse text-left text-sm", stickyHeader && "border-separate border-spacing-0")}>
+          <thead className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary")}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -52,9 +65,11 @@ export function DataTable<TData>({
                       key={header.id}
                       className={cn(
                         "h-11 whitespace-nowrap px-5 py-3 align-middle text-[13px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
+                        stickyHeader && "!sticky !top-0 !z-20 !bg-secondary",
                         meta?.align === "right" && "text-right",
                         meta?.align === "center" && "text-center",
                         meta?.headerClassName,
+                        centered && "!text-center",
                       )}
                     >
                       {header.isPlaceholder
@@ -98,6 +113,7 @@ export function DataTable<TData>({
                             meta?.align === "right" && "text-right font-mono tabular-nums",
                             meta?.align === "center" && "text-center",
                             meta?.cellClassName,
+                            centered && "!text-center",
                           )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
