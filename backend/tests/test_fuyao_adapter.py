@@ -96,6 +96,7 @@ async def test_fuyao_instrument_search_filters_and_maps_supported_assets() -> No
                             "name": "沪深300ETF",
                             "exchange": "SH",
                             "asset_type": "fund-etf",
+                            "industry": "宽基ETF",
                         },
                         {
                             "thscode": "000300.SH",
@@ -121,6 +122,7 @@ async def test_fuyao_instrument_search_filters_and_maps_supported_assets() -> No
     assert len(result.items) == 1
     assert result.items[0].thscode == "510300.SH"
     assert result.items[0].asset_type == "fund_etf"
+    assert result.items[0].industry == "宽基ETF"
 
 
 @pytest.mark.asyncio
@@ -131,7 +133,10 @@ async def test_fuyao_security_quotes_batch_a_shares_and_single_etfs() -> None:
             item = {
                 "thscode": "600519.SH",
                 "last_price": 1288.5,
+                "price_change": 16.25,
                 "price_change_ratio_pct": 1.25,
+                "volume": 123456,
+                "turnover": 159000000,
             }
         else:
             assert request.url.path == "/api/fund/market/snapshot"
@@ -178,6 +183,9 @@ async def test_fuyao_security_quotes_batch_a_shares_and_single_etfs() -> None:
 
     quotes = {quote.thscode: quote for quote in result.quotes}
     assert quotes["600519.SH"].latest == 1288.5
+    assert quotes["600519.SH"].change == 16.25
+    assert quotes["600519.SH"].volume == 123456
+    assert quotes["600519.SH"].turnover == 159000000
     assert quotes["510300.SH"].change_percent == -1.7569
 
 

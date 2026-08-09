@@ -76,6 +76,20 @@ def _optional_integer(value: object) -> int | None:
     return int(value)
 
 
+def _optional_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _optional_text_list(value: object) -> str | None:
+    if isinstance(value, list):
+        values = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+        return "、".join(dict.fromkeys(values)) or None
+    return _optional_text(value)
+
+
 def _capability_for_path(path: str) -> str:
     if "/financials/indicators" in path:
         return "financial_roe"
@@ -104,7 +118,26 @@ def _security_quotes(data: dict[str, Any]) -> list[SecurityQuote]:
             SecurityQuote(
                 thscode=item["thscode"].upper(),
                 latest=_optional_number(item.get("last_price")),
+                change=_optional_number(item.get("price_change")),
                 change_percent=_optional_number(item.get("price_change_ratio_pct")),
+                volume=_optional_number(item.get("volume")),
+                turnover=_optional_number(item.get("turnover")),
+                total_market_cap=_optional_number(
+                    item.get("total_market_cap") or item.get("market_cap")
+                ),
+                pe_ttm=_optional_number(item.get("pe_ttm")),
+                pe_dynamic=_optional_number(
+                    item.get("pe_dynamic") or item.get("pe_mrq")
+                ),
+                pb=_optional_number(item.get("pb") or item.get("pb_mrq")),
+                dividend_yield=_optional_number(
+                    item.get("dividend_yield") or item.get("dividend_yield_ttm")
+                ),
+                concept=_optional_text_list(item.get("concept") or item.get("concepts")),
+                volume_ratio=_optional_number(item.get("volume_ratio")),
+                turnover_rate=_optional_number(
+                    item.get("turnover_rate") or item.get("turnover_ratio")
+                ),
                 quoted_at=quoted_at,
             )
         )
@@ -258,6 +291,11 @@ class FuyaoAdapter(DataSourceAdapter):
                 ticker = item.get("ticker")
                 name = item.get("name")
                 exchange = item.get("exchange")
+                industry = _optional_text(
+                    item.get("industry")
+                    or item.get("industry_name")
+                    or item.get("sector")
+                )
                 if (
                     asset_type is None
                     or not isinstance(thscode, str)
@@ -273,6 +311,7 @@ class FuyaoAdapter(DataSourceAdapter):
                         name=name,
                         asset_type=asset_type,
                         exchange=exchange,
+                        industry=industry,
                     )
                 )
         return InstrumentSearchResult(items=instruments, fetched_at=datetime.now(UTC))
@@ -331,6 +370,11 @@ class FuyaoAdapter(DataSourceAdapter):
                 ticker = item.get("ticker")
                 name = item.get("name")
                 exchange = item.get("exchange")
+                industry = _optional_text(
+                    item.get("industry")
+                    or item.get("industry_name")
+                    or item.get("sector")
+                )
                 if (
                     isinstance(thscode, str)
                     and isinstance(ticker, str)
@@ -344,6 +388,7 @@ class FuyaoAdapter(DataSourceAdapter):
                             name=name,
                             asset_type="a_share",
                             exchange=exchange,
+                            industry=industry,
                         )
                     )
             if len(items) < limit:
@@ -374,6 +419,10 @@ class FuyaoAdapter(DataSourceAdapter):
                 parsed.append(
                     ValuationSnapshot(
                         thscode=item["thscode"].upper(),
+                        pe_ttm=_optional_number(item.get("pe_ttm")),
+                        pe_dynamic=_optional_number(
+                            item.get("pe_dynamic") or item.get("pe_mrq")
+                        ),
                         pb_mrq=_optional_number(item.get("pb_mrq")),
                         metric_at=metric_at,
                     )

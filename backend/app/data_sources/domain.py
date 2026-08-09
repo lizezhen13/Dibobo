@@ -36,6 +36,7 @@ class Instrument(BaseModel):
     name: str
     asset_type: AssetType
     exchange: Literal["SH", "SZ", "BJ"]
+    industry: str | None = None
 
 
 class InstrumentSearchResult(BaseModel):
@@ -50,6 +51,8 @@ class InstrumentListResult(BaseModel):
 
 class ValuationSnapshot(BaseModel):
     thscode: str
+    pe_ttm: float | None = None
+    pe_dynamic: float | None = None
     pb_mrq: float | None = None
     metric_at: datetime | None = None
 
@@ -80,7 +83,18 @@ class DividendEventResult(BaseModel):
 class SecurityQuote(BaseModel):
     thscode: str
     latest: float | None = None
+    change: float | None = None
     change_percent: float | None = None
+    volume: float | None = None
+    turnover: float | None = None
+    total_market_cap: float | None = None
+    pe_ttm: float | None = None
+    pe_dynamic: float | None = None
+    pb: float | None = None
+    dividend_yield: float | None = None
+    concept: str | None = None
+    volume_ratio: float | None = None
+    turnover_rate: float | None = None
     quoted_at: datetime | None = None
 
 

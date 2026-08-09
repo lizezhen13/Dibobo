@@ -205,6 +205,25 @@ export function useDeleteHoldingMutation(portfolioId?: string) {
   });
 }
 
+export function useReorderPortfolioHoldingsMutation(portfolioId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (holdingIds: string[]) => {
+      if (!portfolioId) throw new Error("未选择投资组合");
+      return apiFetch<{ message: string }>(`/api/portfolios/${portfolioId}/holdings/order`, {
+        method: "PATCH",
+        body: JSON.stringify({ holding_ids: holdingIds }),
+      });
+    },
+    onSuccess: () => {
+      if (!portfolioId) return;
+      void queryClient.invalidateQueries({
+        queryKey: ["portfolios", portfolioId, "holdings"],
+      });
+    },
+  });
+}
+
 function useInvalidatePortfolios() {
   const queryClient = useQueryClient();
   return () => {

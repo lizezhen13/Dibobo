@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,10 +21,12 @@ from app.data_sources.domain import (
     MarketStatus,
     SecurityQuote,
     SecurityQuoteBatch,
+    ValuationSnapshotBatch,
 )
 from app.data_sources.fuyao import FuyaoAdapter
 from app.holdings.schemas import (
     HoldingCreate,
+    HoldingOrderPayload,
     HoldingItem,
     HoldingsListResponse,
     HoldingStatus,
@@ -32,6 +34,7 @@ from app.holdings.schemas import (
     HoldingUpdate,
     InstrumentResponse,
     InstrumentSearchResponse,
+    MessageResponse,
 )
 from app.overview.schemas import DataSourceSummary
 from app.overview.service import get_cached_calendar, resolve_market_status
@@ -209,6 +212,14 @@ async def create_holding(
             detail="该标的已有当前持仓，请编辑原记录",
         )
 
+    max_sort_order = await db.scalar(
+        select(func.max(Holding.sort_order)).where(
+            Holding.user_id == user.id,
+            Holding.portfolio_id == portfolio_id,
+            Holding.status == "open",
+        )
+    )
+
     holding = Holding(
         user_id=user.id,
         portfolio_id=portfolio_id,
@@ -221,6 +232,7 @@ async def create_holding(
         quantity=payload.quantity,
         opened_on=payload.opened_on,
         note=payload.note,
+        sort_order=int(max_sort_order) + 1 if max_sort_order is not None else 0,
         status="open",
     )
     db.add(holding)
@@ -249,13 +261,31 @@ async def update_holding(
 ) -> Holding:
     holding = await get_owned_holding(db, user, holding_id, portfolio_id=portfolio_id)
     if holding.status == "closed":
-        if payload.model_fields_set - {"note"}:
+        if payload.model_fields_set - {"note", "closed_quantity", "close_price", "closed_on"}:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="已清仓记录只能修改备注，再次持有请新增持仓",
+                detail="已清仓记录只能修改备注和清仓信息，再次持有请新增持仓",
             )
-        holding.note = payload.note
+        if "note" in payload.model_fields_set:
+            holding.note = payload.note
+        if "closed_quantity" in payload.model_fields_set:
+            holding.closed_quantity = payload.closed_quantity  # type: ignore[assignment]
+        if "close_price" in payload.model_fields_set:
+            holding.close_price = payload.close_price  # type: ignore[assignment]
+        if "closed_on" in payload.model_fields_set:
+            holding.closed_on = payload.closed_on  # type: ignore[assignment]
     else:
+        close_detail_fields = {"close_price", "closed_on"}
+        if "closed_quantity" in payload.model_fields_set:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="当前持仓的清仓数量由系统自动记录",
+            )
+        if close_detail_fields & payload.model_fields_set and "quantity" not in payload.model_fields_set:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="清仓请先提交清仓数量",
+            )
         if "average_cost" in payload.model_fields_set:
             holding.average_cost = payload.average_cost  # type: ignore[assignment]
         if "opened_on" in payload.model_fields_set:
@@ -263,10 +293,25 @@ async def update_holding(
         if "note" in payload.model_fields_set:
             holding.note = payload.note
         if "quantity" in payload.model_fields_set:
-            holding.quantity = payload.quantity  # type: ignore[assignment]
             if payload.quantity == 0:
+                if close_detail_fields - payload.model_fields_set:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="清仓必须提供清仓价格和清仓日期",
+                    )
+                holding.closed_quantity = holding.quantity
+                holding.close_price = payload.close_price  # type: ignore[assignment]
+                holding.closed_on = payload.closed_on  # type: ignore[assignment]
+                holding.quantity = 0
                 holding.status = "closed"
                 holding.closed_at = datetime.now(UTC)
+            else:
+                if close_detail_fields & payload.model_fields_set:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="只有清仓时能提交清仓价格和清仓日期",
+                    )
+                holding.quantity = payload.quantity  # type: ignore[assignment]
 
     await db.commit()
     await db.refresh(holding)
@@ -339,6 +384,84 @@ async def _get_quotes(
     return batch, False
 
 
+async def _get_valuation_snapshots(
+    cache: Redis,
+    source: DataSource,
+    adapter: FuyaoAdapter,
+    instruments: list[Instrument],
+    settings: Settings,
+) -> ValuationSnapshotBatch | None:
+    thscodes = sorted(
+        item.thscode for item in instruments if item.asset_type == "a_share"
+    )
+    if not thscodes:
+        return None
+
+    signature = ",".join(thscodes)
+    cache_key = f"valuations:watchlist:{source.id}:{signature}"
+    cached = await _cache_get(cache, cache_key)
+    if cached:
+        try:
+            return ValuationSnapshotBatch.model_validate_json(cached)
+        except ValueError:
+            logger.warning("Invalid valuation cache", extra={"cache_key": cache_key})
+
+    try:
+        batch = await adapter.get_valuation_snapshots(
+            thscodes,
+            settings.upstream_concurrency,
+        )
+    except DataSourceError as exc:
+        logger.info(
+            "Watchlist valuation request unavailable",
+            extra={"data_source_id": str(source.id), "code": exc.code},
+        )
+        return None
+
+    await _cache_set(
+        cache,
+        cache_key,
+        batch.model_dump_json(),
+        max(settings.radar_pb_cache_minutes * 60, 60),
+    )
+    return batch
+
+
+def _merge_valuation_metrics(
+    batch: SecurityQuoteBatch,
+    valuations: ValuationSnapshotBatch | None,
+) -> SecurityQuoteBatch:
+    if valuations is None:
+        return batch
+
+    by_thscode = {item.thscode: item for item in valuations.items}
+    if not by_thscode:
+        return batch
+
+    quotes = []
+    for quote in batch.quotes:
+        valuation = by_thscode.get(quote.thscode)
+        if valuation is None:
+            quotes.append(quote)
+            continue
+        quotes.append(
+            quote.model_copy(
+                update={
+                    "pe_ttm": quote.pe_ttm
+                    if quote.pe_ttm is not None
+                    else valuation.pe_ttm,
+                    "pe_dynamic": quote.pe_dynamic
+                    if quote.pe_dynamic is not None
+                    else valuation.pe_dynamic,
+                    "pb": quote.pb
+                    if quote.pb is not None
+                    else valuation.pb_mrq,
+                }
+            )
+        )
+    return SecurityQuoteBatch(quotes=quotes, fetched_at=batch.fetched_at)
+
+
 def _source_summary(source: DataSource | None) -> DataSourceSummary:
     if source is None:
         return DataSourceSummary(
@@ -354,6 +477,7 @@ async def load_market_context(
     user: User,
     holdings: list[Holding],
     settings: Settings,
+    include_valuation_metrics: bool = False,
 ) -> MarketContext:
     source = await _active_source(db, user)
     if source is None or not holdings:
@@ -394,6 +518,15 @@ async def load_market_context(
             calendar = await get_cached_calendar(cache, source, adapter)
             market_status = resolve_market_status(datetime.now(UTC), calendar.dates)
             batch, stale = await _get_quotes(cache, source, adapter, instruments, settings)
+            if include_valuation_metrics:
+                valuations = await _get_valuation_snapshots(
+                    cache,
+                    source,
+                    adapter,
+                    instruments,
+                    settings,
+                )
+                batch = _merge_valuation_metrics(batch, valuations)
     except DataSourceError as exc:
         logger.warning(
             "Holding quote request failed",
@@ -422,6 +555,48 @@ async def load_market_context(
     )
 
 
+def _holding_realized_values(
+    holding: Holding,
+) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
+    if holding.closed_quantity is None or holding.close_price is None:
+        return None, None, None
+    cost_amount = Decimal(holding.average_cost) * holding.closed_quantity
+    close_amount = Decimal(holding.close_price) * holding.closed_quantity
+    realized_gain = close_amount - cost_amount
+    realized_gain_percent = (
+        realized_gain / cost_amount * 100 if cost_amount != 0 else None
+    )
+    return close_amount, realized_gain, realized_gain_percent
+
+
+def calculate_realized_values(
+    holdings: list[Holding],
+) -> tuple[Decimal | None, Decimal | None, bool]:
+    closed_holdings = [holding for holding in holdings if holding.status == "closed"]
+    if not closed_holdings:
+        return Decimal("0"), Decimal("0"), False
+
+    realized_gain = Decimal("0")
+    realized_cost = Decimal("0")
+    calculated_count = 0
+    incomplete = False
+    for holding in closed_holdings:
+        _, holding_gain, _ = _holding_realized_values(holding)
+        if holding_gain is None or holding.closed_quantity is None:
+            incomplete = True
+            continue
+        calculated_count += 1
+        realized_gain += holding_gain
+        realized_cost += Decimal(holding.average_cost) * holding.closed_quantity
+
+    if calculated_count == 0:
+        return None, None, True
+    realized_gain_percent = (
+        realized_gain / realized_cost * 100 if realized_cost != 0 else None
+    )
+    return realized_gain, realized_gain_percent, incomplete
+
+
 def build_holding_items(
     holdings: list[Holding],
     quotes: dict[str, SecurityQuote],
@@ -432,8 +607,13 @@ def build_holding_items(
     total_market_value = Decimal("0")
     for holding in holdings:
         average_cost = Decimal(holding.average_cost)
-        cost_amount = average_cost * holding.quantity
-        quote = quotes.get(holding.thscode)
+        effective_quantity = (
+            holding.quantity
+            if holding.status == "open"
+            else holding.closed_quantity or 0
+        )
+        cost_amount = average_cost * effective_quantity
+        quote = quotes.get(holding.thscode) if holding.status == "open" else None
         latest = Decimal(str(quote.latest)) if quote and quote.latest is not None else None
         market_value = latest * holding.quantity if latest is not None else None
         floating_gain = market_value - cost_amount if market_value is not None else None
@@ -453,6 +633,7 @@ def build_holding_items(
             if market_value is not None and total_market_value != 0
             else None
         )
+        close_amount, realized_gain, realized_gain_percent = _holding_realized_values(holding)
         items.append(
             HoldingItem(
                 id=holding.id,
@@ -465,11 +646,30 @@ def build_holding_items(
                 quantity=holding.quantity,
                 opened_on=holding.opened_on,
                 note=holding.note,
+                sort_order=holding.sort_order,
                 status=holding.status,  # type: ignore[arg-type]
+                closed_quantity=holding.closed_quantity,
+                close_price=(
+                    _to_float(Decimal(holding.close_price))
+                    if holding.close_price is not None
+                    else None
+                ),
+                closed_on=holding.closed_on,
                 closed_at=_as_utc(holding.closed_at) if holding.closed_at else None,
                 created_at=_as_utc(holding.created_at),
                 updated_at=_as_utc(holding.updated_at),
                 cost_amount=_to_float(cost_amount),
+                close_amount=(
+                    _to_float(close_amount) if close_amount is not None else None
+                ),
+                realized_gain=(
+                    _to_float(realized_gain) if realized_gain is not None else None
+                ),
+                realized_gain_percent=(
+                    _to_float(realized_gain_percent)
+                    if realized_gain_percent is not None
+                    else None
+                ),
                 latest=quote.latest if quote else None,
                 market_value=_to_float(market_value) if market_value is not None else None,
                 floating_gain=_to_float(floating_gain) if floating_gain is not None else None,
@@ -482,13 +682,6 @@ def build_holding_items(
 
     if holdings and holdings[0].status == "closed":
         items.sort(key=lambda item: _datetime_sort_value(item.closed_at), reverse=True)
-    else:
-        items.sort(
-            key=lambda item: (
-                item.market_value is None,
-                -(item.market_value or 0),
-            )
-        )
     return items
 
 
@@ -567,7 +760,15 @@ async def list_holdings(
     if opened_to:
         where_clauses.append(Holding.opened_on <= opened_to)
 
-    holdings = list((await db.scalars(select(Holding).where(*where_clauses))).all())
+    holdings = list(
+        (
+            await db.scalars(
+                select(Holding)
+                .where(*where_clauses)
+                .order_by(Holding.sort_order, Holding.created_at, Holding.id)
+            )
+        ).all()
+    )
     context = (
         await load_market_context(db, cache, user, holdings, settings)
         if holding_status == "open"
@@ -591,6 +792,44 @@ async def list_holdings(
     )
 
 
+async def reorder_holdings(
+    db: AsyncSession,
+    user: User,
+    portfolio_id: uuid.UUID,
+    payload: HoldingOrderPayload,
+) -> MessageResponse:
+    holdings = list(
+        (
+            await db.scalars(
+                select(Holding)
+                .where(
+                    Holding.user_id == user.id,
+                    Holding.portfolio_id == portfolio_id,
+                    Holding.status == "open",
+                )
+                .order_by(Holding.sort_order, Holding.created_at, Holding.id)
+            )
+        ).all()
+    )
+    expected_ids = {holding.id for holding in holdings}
+    submitted_ids = payload.holding_ids
+    if len(submitted_ids) != len(set(submitted_ids)) or set(submitted_ids) != expected_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="持仓排序必须包含当前组合的全部当前持仓，且不能重复",
+        )
+
+    by_id = {holding.id: holding for holding in holdings}
+    for sort_order, holding_id in enumerate(submitted_ids):
+        by_id[holding_id].sort_order = sort_order
+    await db.commit()
+    logger.info(
+        "Holdings reordered",
+        extra={"user_id": str(user.id), "portfolio_id": str(portfolio_id)},
+    )
+    return MessageResponse(message="持仓排序已保存")
+
+
 async def get_holding_summary(
     db: AsyncSession,
     cache: Redis,
@@ -608,8 +847,26 @@ async def get_holding_summary(
             )
         ).all()
     )
+    closed_where_clauses = [Holding.user_id == user.id, Holding.status == "closed"]
+    if portfolio_id is not None:
+        closed_where_clauses.append(Holding.portfolio_id == portfolio_id)
+    closed_holdings = list(
+        (
+            await db.scalars(select(Holding).where(*closed_where_clauses))
+        ).all()
+    )
     context = await load_market_context(db, cache, user, holdings, settings)
     values = calculate_summary_values(holdings, context.quotes)
+    realized_gain, realized_gain_percent, realized_incomplete = calculate_realized_values(
+        closed_holdings
+    )
+    total_gain = (
+        values.floating_gain + realized_gain
+        if values.floating_gain is not None and realized_gain is not None
+        else realized_gain
+        if not holdings
+        else None
+    )
     return HoldingSummaryResponse(
         total_cost=_to_float(values.total_cost),
         priced_cost=_to_float(values.priced_cost),
@@ -628,6 +885,16 @@ async def get_holding_summary(
         ),
         incomplete=values.incomplete,
         holding_count=len(holdings),
+        realized_gain=(
+            _to_float(realized_gain) if realized_gain is not None else None
+        ),
+        realized_gain_percent=(
+            _to_float(realized_gain_percent)
+            if realized_gain_percent is not None
+            else None
+        ),
+        realized_incomplete=realized_incomplete,
+        total_gain=_to_float(total_gain) if total_gain is not None else None,
         data_source=context.data_source,
         market_status=context.market_status,
         polling_enabled=context.polling_enabled,

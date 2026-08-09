@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dibobo · 事件日历原型</title>
+    <style>
+      :root {
+        --ink: #071016;
+        --ink-soft: #0c1820;
+        --ink-muted: #53616a;
+        --paper: #eeeadd;
+        --paper-deep: #e3e0d2;
+        --paper-line: rgba(7, 16, 22, 0.12);
+        --white-line: rgba(238, 234, 221, 0.12);
+        --mint: #a9efd5;
+        --mint-deep: #64d6ae;
+        --acid: #d7f27a;
+        --orange: #ff8160;
+        --yellow: #f6c766;
+        --blue: #83b8ff;
+        --purple: #c2a4ff;
+        --danger: #ff9a83;
+        --shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+        --display: Georgia, "Times New Roman", serif;
+        --body: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { min-height: 100%; }
+
+      body {
+        margin: 0;
+        color: var(--paper);
+        background:
+          radial-gradient(circle at 88% 3%, rgba(169, 239, 213, 0.12), transparent 24rem),
+          radial-gradient(circle at 8% 84%, rgba(255, 129, 96, 0.08), transparent 22rem),
+          var(--ink);
+        font-family: var(--body);
+        letter-spacing: -0.015em;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        content: "";
+        opacity: 0.2;
+        background-image:
+          linear-gradient(rgba(238, 234, 221, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(238, 234, 221, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: linear-gradient(to bottom, black, transparent 92%);
+      }
+
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 246px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 27px 18px 20px;
+        border-right: 1px solid var(--white-line);
+        background: rgba(5, 12, 17, 0.66);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 12px 30px;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        color: var(--ink);
+        border-radius: 50%;
+        background: var(--acid);
+        box-shadow: 0 0 0 5px rgba(215, 242, 122, 0.08);
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .brand-name {
+        font-family: var(--display);
+        font-size: 23px;
+        letter-spacing: -0.06em;
+      }
+
+      .brand-kicker {
+        margin-top: 4px;
+        color: rgba(238, 234, 221, 0.45);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .nav-label {
+        padding: 0 12px 9px;
+        color: rgba(238, 234, 221, 0.35);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px;
+        color: rgba(238, 234, 221, 0.62);
+        border: 1px solid transparent;
+        border-radius: 12px;
+        background: transparent;
+        text-align: left;
+        transition: 180ms ease;
+      }
+
+      .nav-item:hover { color: var(--paper); background: rgba(238, 234, 221, 0.06); }
+
+      .nav-item.active {
+        color: var(--ink);
+        border-color: rgba(169, 239, 213, 0.35);
+        background: var(--mint);
+        box-shadow: 0 10px 30px rgba(100, 214, 174, 0.14);
+      }
+
+      .nav-icon {
+        display: grid;
+        width: 24px;
+        height: 24px;
+        place-items: center;
+        border: 1px solid currentColor;
+        border-radius: 7px;
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .nav-copy { display: grid; gap: 2px; }
+      .nav-copy strong { font-size: 13px; font-weight: 650; }
+      .nav-copy span { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; opacity: 0.66; }
+
+      .sidebar-foot {
+        display: grid;
+        gap: 14px;
+        padding: 16px 12px 0;
+        border-top: 1px solid var(--white-line);
+      }
+
+      .sync-dot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(238, 234, 221, 0.6);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .sync-dot::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--mint-deep);
+        box-shadow: 0 0 0 4px rgba(100, 214, 174, 0.12);
+        content: "";
+      }
+
+      .profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .avatar {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        color: var(--ink);
+        border-radius: 50%;
+        background: var(--orange);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .profile strong { display: block; font-size: 12px; }
+      .profile span { display: block; margin-top: 3px; color: rgba(238, 234, 221, 0.4); font-family: var(--mono); font-size: 9px; }
+
+      .content {
+        min-width: 0;
+        padding: 27px 34px 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 27px;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--mint);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before { width: 25px; height: 1px; background: var(--mint); content: ""; }
+
+      h1 {
+        margin: 10px 0 0;
+        color: var(--paper);
+        font-family: var(--display);
+        font-size: clamp(38px, 4.5vw, 66px);
+        font-weight: 500;
+        letter-spacing: -0.075em;
+        line-height: 0.94;
+      }
+
+      .topbar-note {
+        max-width: 430px;
+        margin: 10px 0 0;
+        color: rgba(238, 234, 221, 0.5);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .top-actions { display: flex; align-items: center; gap: 10px; }
+
+      .ghost-btn, .solid-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 38px;
+        padding: 0 13px;
+        border: 1px solid var(--white-line);
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 650;
+        transition: 180ms ease;
+      }
+
+      .ghost-btn { color: rgba(238, 234, 221, 0.72); background: rgba(238, 234, 221, 0.04); }
+      .ghost-btn:hover { color: var(--paper); border-color: rgba(169, 239, 213, 0.45); background: rgba(169, 239, 213, 0.08); }
+      .solid-btn { color: var(--ink); border-color: var(--mint); background: var(--mint); }
+      .solid-btn:hover { background: var(--acid); }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 12px;
+        border: 1px solid var(--white-line);
+        border-radius: 14px;
+        background: rgba(238, 234, 221, 0.045);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.13);
+        backdrop-filter: blur(14px);
+      }
+
+      .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+      .select-like, .search-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 11px;
+        color: rgba(238, 234, 221, 0.73);
+        border: 1px solid var(--white-line);
+        border-radius: 9px;
+        background: rgba(7, 16, 22, 0.32);
+        font-size: 11px;
+      }
+
+      .select-like { min-width: 121px; justify-content: space-between; }
+      .select-like::after { color: rgba(238, 234, 221, 0.38); content: "⌄"; font-size: 14px; }
+
+      .search-box { width: 180px; }
+      .search-box input { width: 100%; color: var(--paper); border: 0; outline: 0; background: transparent; font-size: 11px; }
+      .search-box input::placeholder { color: rgba(238, 234, 221, 0.35); }
+
+      .filter-chip {
+        min-height: 32px;
+        padding: 0 10px;
+        color: rgba(238, 234, 221, 0.5);
+        border: 1px solid var(--white-line);
+        border-radius: 999px;
+        background: transparent;
+        font-size: 11px;
+        transition: 180ms ease;
+      }
+
+      .filter-chip:hover, .filter-chip.active { color: var(--ink); border-color: var(--acid); background: var(--acid); }
+
+      .view-toggle { display: flex; padding: 3px; border: 1px solid var(--white-line); border-radius: 10px; background: rgba(7, 16, 22, 0.3); }
+      .view-btn { min-width: 37px; height: 28px; color: rgba(238, 234, 221, 0.45); border: 0; border-radius: 7px; background: transparent; font-family: var(--mono); font-size: 10px; }
+      .view-btn.active { color: var(--ink); background: var(--paper); }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .stat {
+        position: relative;
+        min-height: 100px;
+        padding: 15px 16px;
+        overflow: hidden;
+        border: 1px solid var(--paper-line);
+        border-radius: 14px;
+        background: var(--paper);
+        color: var(--ink);
+      }
+
+      .stat::after {
+        position: absolute;
+        right: -19px;
+        bottom: -33px;
+        width: 86px;
+        height: 86px;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+        opacity: 0.12;
+        content: "";
+      }
+
+      .stat:nth-child(2) { background: var(--mint); }
+      .stat:nth-child(3) { background: var(--orange); }
+      .stat:nth-child(4) { color: var(--paper); border-color: var(--white-line); background: var(--ink-soft); }
+      .stat-label { color: rgba(7, 16, 22, 0.56); font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+      .stat:nth-child(4) .stat-label { color: rgba(238, 234, 221, 0.42); }
+      .stat-value { margin-top: 15px; font-family: var(--display); font-size: 31px; letter-spacing: -0.07em; }
+      .stat-foot { position: absolute; right: 15px; bottom: 14px; color: rgba(7, 16, 22, 0.5); font-family: var(--mono); font-size: 9px; }
+      .stat:nth-child(4) .stat-foot { color: rgba(238, 234, 221, 0.42); }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(650px, 1fr) 350px;
+        min-height: 650px;
+        overflow: hidden;
+        border: 1px solid var(--paper-line);
+        border-radius: 18px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .calendar-panel { min-width: 0; color: var(--ink); }
+
+      .calendar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 20px 22px 17px;
+        border-bottom: 1px solid var(--paper-line);
+      }
+
+      .month-title { display: flex; align-items: baseline; gap: 12px; }
+      .month-title strong { font-family: var(--display); font-size: 31px; font-weight: 500; letter-spacing: -0.08em; }
+      .month-title span { color: var(--ink-muted); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; }
+      .month-nav { display: flex; gap: 6px; }
+      .month-nav button { display: grid; width: 32px; height: 32px; place-items: center; color: var(--ink); border: 1px solid var(--paper-line); border-radius: 8px; background: transparent; font-family: var(--mono); font-size: 15px; }
+      .month-nav button:hover { color: var(--paper); background: var(--ink); }
+
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+      .weekday { padding: 12px 11px 10px; color: var(--ink-muted); border-bottom: 1px solid var(--paper-line); font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .day { position: relative; min-height: 112px; padding: 9px 8px 7px; border-right: 1px solid var(--paper-line); border-bottom: 1px solid var(--paper-line); transition: background 180ms ease; }
+      .day:nth-child(7n) { border-right: 0; }
+      .day:hover { background: rgba(100, 214, 174, 0.09); }
+      .day.muted { color: rgba(83, 97, 106, 0.46); background: rgba(7, 16, 22, 0.025); }
+      .day.today { background: rgba(215, 242, 122, 0.2); }
+      .day.today::before { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--orange); content: ""; }
+      .day-number { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-family: var(--mono); font-size: 10px; font-weight: 700; }
+      .day-number em { color: var(--orange); font-size: 8px; font-style: normal; letter-spacing: 0.08em; }
+
+      .event-stack { display: grid; gap: 4px; }
+      .event-pill {
+        display: grid;
+        grid-template-columns: 4px minmax(0, 1fr);
+        gap: 6px;
+        width: 100%;
+        padding: 5px 5px 5px 4px;
+        overflow: hidden;
+        color: var(--ink);
+        border: 0;
+        border-radius: 5px;
+        background: rgba(7, 16, 22, 0.055);
+        text-align: left;
+        transition: 160ms ease;
+      }
+
+      .event-pill:hover, .event-pill.selected { color: var(--ink); background: var(--mint); box-shadow: 0 4px 14px rgba(7, 16, 22, 0.13); transform: translateY(-1px); }
+      .event-bar { width: 4px; min-height: 22px; border-radius: 4px; background: var(--blue); }
+      .event-pill.macro .event-bar { background: var(--orange); }
+      .event-pill.policy .event-bar { background: var(--purple); }
+      .event-pill.company .event-bar { background: var(--mint-deep); }
+      .event-pill.market .event-bar { background: var(--ink-muted); }
+      .event-pill.unverified .event-bar { background: var(--yellow); }
+      .event-copy { min-width: 0; }
+      .event-title { display: block; overflow: hidden; font-size: 10px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+      .event-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--ink-muted); font-family: var(--mono); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+      .more-events { padding: 1px 3px; color: var(--ink-muted); font-family: var(--mono); font-size: 8px; }
+
+      .detail-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        color: var(--paper);
+        background: var(--ink-soft);
+      }
+
+      .detail-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 21px 17px; border-bottom: 1px solid var(--white-line); }
+      .detail-kicker { color: var(--mint); font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+      .detail-top h2 { max-width: 270px; margin: 10px 0 0; font-family: var(--display); font-size: 25px; font-weight: 500; letter-spacing: -0.06em; line-height: 1.04; }
+      .close-detail { display: grid; width: 28px; height: 28px; place-items: center; color: rgba(238, 234, 221, 0.6); border: 1px solid var(--white-line); border-radius: 8px; background: transparent; }
+      .close-detail:hover { color: var(--ink); background: var(--paper); }
+
+      .detail-scroll { padding: 20px 21px 22px; overflow: auto; }
+      .event-status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .badge { display: inline-flex; align-items: center; min-height: 23px; padding: 0 8px; border-radius: 999px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em; }
+      .badge.confirmed { color: var(--ink); background: var(--mint); }
+      .badge.high { color: var(--ink); background: var(--orange); }
+      .badge.macro-tag { color: var(--ink); background: var(--yellow); }
+
+      .detail-time { display: grid; gap: 5px; margin: 18px 0 22px; padding: 13px 14px; border: 1px solid var(--white-line); border-radius: 11px; background: rgba(238, 234, 221, 0.045); }
+      .detail-time strong { font-family: var(--mono); font-size: 13px; letter-spacing: -0.03em; }
+      .detail-time span { color: rgba(238, 234, 221, 0.48); font-size: 11px; }
+
+      .data-block { margin-top: 21px; }
+      .block-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: rgba(238, 234, 221, 0.48); font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+      .block-label::after { width: 42%; height: 1px; background: var(--white-line); content: ""; }
+      .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+      .metric { padding: 10px 9px; border: 1px solid var(--white-line); border-radius: 9px; background: rgba(238, 234, 221, 0.035); }
+      .metric span { display: block; color: rgba(238, 234, 221, 0.44); font-family: var(--mono); font-size: 8px; }
+      .metric strong { display: block; margin-top: 8px; color: var(--paper); font-family: var(--mono); font-size: 14px; }
+      .metric.actual { border-color: rgba(169, 239, 213, 0.3); background: rgba(169, 239, 213, 0.08); }
+      .metric.actual strong { color: var(--mint); }
+
+      .detail-list { display: grid; gap: 0; margin: 0; }
+      .detail-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--white-line); font-size: 11px; }
+      .detail-row dt { color: rgba(238, 234, 221, 0.42); font-family: var(--mono); font-size: 9px; }
+      .detail-row dd { margin: 0; color: rgba(238, 234, 221, 0.82); text-align: right; }
+      .detail-row a { color: var(--mint); text-decoration: none; }
+      .detail-row a:hover { text-decoration: underline; }
+
+      .note {
+        margin-top: 18px;
+        padding: 12px 13px;
+        color: rgba(238, 234, 221, 0.58);
+        border-left: 2px solid var(--yellow);
+        background: rgba(246, 199, 102, 0.07);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+
+      .toast {
+        position: fixed;
+        right: 26px;
+        bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 320px;
+        padding: 12px 14px;
+        color: var(--ink);
+        border-radius: 10px;
+        background: var(--mint);
+        box-shadow: var(--shadow);
+        font-size: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(10px);
+        transition: 220ms ease;
+      }
+
+      .toast.show { opacity: 1; transform: translateY(0); }
+
+      .demo-mark {
+        position: fixed;
+        right: 15px;
+        top: 10px;
+        z-index: 5;
+        color: rgba(238, 234, 221, 0.28);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.12em;
+        pointer-events: none;
+        text-transform: uppercase;
+      }
+
+      @media (max-width: 1180px) {
+        .workspace { grid-template-columns: minmax(580px, 1fr) 310px; }
+        .content { padding-right: 22px; padding-left: 22px; }
+        .sidebar { grid-column: 1 / -1; grid-row: 2; min-height: auto; padding: 15px 18px; }
+        .shell { grid-template-columns: 1fr; }
+        .brand { padding: 0 8px 15px; }
+        .nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        .nav-label, .sidebar-foot { display: none; }
+      }
+
+      @media (max-width: 900px) {
+        .workspace { grid-template-columns: 1fr; }
+        .detail-panel { display: none; }
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .toolbar { align-items: flex-start; flex-direction: column; }
+        .toolbar-right { width: 100%; justify-content: space-between; }
+      }
+
+      @media (max-width: 620px) {
+        .content { padding: 20px 12px 28px; }
+        .topbar { display: block; }
+        .top-actions { margin-top: 18px; }
+        .top-actions .ghost-btn { flex: 1; }
+        .nav { grid-template-columns: repeat(3, 1fr); }
+        .nav-item { justify-content: center; padding: 9px 5px; }
+        .nav-copy { display: none; }
+        .stats { gap: 7px; }
+        .stat { min-height: 88px; padding: 12px; }
+        .stat-value { margin-top: 10px; font-size: 25px; }
+        .calendar-head { padding: 16px 13px 13px; }
+        .month-title strong { font-size: 26px; }
+        .day { min-height: 91px; padding: 7px 4px; }
+        .weekday { padding: 9px 4px; font-size: 8px; }
+        .event-pill { padding: 4px 3px; }
+        .event-title { font-size: 8px; }
+        .event-meta { font-size: 7px; }
+        .search-box { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-mark">prototype / demo data / 2026—08</div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div>
+          <div class="brand">
+            <div class="brand-mark">D</div>
+            <div>
+              <div class="brand-name">Dibobo</div>
+              <div class="brand-kicker">market observatory</div>
+            </div>
+          </div>
+
+          <div class="nav-label">Workspace</div>
+          <nav class="nav" aria-label="主导航">
+            <button class="nav-item" type="button">
+              <span class="nav-icon">01</span>
+              <span class="nav-copy"><strong>总览面板</strong><span>OVERVIEW</span></span>
+            </button>
+            <button class="nav-item" type="button">
+              <span class="nav-icon">02</span>
+              <span class="nav-copy"><strong>投资组合</strong><span>PORTFOLIO</span></span>
+            </button>
+            <button class="nav-item active" type="button">
+              <span class="nav-icon">03</span>
+              <span class="nav-copy"><strong>事件日历</strong><span>EVENT CALENDAR</span></span>
+            </button>
+            <button class="nav-item" type="button">
+              <span class="nav-icon">04</span>
+              <span class="nav-copy"><strong>红利雷达</strong><span>DIVIDEND RADAR</span></span>
+            </button>
+            <button class="nav-item" type="button">
+              <span class="nav-icon">05</span>
+              <span class="nav-copy"><strong>投资日记</strong><span>JOURNAL</span></span>
+            </button>
+          </nav>
+        </div>
+
+        <div class="sidebar-foot">
+          <div class="sync-dot">数据源已连接 · 4 个源同步中</div>
+          <div class="profile">
+            <div class="avatar">LZ</div>
+            <div><strong>Li Z.</strong><span>Asia / Shanghai</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow">Event Calendar / 事件日历</div>
+            <h1>把市场的<br />下一步摆在眼前。</h1>
+            <p class="topbar-note">宏观数据、政策脉冲、市场休市与持仓公司的关键节点，聚合在一条可检索的时间轴里。</p>
+          </div>
+          <div class="top-actions">
+            <button class="ghost-btn" id="syncButton" type="button"><span>↻</span> 同步数据</button>
+            <button class="solid-btn" id="rangeButton" type="button"><span>＋</span> 自定义日期</button>
+          </div>
+        </header>
+
+        <section class="toolbar" aria-label="事件筛选">
+          <div class="toolbar-left">
+            <button class="select-like" type="button">全球主要经济体</button>
+            <button class="select-like" type="button">全部事件类型</button>
+            <button class="filter-chip active" data-filter="all" type="button">全部</button>
+            <button class="filter-chip" data-filter="macro" type="button">宏观</button>
+            <button class="filter-chip" data-filter="policy" type="button">政策</button>
+            <button class="filter-chip" data-filter="company" type="button">持仓公司</button>
+            <button class="filter-chip" data-filter="market" type="button">市场日历</button>
+          </div>
+          <div class="toolbar-right">
+            <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="搜索事件 / 股票" /></label>
+            <div class="view-toggle" aria-label="切换视图">
+              <button class="view-btn active" data-view="month" type="button">月</button>
+              <button class="view-btn" data-view="week" type="button">周</button>
+              <button class="view-btn" data-view="list" type="button">列</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats" aria-label="事件概览">
+          <article class="stat"><div class="stat-label">Calendar load</div><div class="stat-value">24</div><div class="stat-foot">本月事件</div></article>
+          <article class="stat"><div class="stat-label">High signal</div><div class="stat-value">07</div><div class="stat-foot">高重要性</div></article>
+          <article class="stat"><div class="stat-label">Holdings</div><div class="stat-value">05</div><div class="stat-foot">持仓公司事件</div></article>
+          <article class="stat"><div class="stat-label">Need review</div><div class="stat-value">02</div><div class="stat-foot">待核实</div></article>
+        </section>
+
+        <section class="workspace">
+          <div class="calendar-panel">
+            <div class="calendar-head">
+              <div class="month-title"><strong id="monthTitle">2026 年 08 月</strong><span>北京时间 / SHANGHAI</span></div>
+              <div class="month-nav">
+                <button id="prevMonth" aria-label="上个月" type="button">←</button>
+                <button id="todayButton" aria-label="回到当前月" type="button">●</button>
+                <button id="nextMonth" aria-label="下个月" type="button">→</button>
+              </div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </div>
+
+          <aside class="detail-panel" id="detailPanel" aria-label="事件详情">
+            <div class="detail-top">
+              <div><div class="detail-kicker" id="detailKicker">MACRO / UNITED STATES</div><h2 id="detailTitle">美国 CPI · 7 月</h2></div>
+              <button class="close-detail" id="closeDetail" aria-label="关闭详情" type="button">×</button>
+            </div>
+            <div class="detail-scroll">
+              <div class="event-status-row"><span class="badge confirmed" id="detailStatus">已确认</span><span class="badge high" id="detailImportance">高重要性</span><span class="badge macro-tag" id="detailType">宏观数据</span></div>
+              <div class="detail-time"><strong id="detailTime">08 月 12 日 · 20:30 北京时间</strong><span id="detailLocalTime">当地时间 08:30 · Washington D.C.</span></div>
+
+              <div class="data-block">
+                <div class="block-label">Market reference</div>
+                <div class="metric-grid">
+                  <div class="metric"><span>前值 Previous</span><strong id="detailPrevious">2.7%</strong></div>
+                  <div class="metric"><span>预期 Estimate</span><strong id="detailEstimate">2.8%</strong></div>
+                  <div class="metric actual"><span>实际 Actual</span><strong id="detailActual">—</strong></div>
+                </div>
+              </div>
+
+              <div class="data-block">
+                <div class="block-label">Event record</div>
+                <dl class="detail-list">
+                  <div class="detail-row"><dt>数据期间</dt><dd id="detailPeriod">2026 年 07 月</dd></div>
+                  <div class="detail-row"><dt>发布机构</dt><dd id="detailIssuer">U.S. Bureau of Labor Statistics</dd></div>
+                  <div class="detail-row"><dt>事件状态</dt><dd id="detailState">预计发布，日期已确认</dd></div>
+                  <div class="detail-row"><dt>原始来源</dt><dd><a id="detailSource" href="https://www.bls.gov/schedule/2026/home.htm" target="_blank" rel="noreferrer">查看官方日程 ↗</a></dd></div>
+                </dl>
+              </div>
+
+              <div class="note">演示说明：此原型使用静态示例数据。正式版本将展示实际同步时间，并保留官方来源与第三方来源记录。</div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"><span>●</span><span id="toastMessage">同步请求已发送</span></div>
+
+    <script>
+      const monthNames = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+      const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+      let displayDate = new Date(2026, 7, 1);
+      let activeFilter = "all";
+      let activeEventId = "cpi";
+
+      const events = [
+        { id: "gdp", date: "2026-07-30", category: "macro", title: "美国 GDP · 2Q 初值", meta: "08:30 / 高", kicker: "MACRO / UNITED STATES", status: "已发布", importance: "高重要性", type: "宏观数据", time: "07 月 30 日 · 20:30 北京时间", localTime: "当地时间 08:30 · Washington D.C.", previous: "3.0%", estimate: "2.4%", actual: "2.8%", period: "2026 年第 2 季度", issuer: "U.S. Bureau of Economic Analysis", state: "实际值已发布", source: "查看官方发布", sourceUrl: "https://www.bea.gov/news/schedule" },
+        { id: "cpi", date: "2026-08-12", category: "macro", title: "美国 CPI · 7 月", meta: "20:30 / 高", kicker: "MACRO / UNITED STATES", status: "已确认", importance: "高重要性", type: "宏观数据", time: "08 月 12 日 · 20:30 北京时间", localTime: "当地时间 08:30 · Washington D.C.", previous: "2.7%", estimate: "2.8%", actual: "—", period: "2026 年 07 月", issuer: "U.S. Bureau of Labor Statistics", state: "预计发布，日期已确认", source: "查看官方日程 ↗", sourceUrl: "https://www.bls.gov/schedule/2026/home.htm" },
+        { id: "nbs", date: "2026-08-10", category: "macro", title: "中国 CPI / PPI", meta: "09:30 / 高", kicker: "MACRO / CHINA", status: "已确认", importance: "高重要性", type: "宏观数据", time: "08 月 10 日 · 09:30 北京时间", localTime: "当地时间 09:30 · 北京", previous: "—", estimate: "—", actual: "—", period: "2026 年 07 月", issuer: "国家统计局", state: "官方日程已确认", source: "查看国家统计局日程 ↗", sourceUrl: "https://www.stats.gov.cn/sj/fbrc/bnxxfb/" },
+        { id: "policy", date: "2026-08-14", category: "policy", title: "欧盟数字监管更新", meta: "全天 / 中", kicker: "POLICY / EUROPEAN UNION", status: "已发布", importance: "中重要性", type: "政策文件", time: "08 月 14 日 · 全天", localTime: "当地时间 · Brussels", previous: "—", estimate: "—", actual: "已发布", period: "2026 年 08 月", issuer: "European Commission", state: "文件已公开，生效日期待定", source: "查看原始文件 ↗", sourceUrl: "https://eur-lex.europa.eu/" },
+        { id: "fomc", date: "2026-08-19", category: "policy", title: "FOMC 会议纪要", meta: "02:00 / 高", kicker: "POLICY / UNITED STATES", status: "已确认", importance: "高重要性", type: "货币政策", time: "08 月 19 日 · 02:00 北京时间", localTime: "当地时间 14:00 · Washington D.C.", previous: "—", estimate: "—", actual: "—", period: "2026 年 07 月会议", issuer: "Federal Reserve", state: "会议纪要预计发布", source: "查看 FOMC 日历 ↗", sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm" },
+        { id: "aapl", date: "2026-08-06", category: "company", title: "AAPL 财报", meta: "盘后 / 高", kicker: "HOLDINGS / NASDAQ", status: "已确认", importance: "高重要性", type: "持仓公司", time: "08 月 06 日 · 盘后", localTime: "当地时间 · Cupertino", previous: "$1.57", estimate: "$1.62", actual: "—", period: "FY2026 Q3", issuer: "Apple Inc.", state: "预计盘后发布，日期待公司确认", source: "查看公司 IR ↗", sourceUrl: "https://investor.apple.com/" },
+        { id: "dividend", date: "2026-08-21", category: "company", title: "贵州茅台 · 除息日", meta: "A 股 / 中", kicker: "HOLDINGS / SSE", status: "已确认", importance: "中重要性", type: "持仓公司", time: "08 月 21 日 · 全天", localTime: "当地时间 · 上海", previous: "¥30.00", estimate: "—", actual: "—", period: "2025 年度分红", issuer: "上海证券交易所", state: "除息日已确认", source: "查看交易所公告 ↗", sourceUrl: "https://www.sse.com.cn/disclosure/listedinfo/periodic/" },
+        { id: "holiday", date: "2026-08-03", category: "market", title: "加拿大市场休市", meta: "休市 / 市场", kicker: "MARKET / CANADA", status: "已确认", importance: "市场日历", type: "市场日历", time: "08 月 03 日 · 全天", localTime: "当地时间 · Toronto", previous: "—", estimate: "—", actual: "休市", period: "2026 年 08 月 03 日", issuer: "TMX Group", state: "交易所日历已确认", source: "查看交易所日历 ↗", sourceUrl: "https://www.tsx.com/" },
+        { id: "geopolitics", date: "2026-08-25", category: "unverified", title: "能源政策突发消息", meta: "待核实 / 低", kicker: "UNVERIFIED / GLOBAL", status: "待核实", importance: "待核实", type: "突发事件", time: "08 月 25 日 · 时间待定", localTime: "当地时间待定", previous: "—", estimate: "—", actual: "—", period: "—", issuer: "新闻聚合源", state: "尚未获得权威来源确认", source: "查看来源 ↗", sourceUrl: "https://www.gdeltproject.org/" },
+        { id: "pmi", date: "2026-08-31", category: "macro", title: "中国制造业 PMI", meta: "09:30 / 中", kicker: "MACRO / CHINA", status: "已确认", importance: "中重要性", type: "宏观数据", time: "08 月 31 日 · 09:30 北京时间", localTime: "当地时间 09:30 · 北京", previous: "49.8", estimate: "50.1", actual: "—", period: "2026 年 08 月", issuer: "国家统计局", state: "预计发布，日期已确认", source: "查看国家统计局日程 ↗", sourceUrl: "https://www.stats.gov.cn/sj/fbrc/bnxxfb/" },
+      ];
+
+      function isoDate(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+
+      function visibleEvent(event) {
+        const query = document.getElementById("searchInput").value.trim().toLowerCase();
+        const categoryMatch = activeFilter === "all" || event.category === activeFilter;
+        const queryMatch = !query || `${event.title} ${event.kicker} ${event.type}`.toLowerCase().includes(query);
+        return categoryMatch && queryMatch;
+      }
+
+      function renderCalendar() {
+        const grid = document.getElementById("calendarGrid");
+        const year = displayDate.getFullYear();
+        const month = displayDate.getMonth();
+        document.getElementById("monthTitle").textContent = `${year} 年 ${monthNames[month]} 月`;
+        grid.innerHTML = weekdays.map((day) => `<div class="weekday">${day}</div>`).join("");
+
+        const first = new Date(year, month, 1);
+        const mondayIndex = (first.getDay() + 6) % 7;
+        const start = new Date(year, month, 1 - mondayIndex);
+
+        for (let i = 0; i < 42; i += 1) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          const dateKey = isoDate(date);
+          const inMonth = date.getMonth() === month;
+          const isToday = dateKey === "2026-08-09";
+          const dayEvents = events.filter((event) => event.date === dateKey && visibleEvent(event));
+          const eventMarkup = dayEvents.slice(0, 3).map((event) => `
+            <button class="event-pill ${event.category} ${event.id === activeEventId ? "selected" : ""}" data-event-id="${event.id}" type="button">
+              <span class="event-bar"></span><span class="event-copy"><span class="event-title">${event.title}</span><span class="event-meta">${event.meta}</span></span>
+            </button>`).join("");
+          const more = dayEvents.length > 3 ? `<div class="more-events">+${dayEvents.length - 3} 个事件</div>` : "";
+          const cell = document.createElement("div");
+          cell.className = `day ${inMonth ? "" : "muted"} ${isToday ? "today" : ""}`;
+          cell.innerHTML = `<div class="day-number"><span>${date.getDate()}</span>${isToday ? "<em>TODAY</em>" : ""}</div><div class="event-stack">${eventMarkup}${more}</div>`;
+          grid.appendChild(cell);
+        }
+
+        grid.querySelectorAll("[data-event-id]").forEach((button) => button.addEventListener("click", () => selectEvent(button.dataset.eventId)));
+      }
+
+      function selectEvent(id) {
+        const event = events.find((item) => item.id === id);
+        if (!event) return;
+        activeEventId = id;
+        document.getElementById("detailKicker").textContent = event.kicker;
+        document.getElementById("detailTitle").textContent = event.title;
+        document.getElementById("detailStatus").textContent = event.status;
+        document.getElementById("detailImportance").textContent = event.importance;
+        document.getElementById("detailImportance").className = `badge ${event.category === "unverified" ? "" : event.importance === "高重要性" ? "high" : "macro-tag"}`;
+        document.getElementById("detailType").textContent = event.type;
+        document.getElementById("detailTime").textContent = event.time;
+        document.getElementById("detailLocalTime").textContent = event.localTime;
+        document.getElementById("detailPrevious").textContent = event.previous;
+        document.getElementById("detailEstimate").textContent = event.estimate;
+        document.getElementById("detailActual").textContent = event.actual;
+        document.getElementById("detailPeriod").textContent = event.period;
+        document.getElementById("detailIssuer").textContent = event.issuer;
+        document.getElementById("detailState").textContent = event.state;
+        const source = document.getElementById("detailSource");
+        source.textContent = event.source;
+        source.href = event.sourceUrl;
+        renderCalendar();
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        document.getElementById("toastMessage").textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2400);
+      }
+
+      document.querySelectorAll(".filter-chip").forEach((button) => button.addEventListener("click", () => {
+        document.querySelectorAll(".filter-chip").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        activeFilter = button.dataset.filter;
+        renderCalendar();
+      }));
+
+      document.querySelectorAll(".view-btn").forEach((button) => button.addEventListener("click", () => {
+        document.querySelectorAll(".view-btn").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        showToast(button.dataset.view === "month" ? "已切换到月视图" : `${button.textContent}视图将在正式版本中展开`);
+      }));
+
+      document.getElementById("searchInput").addEventListener("input", renderCalendar);
+      document.getElementById("prevMonth").addEventListener("click", () => { displayDate.setMonth(displayDate.getMonth() - 1); renderCalendar(); });
+      document.getElementById("nextMonth").addEventListener("click", () => { displayDate.setMonth(displayDate.getMonth() + 1); renderCalendar(); });
+      document.getElementById("todayButton").addEventListener("click", () => { displayDate = new Date(2026, 7, 1); renderCalendar(); });
+      document.getElementById("syncButton").addEventListener("click", () => showToast("演示同步完成 · 4 个数据源已检查"));
+      document.getElementById("rangeButton").addEventListener("click", () => showToast("正式版本将在这里打开任意日期范围选择器"));
+      document.getElementById("closeDetail").addEventListener("click", () => showToast("详情面板在正式版本可收起"));
+
+      renderCalendar();
+      selectEvent(activeEventId);
+    </script>
+  </body>
+</html>

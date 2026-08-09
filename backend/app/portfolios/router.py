@@ -13,6 +13,7 @@ from app.core.models import User
 from app.data_sources.domain import AssetType
 from app.holdings.schemas import (
     HoldingCreate,
+    HoldingOrderPayload,
     HoldingItem,
     HoldingsListResponse,
     HoldingStatus,
@@ -26,6 +27,7 @@ from app.holdings.service import (
     get_holding_summary,
     list_holdings,
     record_to_item,
+    reorder_holdings,
     resolve_instrument,
     update_holding,
 )
@@ -177,6 +179,21 @@ async def get_portfolio_holdings(
         opened_to=opened_to,
         portfolio_id=portfolio_id,
     )
+
+
+@router.patch(
+    "/portfolios/{portfolio_id}/holdings/order",
+    response_model=MessageResponse,
+    dependencies=[Depends(require_csrf)],
+)
+async def patch_portfolio_holding_order(
+    portfolio_id: uuid.UUID,
+    payload: HoldingOrderPayload,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> MessageResponse:
+    await get_owned_portfolio(db, user, portfolio_id)
+    return await reorder_holdings(db, user, portfolio_id, payload)
 
 
 @router.post(

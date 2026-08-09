@@ -36,6 +36,7 @@ export interface Instrument {
   name: string;
   asset_type: AssetType;
   exchange: "SH" | "SZ" | "BJ";
+  industry?: string | null;
 }
 
 export interface Holding {
@@ -49,11 +50,18 @@ export interface Holding {
   quantity: number;
   opened_on: string;
   note: string | null;
+  sort_order: number;
   status: HoldingStatus;
+  closed_quantity: number | null;
+  close_price: number | null;
+  closed_on: string | null;
   closed_at: string | null;
   created_at: string;
   updated_at: string;
   cost_amount: number;
+  close_amount: number | null;
+  realized_gain: number | null;
+  realized_gain_percent: number | null;
   latest: number | null;
   market_value: number | null;
   floating_gain: number | null;
@@ -81,6 +89,10 @@ export interface HoldingSummary {
   floating_gain_percent: number | null;
   incomplete: boolean;
   holding_count: number;
+  realized_gain: number | null;
+  realized_gain_percent: number | null;
+  realized_incomplete: boolean;
+  total_gain: number | null;
   data_source: DataSourceSummary;
   market_status: MarketStatus;
   polling_enabled: boolean;
@@ -101,6 +113,9 @@ export interface HoldingUpdatePayload {
   quantity?: number;
   opened_on?: string;
   note?: string | null;
+  close_price?: number;
+  closed_on?: string;
+  closed_quantity?: number;
 }
 
 export interface PortfolioCreatePayload {

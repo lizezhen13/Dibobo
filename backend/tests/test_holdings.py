@@ -4,18 +4,21 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
 from app.core.models import Holding, User
 from app.data_sources.domain import Instrument, InstrumentSearchResult, SecurityQuote
 from app.holdings import service as holdings_service
-from app.holdings.schemas import HoldingCreate, HoldingUpdate, InstrumentResponse
+from app.holdings.schemas import HoldingCreate, HoldingOrderPayload, HoldingUpdate, InstrumentResponse
 from app.holdings.service import (
     build_holding_items,
+    calculate_realized_values,
     calculate_summary_values,
     create_holding,
     get_owned_holding,
+    reorder_holdings,
     update_holding,
 )
 
@@ -128,13 +131,77 @@ async def test_duplicate_open_holding_is_rejected_but_reopen_after_close_is_allo
         await create_holding(db, user, payload(), instrument())
     assert duplicate.value.status_code == 409
 
-    await update_holding(db, user, first.id, HoldingUpdate(quantity=0))
+    await update_holding(
+        db,
+        user,
+        first.id,
+        HoldingUpdate(quantity=0, close_price=Decimal("12"), closed_on=date(2026, 7, 2)),
+    )
     reopened = await create_holding(db, user, payload(average_cost="12.5"), instrument())
 
     assert reopened.id != first.id
     assert reopened.status == "open"
     assert first.status == "closed"
     assert first.closed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_closing_requires_details_and_calculates_realized_gain(db: AsyncSession) -> None:
+    user = await make_user(db, "realized-gain")
+    holding = await create_holding(db, user, payload(average_cost="10", quantity=100), instrument())
+
+    with pytest.raises(HTTPException) as missing_details:
+        await update_holding(db, user, holding.id, HoldingUpdate(quantity=0))
+    assert missing_details.value.status_code == 422
+
+    closed = await update_holding(
+        db,
+        user,
+        holding.id,
+        HoldingUpdate(quantity=0, close_price=Decimal("12"), closed_on=date(2026, 7, 2)),
+    )
+    item = build_holding_items([closed], {})[0]
+    realized_gain, realized_gain_percent, incomplete = calculate_realized_values([closed])
+
+    assert closed.quantity == 0
+    assert closed.closed_quantity == 100
+    assert closed.close_price == Decimal("12.0000")
+    assert item.cost_amount == 1000
+    assert item.close_amount == 1200
+    assert item.realized_gain == 200
+    assert item.realized_gain_percent == 20
+    assert realized_gain == Decimal("200")
+    assert realized_gain_percent == Decimal("20")
+    assert not incomplete
+
+
+@pytest.mark.asyncio
+async def test_open_holdings_can_be_reordered_within_a_portfolio(db: AsyncSession) -> None:
+    user = await make_user(db, "holding-order")
+    first = await create_holding(db, user, payload(), instrument("600519.SH"))
+    second = await create_holding(db, user, payload(thscode="510300.SH"), instrument("510300.SH"))
+    third = await create_holding(db, user, payload(thscode="000001.SZ"), instrument("000001.SZ"))
+
+    assert [first.sort_order, second.sort_order, third.sort_order] == [0, 1, 2]
+
+    result = await reorder_holdings(
+        db,
+        user,
+        first.portfolio_id,
+        HoldingOrderPayload(holding_ids=[third.id, first.id, second.id]),
+    )
+
+    assert result.message == "持仓排序已保存"
+    ordered = list(
+        (
+            await db.scalars(
+                select(Holding)
+                .where(Holding.portfolio_id == first.portfolio_id, Holding.status == "open")
+                .order_by(Holding.sort_order)
+            )
+        ).all()
+    )
+    assert [holding.id for holding in ordered] == [third.id, first.id, second.id]
 
 
 @pytest.mark.asyncio
@@ -150,13 +217,24 @@ async def test_holding_lookup_is_scoped_to_owner(db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_closed_holding_only_allows_note_edit(db: AsyncSession) -> None:
+async def test_closed_holding_allows_note_and_close_detail_edit(db: AsyncSession) -> None:
     user = await make_user(db, "archivist")
     holding = await create_holding(db, user, payload(), instrument())
-    await update_holding(db, user, holding.id, HoldingUpdate(quantity=0))
+    await update_holding(
+        db,
+        user,
+        holding.id,
+        HoldingUpdate(quantity=0, close_price=Decimal("12"), closed_on=date(2026, 7, 2)),
+    )
 
-    updated = await update_holding(db, user, holding.id, HoldingUpdate(note="复盘完成"))
+    updated = await update_holding(
+        db,
+        user,
+        holding.id,
+        HoldingUpdate(note="复盘完成", close_price=Decimal("11.5")),
+    )
     assert updated.note == "复盘完成"
+    assert updated.close_price == Decimal("11.5000")
 
     with pytest.raises(HTTPException) as error:
         await update_holding(db, user, holding.id, HoldingUpdate(quantity=10))
@@ -167,7 +245,12 @@ async def test_closed_holding_only_allows_note_edit(db: AsyncSession) -> None:
 async def test_sqlite_holding_timestamps_are_serialized_as_utc(db: AsyncSession) -> None:
     user = await make_user(db, "timezone-check")
     holding = await create_holding(db, user, payload(), instrument())
-    closed = await update_holding(db, user, holding.id, HoldingUpdate(quantity=0))
+    closed = await update_holding(
+        db,
+        user,
+        holding.id,
+        HoldingUpdate(quantity=0, close_price=Decimal("12"), closed_on=date(2026, 7, 2)),
+    )
 
     item = build_holding_items([closed], {})[0]
     dumped = item.model_dump(mode="json")

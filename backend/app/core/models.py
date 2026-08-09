@@ -57,6 +57,9 @@ class User(TimestampMixin, Base):
     portfolios: Mapped[list["Portfolio"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     journals: Mapped[list["Journal"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -175,11 +178,45 @@ class Holding(TimestampMixin, Base):
     quantity: Mapped[int] = mapped_column(BigInteger, nullable=False)
     opened_on: Mapped[date] = mapped_column(nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)
+    closed_quantity: Mapped[int | None] = mapped_column(BigInteger)
+    close_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    closed_on: Mapped[date | None] = mapped_column()
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="holdings")
     portfolio: Mapped[Portfolio] = relationship(back_populates="holdings")
+
+
+class WatchlistItem(TimestampMixin, Base):
+    __tablename__ = "watchlist_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "thscode",
+            name="uq_watchlist_items_user_thscode",
+        ),
+        Index("ix_watchlist_items_user_sort", "user_id", "sort_order"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    thscode: Mapped[str] = mapped_column(String(20), nullable=False)
+    ticker: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    asset_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    exchange: Mapped[str] = mapped_column(String(8), nullable=False)
+    industry: Mapped[str | None] = mapped_column(String(100))
+    note: Mapped[str | None] = mapped_column(Text)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    user: Mapped[User] = relationship(back_populates="watchlist_items")
 
 
 class Journal(TimestampMixin, Base):

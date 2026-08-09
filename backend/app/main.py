@@ -17,6 +17,7 @@ from app.overview.router import router as overview_router
 from app.portfolios.router import router as portfolios_router
 from app.radar.router import router as radar_router
 from app.settings.router import router as settings_router
+from app.watchlist.router import router as watchlist_router
 
 settings = get_settings()
 logging.basicConfig(
@@ -62,3 +63,4 @@ app.include_router(holdings_router, prefix="/api")
 app.include_router(radar_router, prefix="/api")
 app.include_router(journals_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
+app.include_router(watchlist_router, prefix="/api")

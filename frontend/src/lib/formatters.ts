@@ -34,6 +34,14 @@ export function formatMoney(value: number | null): string {
   return `${sign}${absolute.toFixed(2)} 元`;
 }
 
+export function formatVolume(value: number | null): string {
+  if (value === null) return MISSING_VALUE;
+  return new Intl.NumberFormat("zh-CN", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatDateTime(value: string | null): string {
   if (!value) return MISSING_VALUE;
   const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`;

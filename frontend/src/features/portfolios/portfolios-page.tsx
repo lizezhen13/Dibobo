@@ -6,10 +6,14 @@ import {
   ArrowDownRight,
   ArrowUp,
   ArrowUpRight,
+  ArrowUpDown,
   BriefcaseBusiness,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   CircleDollarSign,
   Edit3,
+  GripVertical,
   Layers3,
   Orbit,
   Plus,
@@ -56,6 +60,7 @@ import {
   usePortfolioSummaryQuery,
   usePortfolioSummariesQuery,
   usePortfoliosQuery,
+  useReorderPortfolioHoldingsMutation,
   useReorderPortfoliosMutation,
   useSetDefaultPortfolioMutation,
 } from "../holdings/queries";
@@ -76,6 +81,18 @@ const DEFAULT_FILTERS: HoldingsFilters = {
   opened_to: "",
 };
 
+type HoldingSortKey =
+  | "market_value"
+  | "floating_gain"
+  | "floating_gain_percent"
+  | "weight_percent"
+  | "opened_on";
+
+type HoldingSortState = {
+  key: HoldingSortKey;
+  direction: "asc" | "desc";
+} | null;
+
 export function PortfoliosPage() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>();
   const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
@@ -86,6 +103,8 @@ export function PortfoliosPage() {
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [deleteHoldingTarget, setDeleteHoldingTarget] = useState<Holding | null>(null);
   const [filters, setFilters] = useState<HoldingsFilters>(DEFAULT_FILTERS);
+  const [holdingSort, setHoldingSort] = useState<HoldingSortState>(null);
+  const [openOrderIds, setOpenOrderIds] = useState<string[]>([]);
 
   const portfoliosQuery = usePortfoliosQuery();
   const portfolios = portfoliosQuery.data?.items ?? [];
@@ -96,6 +115,7 @@ export function PortfoliosPage() {
   const deleteHoldingMutation = useDeleteHoldingMutation(selectedPortfolioId);
   const deletePortfolioMutation = useDeletePortfolioMutation();
   const setDefaultMutation = useSetDefaultPortfolioMutation();
+  const reorderHoldingsMutation = useReorderPortfolioHoldingsMutation(selectedPortfolioId);
   const reorderMutation = useReorderPortfoliosMutation();
 
   useEffect(() => {
@@ -110,14 +130,87 @@ export function PortfoliosPage() {
     if (fallback) setSelectedPortfolioId(fallback.id);
   }, [portfolios, selectedPortfolioId]);
 
+  const openItems = openHoldings.data?.items ?? [];
+  const closedItems = closedHoldings.data?.items ?? [];
+  const hasHoldingFilters = Boolean(
+    filters.keyword.trim() ||
+      filters.asset_type ||
+      filters.opened_from ||
+      filters.opened_to,
+  );
+  const canReorderOpen =
+    activeTab === "open" &&
+    !hasHoldingFilters &&
+    holdingSort === null &&
+    openItems.length > 1 &&
+    !reorderHoldingsMutation.isPending;
+
+  useEffect(() => {
+    setHoldingSort(null);
+    setOpenOrderIds([]);
+  }, [selectedPortfolioId]);
+
+  useEffect(() => {
+    setHoldingSort(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (hasHoldingFilters || openHoldings.isFetching || !openHoldings.data) return;
+    const itemIds = openItems.map((holding) => holding.id);
+    setOpenOrderIds((current) => {
+      const next = reconcileOrderIds(current, itemIds);
+      return sameStringArray(current, next) ? current : next;
+    });
+  }, [hasHoldingFilters, openHoldings.data, openHoldings.isFetching, openItems]);
+
+  const orderedOpenHoldings = useMemo(
+    () => applyHoldingOrder(openItems, openOrderIds),
+    [openItems, openOrderIds],
+  );
+  const sortedOpenHoldings = useMemo(
+    () => sortHoldings(orderedOpenHoldings, holdingSort),
+    [holdingSort, orderedOpenHoldings],
+  );
+  const sortedClosedHoldings = useMemo(
+    () => sortHoldings(closedItems, holdingSort),
+    [closedItems, holdingSort],
+  );
+
   const openColumns = useMemo(
-    () => createOpenColumns((holding) => openHoldingEditor(holding), setDeleteHoldingTarget),
-    [],
+    () =>
+      createOpenColumns(
+        (holding) => openHoldingEditor(holding),
+        setDeleteHoldingTarget,
+        holdingSort,
+        toggleHoldingSort,
+        canReorderOpen,
+      ),
+    [canReorderOpen, holdingSort],
   );
   const closedColumns = useMemo(
-    () => createClosedColumns((holding) => openHoldingEditor(holding), setDeleteHoldingTarget),
-    [],
+    () =>
+      createClosedColumns(
+        (holding) => openHoldingEditor(holding),
+        setDeleteHoldingTarget,
+        holdingSort,
+        toggleHoldingSort,
+      ),
+    [holdingSort],
   );
+
+  function toggleHoldingSort(key: HoldingSortKey) {
+    setHoldingSort((current) => {
+      if (!current || current.key !== key) return { key, direction: "asc" };
+      if (current.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  }
+
+  function resetHoldingList() {
+    setFilters({ ...DEFAULT_FILTERS });
+    setHoldingSort(null);
+    setOpenOrderIds([]);
+  }
 
   function openPortfolioEditor(portfolio: Portfolio | null) {
     setEditingPortfolio(portfolio);
@@ -182,6 +275,29 @@ export function PortfoliosPage() {
       await reorderMutation.mutateAsync(reordered.map((item) => item.id));
     } catch {
       // The list query remains available so the user can retry.
+    }
+  };
+
+  const reorderOpenHoldings = async (activeId: string, overId: string) => {
+    if (!canReorderOpen || activeId === overId) return;
+    const currentOrder = reconcileOrderIds(
+      openOrderIds,
+      openItems.map((holding) => holding.id),
+    );
+    const activeIndex = currentOrder.indexOf(activeId);
+    const overIndex = currentOrder.indexOf(overId);
+    if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return;
+
+    const nextOrder = [...currentOrder];
+    const [movedId] = nextOrder.splice(activeIndex, 1);
+    if (!movedId) return;
+    nextOrder.splice(overIndex, 0, movedId);
+    setOpenOrderIds(nextOrder);
+
+    try {
+      await reorderHoldingsMutation.mutateAsync(nextOrder);
+    } catch {
+      setOpenOrderIds(currentOrder);
     }
   };
 
@@ -251,7 +367,7 @@ export function PortfoliosPage() {
               )}
 
               <div className="mt-[10px] flex min-h-0 flex-1 flex-col border-b border-border/80 bg-transparent shadow-none">
-                <div className="flex flex-col gap-4 border-b border-border bg-transparent px-5 pt-3 sm:px-6 sm:pt-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex flex-col gap-4 bg-transparent px-5 pt-3 sm:px-6 sm:pt-4 lg:flex-row lg:items-end lg:justify-between">
                   <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as HoldingStatus)}>
                     <TabsList className="h-auto gap-7 rounded-none border-0 bg-transparent p-0 shadow-none">
                       <TabsTrigger
@@ -286,7 +402,7 @@ export function PortfoliosPage() {
                   </div>
                 </div>
 
-                <FilterBar filters={filters} onChange={setFilters} onAdd={() => openHoldingEditor(null)} />
+                <FilterBar filters={filters} onChange={setFilters} onReset={resetHoldingList} onAdd={() => openHoldingEditor(null)} />
 
                 <Tabs
                   value={activeTab}
@@ -298,11 +414,12 @@ export function PortfoliosPage() {
                     {!openHoldings.isError && (
                       <DataTable
                         columns={openColumns}
-                        data={openHoldings.data?.items ?? []}
+                        data={sortedOpenHoldings}
                         isLoading={openHoldings.isLoading}
                         getRowId={(holding) => holding.id}
                         stickyHeader
                         centered
+                        rowReorder={{ enabled: canReorderOpen, onReorder: reorderOpenHoldings }}
                         className="rounded-none border-0 bg-transparent shadow-none"
                         empty={<EmptyState status="open" onAdd={() => openHoldingEditor(null)} />}
                       />
@@ -313,7 +430,7 @@ export function PortfoliosPage() {
                     {!closedHoldings.isError && (
                       <DataTable
                         columns={closedColumns}
-                        data={closedHoldings.data?.items ?? []}
+                        data={sortedClosedHoldings}
                         isLoading={closedHoldings.isLoading}
                         getRowId={(holding) => holding.id}
                         stickyHeader
@@ -355,7 +472,7 @@ export function PortfoliosPage() {
             <AlertDialogDescription>
               该操作不可撤销，将删除这条
               {deleteHoldingTarget?.status === "closed" ? "清仓历史" : "当前持仓"}记录。
-              {deleteHoldingTarget?.status === "open" && " 如需保留历史，请编辑数量为 0 执行清仓。"}
+              {deleteHoldingTarget?.status === "open" && " 如需保留历史，请编辑数量为 0 并填写清仓价格和日期执行清仓。"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteHoldingMutation.error && <MutationError error={deleteHoldingMutation.error} />}
@@ -465,7 +582,7 @@ function PortfolioRail({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-4">
-        <span className="text-[12px] text-muted-foreground/70">当前组合总资产</span>
+        <span className="text-[12px] text-muted-foreground/70">当前持仓市值</span>
         <PortfolioRailTotal summaries={summaryQueries} />
       </div>
     </aside>
@@ -638,7 +755,7 @@ function PortfolioHeader({
           </Button>
         </div>
       </div>
-      <div className="relative mt-6 grid grid-cols-2 gap-x-5 gap-y-5 border-t border-border pt-5 sm:grid-cols-4">
+      <div className="relative mt-6 grid grid-cols-2 gap-x-5 gap-y-5 border-t border-border pt-5 sm:grid-cols-6">
         <InlineSummaryMetric
           label="当前持仓"
           value={summary ? `${summary.holding_count} 只` : "—"}
@@ -647,7 +764,7 @@ function PortfolioHeader({
           isLoading={isSummaryLoading}
         />
         <InlineSummaryMetric
-          label="总市值"
+          label="当前持仓市值"
           value={summary ? formatMoney(summary.total_market_value) : "—"}
           icon={CircleDollarSign}
           iconClass="text-emerald-300"
@@ -667,6 +784,22 @@ function PortfolioHeader({
           icon={summary && (summary.floating_gain_percent ?? 0) < 0 ? ArrowDownRight : ArrowUpRight}
           iconClass={movementClass(summary?.floating_gain_percent ?? null)}
           valueClass={movementClass(summary?.floating_gain_percent ?? null)}
+          isLoading={isSummaryLoading}
+        />
+        <InlineSummaryMetric
+          label={summary?.realized_incomplete ? "已实现盈亏（待补录）" : "已实现盈亏"}
+          value={summary ? formatMoney(summary.realized_gain) : "—"}
+          icon={summary && (summary.realized_gain ?? 0) < 0 ? ArrowDownRight : ArrowUpRight}
+          iconClass={movementClass(summary?.realized_gain ?? null)}
+          valueClass={movementClass(summary?.realized_gain ?? null)}
+          isLoading={isSummaryLoading}
+        />
+        <InlineSummaryMetric
+          label="累计总盈亏"
+          value={summary ? formatMoney(summary.total_gain) : "—"}
+          icon={summary && (summary.total_gain ?? 0) < 0 ? ArrowDownRight : ArrowUpRight}
+          iconClass={movementClass(summary?.total_gain ?? null)}
+          valueClass={movementClass(summary?.total_gain ?? null)}
           isLoading={isSummaryLoading}
         />
       </div>
@@ -710,15 +843,17 @@ function InlineSummaryMetric({
 function FilterBar({
   filters,
   onChange,
+  onReset,
   onAdd,
 }: {
   filters: HoldingsFilters;
   onChange: (filters: HoldingsFilters) => void;
+  onReset: () => void;
   onAdd: () => void;
 }) {
   const update = (patch: Partial<HoldingsFilters>) => onChange({ ...filters, ...patch });
   return (
-    <div className="border-b border-border bg-card-deep/25 px-5 py-4 sm:px-6">
+    <div className="rounded-t-xl border-b border-border bg-card-deep/25 px-5 py-4 sm:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 md:grid-cols-3">
           <div>
@@ -753,7 +888,7 @@ function FilterBar({
           </div>
         </div>
         <div className="flex shrink-0 items-center justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => onChange(DEFAULT_FILTERS)} className="h-9 px-3 !text-[12px] text-muted-foreground">
+          <Button type="button" variant="outline" size="sm" onClick={onReset} className="h-9 px-3 !text-[12px] text-muted-foreground">
             重置
           </Button>
           <Button type="button" size="sm" className="h-9 px-3.5 !text-[12px]" onClick={onAdd}>
@@ -768,28 +903,31 @@ function FilterBar({
 function createOpenColumns(
   onEdit: (holding: Holding) => void,
   onDelete: (holding: Holding) => void,
+  sort: HoldingSortState,
+  onSort: (key: HoldingSortKey) => void,
+  showDragHandle: boolean,
 ): ColumnDef<Holding, unknown>[] {
   return [
     {
       id: "instrument",
       header: "标的名称",
-      cell: ({ row }) => <InstrumentCell holding={row.original} />,
+      cell: ({ row }) => <InstrumentCell holding={row.original} showDragHandle={showDragHandle} />,
       meta: {
         headerClassName: "!sticky !left-0 !z-30 min-w-[176px] !bg-secondary",
         cellClassName: "!sticky !left-0 !z-10 min-w-[176px] !bg-card group-hover:!bg-secondary",
       },
     },
-    { accessorKey: "asset_type", header: "类型", cell: ({ row }) => <Badge>{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge> },
+    { accessorKey: "asset_type", header: "类型", cell: ({ row }) => <Badge className="!text-[13px]">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge> },
     numericColumn("average_cost", "平均成本", (holding) => formatPoint(holding.average_cost, { group: false })),
     numericColumn("quantity", "数量", (holding) => holding.quantity.toLocaleString("zh-CN", { useGrouping: false })),
     numericColumn("cost_amount", "成本金额", (holding) => formatMoney(holding.cost_amount)),
     numericColumn("latest", "最新价", (holding) => formatPoint(holding.latest, { group: false })),
-    numericColumn("market_value", "当前市值", (holding) => formatMoney(holding.market_value)),
-    numericColumn("floating_gain", "浮动盈亏", (holding) => <span className={movementClass(holding.floating_gain)}>{formatMoney(holding.floating_gain)}</span>),
-    numericColumn("floating_gain_percent", "盈亏率", (holding) => <span className={movementClass(holding.floating_gain_percent)}>{formatPercent(holding.floating_gain_percent)}</span>),
+    sortableColumn("market_value", "当前市值", "market_value", sort, onSort, (holding) => formatMoney(holding.market_value), "center"),
+    sortableColumn("floating_gain", "浮动盈亏", "floating_gain", sort, onSort, (holding) => <span className={movementClass(holding.floating_gain)}>{formatMoney(holding.floating_gain)}</span>, "center"),
+    sortableColumn("floating_gain_percent", "盈亏率", "floating_gain_percent", sort, onSort, (holding) => <span className={movementClass(holding.floating_gain_percent)}>{formatPercent(holding.floating_gain_percent)}</span>, "center"),
     numericColumn("change_percent", "今日涨跌", (holding) => <span className={movementClass(holding.change_percent)}>{formatPercent(holding.change_percent)}</span>),
-    numericColumn("weight_percent", "组合占比", (holding) => formatPercentUnsigned(holding.weight_percent)),
-    { accessorKey: "opened_on", header: "建仓日期", cell: ({ row }) => formatDate(row.original.opened_on) },
+    sortableColumn("weight_percent", "组合占比", "weight_percent", sort, onSort, (holding) => formatPercentUnsigned(holding.weight_percent), "center"),
+    sortableColumn("opened_on", "建仓日期", "opened_on", sort, onSort, (holding) => formatDate(holding.opened_on)),
     {
       accessorKey: "note",
       header: "备注",
@@ -799,7 +937,7 @@ function createOpenColumns(
       id: "actions",
       header: "操作",
       cell: ({ row }) => <RowActions holding={row.original} onEdit={onEdit} onDelete={onDelete} />,
-      meta: { align: "right", headerClassName: "!sticky !right-0 !z-30 !bg-secondary", cellClassName: "!sticky !right-0 !z-10 w-[96px] !bg-card group-hover:!bg-secondary" },
+      meta: { align: "center", headerClassName: "!sticky !right-0 !z-30 !bg-secondary", cellClassName: "!sticky !right-0 !z-10 w-[96px] !bg-card group-hover:!bg-secondary" },
     },
   ];
 }
@@ -807,6 +945,8 @@ function createOpenColumns(
 function createClosedColumns(
   onEdit: (holding: Holding) => void,
   onDelete: (holding: Holding) => void,
+  sort: HoldingSortState,
+  onSort: (key: HoldingSortKey) => void,
 ): ColumnDef<Holding, unknown>[] {
   return [
     {
@@ -815,10 +955,15 @@ function createClosedColumns(
       cell: ({ row }) => <InstrumentCell holding={row.original} />,
       meta: { headerClassName: "!sticky !left-0 !z-30 min-w-[176px] !bg-secondary", cellClassName: "!sticky !left-0 !z-10 min-w-[176px] !bg-card group-hover:!bg-secondary" },
     },
-    { accessorKey: "asset_type", header: "类型", cell: ({ row }) => <Badge>{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge> },
+    { accessorKey: "asset_type", header: "类型", cell: ({ row }) => <Badge className="!text-[13px]">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge> },
     numericColumn("average_cost", "原平均成本", (holding) => formatPoint(holding.average_cost, { group: false })),
-    { accessorKey: "opened_on", header: "建仓日期", cell: ({ row }) => formatDate(row.original.opened_on) },
-    { accessorKey: "closed_at", header: "清仓时间", cell: ({ row }) => formatDateTime(row.original.closed_at) },
+    numericColumn("closed_quantity", "清仓数量", (holding) => holding.closed_quantity?.toLocaleString("zh-CN", { useGrouping: false }) ?? "暂无数据"),
+    numericColumn("close_price", "清仓价格", (holding) => formatPoint(holding.close_price, { group: false })),
+    numericColumn("close_amount", "清仓金额", (holding) => formatMoney(holding.close_amount)),
+    numericColumn("realized_gain", "已实现盈亏", (holding) => <span className={movementClass(holding.realized_gain)}>{formatMoney(holding.realized_gain)}</span>),
+    numericColumn("realized_gain_percent", "已实现盈亏率", (holding) => <span className={movementClass(holding.realized_gain_percent)}>{formatPercent(holding.realized_gain_percent)}</span>),
+    sortableColumn("opened_on", "建仓日期", "opened_on", sort, onSort, (holding) => formatDate(holding.opened_on)),
+    numericColumn("closed_on", "清仓日期", (holding) => holding.closed_on ? formatDate(holding.closed_on) : formatDateTime(holding.closed_at)),
     {
       accessorKey: "note",
       header: "备注",
@@ -828,7 +973,7 @@ function createClosedColumns(
       id: "actions",
       header: "操作",
       cell: ({ row }) => <RowActions holding={row.original} onEdit={onEdit} onDelete={onDelete} />,
-      meta: { align: "right", headerClassName: "!sticky !right-0 !z-30 !bg-secondary", cellClassName: "!sticky !right-0 !z-10 !bg-card group-hover:!bg-secondary" },
+      meta: { align: "center", headerClassName: "!sticky !right-0 !z-30 !bg-secondary", cellClassName: "!sticky !right-0 !z-10 !bg-card group-hover:!bg-secondary" },
     },
   ];
 }
@@ -838,14 +983,63 @@ function numericColumn(
   header: string,
   render: (holding: Holding) => ReactNode,
 ): ColumnDef<Holding, unknown> {
-  return { id, header, cell: ({ row }) => render(row.original), meta: { align: "right" } };
+  return { id, header, cell: ({ row }) => render(row.original), meta: { align: "center" } };
 }
 
-function InstrumentCell({ holding }: { holding: Holding }) {
+function sortableColumn(
+  id: keyof Holding,
+  label: string,
+  sortKey: HoldingSortKey,
+  sort: HoldingSortState,
+  onSort: (key: HoldingSortKey) => void,
+  render: (holding: Holding) => ReactNode,
+  align?: "right" | "center",
+): ColumnDef<Holding, unknown> {
+  return {
+    id,
+    header: () => <SortHeader label={label} sortKey={sortKey} sort={sort} onSort={onSort} />,
+    cell: ({ row }) => render(row.original),
+    meta: { align: align ?? "center" },
+  };
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: string;
+  sortKey: HoldingSortKey;
+  sort: HoldingSortState;
+  onSort: (key: HoldingSortKey) => void;
+}) {
+  const isActive = sort?.key === sortKey;
   return (
-    <div>
-      <p className="font-semibold text-foreground">{holding.name}</p>
-      <p className="mt-1 font-mono text-[0.75rem] tracking-[0.04em] text-muted-foreground/60">{holding.thscode}</p>
+    <button
+      type="button"
+      className="inline-flex items-center justify-center gap-1 !text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+      onClick={() => onSort(sortKey)}
+      aria-label={`按${label}${isActive && sort.direction === "desc" ? "降序" : "升序"}排序`}
+    >
+      {label}
+      {isActive ? (
+        sort.direction === "asc" ? <ChevronUp size={13} /> : <ChevronDown size={13} />
+      ) : (
+        <ArrowUpDown size={13} />
+      )}
+    </button>
+  );
+}
+
+function InstrumentCell({ holding, showDragHandle = false }: { holding: Holding; showDragHandle?: boolean }) {
+  return (
+    <div className="relative flex w-full items-center justify-center">
+      {showDragHandle && <GripVertical className="absolute left-0 shrink-0 text-muted-foreground/45" size={14} aria-hidden="true" />}
+      <div className="min-w-0 text-center">
+        <p className="font-semibold text-foreground">{holding.name}</p>
+        <p className="mt-1 font-mono text-[0.75rem] tracking-[0.04em] text-muted-foreground/60">{holding.thscode}</p>
+      </div>
     </div>
   );
 }
@@ -860,7 +1054,7 @@ function RowActions({
   onDelete: (holding: Holding) => void;
 }) {
   return (
-    <div className="flex justify-end gap-1">
+    <div className="flex justify-center gap-1">
       <Button variant="ghost" size="icon" className="size-9" onClick={() => onEdit(holding)} aria-label={`编辑 ${holding.name}`} title="编辑">
         <Edit3 size={15} />
       </Button>
@@ -881,7 +1075,7 @@ function EmptyState({ status, onAdd }: { status: HoldingStatus; onAdd?: () => vo
         </span>
         <h3 className="mt-4 font-display text-[1.4rem] tracking-tight text-foreground">{isOpen ? "组合里还没有当前持仓" : "还没有清仓历史"}</h3>
         <p className="mx-auto mt-2 max-w-md text-[0.9rem] leading-7 text-muted-foreground">
-          {isOpen ? "从数据源检索 A 股或 ETF，把第一只股票放进这个组合。" : "数量调整为 0 的记录会保留在这里。"}
+          {isOpen ? "从数据源检索 A 股或 ETF，把第一只股票放进这个组合。" : "数量调整为 0 并完成清仓确认的记录会保留在这里。"}
         </p>
         {isOpen && onAdd && <Button className="mt-6 !text-[12px]" size="sm" onClick={onAdd}><Plus size={14} /> 添加第一只股票</Button>}
       </div>
@@ -923,6 +1117,59 @@ function MutationError({ error, className }: { error: Error | null; className?: 
   if (!error) return null;
   const message = error instanceof ApiError ? error.message : "操作失败，请稍后重试";
   return <div role="alert" className={cn("border-l-2 border-market-up bg-danger/10 px-4 py-3 text-sm text-market-up", className)}>{message}</div>;
+}
+
+function reconcileOrderIds(orderIds: string[], itemIds: string[]): string[] {
+  const itemIdSet = new Set(itemIds);
+  const retained = orderIds.filter((id) => itemIdSet.has(id));
+  const retainedSet = new Set(retained);
+  return [...retained, ...itemIds.filter((id) => !retainedSet.has(id))];
+}
+
+function sameStringArray(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function applyHoldingOrder(items: Holding[], orderIds: string[]): Holding[] {
+  if (orderIds.length === 0) return items;
+  const orderMap = new Map(orderIds.map((id, index) => [id, index]));
+  return [...items].sort(
+    (left, right) =>
+      (orderMap.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (orderMap.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+function sortHoldings(items: Holding[], sort: HoldingSortState): Holding[] {
+  if (!sort) return items;
+  return [...items].sort((left, right) => {
+    const leftValue = getHoldingSortValue(left, sort.key);
+    const rightValue = getHoldingSortValue(right, sort.key);
+    if (leftValue === null && rightValue === null) return 0;
+    if (leftValue === null) return 1;
+    if (rightValue === null) return -1;
+
+    const comparison =
+      typeof leftValue === "string" && typeof rightValue === "string"
+        ? leftValue.localeCompare(rightValue)
+        : Number(leftValue) - Number(rightValue);
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+}
+
+function getHoldingSortValue(holding: Holding, key: HoldingSortKey): number | string | null {
+  switch (key) {
+    case "market_value":
+      return holding.market_value;
+    case "floating_gain":
+      return holding.floating_gain;
+    case "floating_gain_percent":
+      return holding.floating_gain_percent;
+    case "weight_percent":
+      return holding.weight_percent;
+    case "opened_on":
+      return holding.opened_on;
+  }
 }
 
 function formatDate(value: string): string {

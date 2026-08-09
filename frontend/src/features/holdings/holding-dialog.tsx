@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, LoaderCircle, Search } from "lucide-react";
+import { format, parse } from "date-fns";
+import { CalendarDays, Check, ChevronDown, ChevronUp, LoaderCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 
 import {
@@ -24,8 +25,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { Calendar } from "../../components/ui/calendar";
 import { Input } from "../../components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { ApiError } from "../../lib/api";
+import { cn } from "../../lib/utils";
 import {
   useCreateHoldingMutation,
   useInstrumentSearchQuery,
@@ -47,7 +51,21 @@ const baseSchema = z.object({
   note: z.string().max(1000, "备注不能超过 1,000 个字符"),
 });
 
-type HoldingForm = z.infer<typeof baseSchema>;
+const closeFieldsSchema = z.object({
+  close_price: z.string().trim().refine(
+    (value) => value === "" || decimalPattern.test(value),
+    "清仓价格格式不正确，最多 4 位小数",
+  ),
+  closed_on: z.string(),
+  closed_quantity: z.string().trim().refine(
+    (value) => value === "" || integerPattern.test(value),
+    "清仓数量必须为正整数",
+  ),
+});
+
+const formBaseSchema = baseSchema.merge(closeFieldsSchema);
+type HoldingForm = z.infer<typeof formBaseSchema>;
+type StepperField = "average_cost" | "quantity" | "close_price" | "closed_quantity";
 
 interface HoldingDialogProps {
   open: boolean;
@@ -65,6 +83,75 @@ function todayInShanghai(): string {
   }).format(new Date());
 }
 
+function parseDialogDate(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const date = parse(value, "yyyy-MM-dd", new Date());
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function formatDialogDate(date?: Date): string {
+  return date ? format(date, "yyyy-MM-dd") : "";
+}
+
+function SingleDateField({
+  value,
+  max,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  max?: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = parseDialogDate(value);
+  const maxDate = parseDialogDate(max);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            !value && "text-muted-foreground",
+          )}
+          aria-haspopup="dialog"
+        >
+          <span className="truncate">{value || placeholder}</span>
+          <CalendarDays className="shrink-0 text-muted-foreground" size={16} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-2">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date) => {
+            if (!date) return;
+            onChange(formatDialogDate(date));
+            setOpen(false);
+          }}
+          disabled={maxDate ? { after: maxDate } : undefined}
+        />
+        <div className="flex items-center justify-between border-t border-border px-1 pt-2">
+          <span className="text-xs text-muted-foreground">{value || "未选择日期"}</span>
+          <button
+            type="button"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            清除
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: HoldingDialogProps) {
   const createMutation = useCreateHoldingMutation(portfolioId);
   const updateMutation = useUpdateHoldingMutation(portfolioId);
@@ -77,16 +164,30 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
   const isClosed = holding?.status === "closed";
   const schema = useMemo(
     () =>
-      baseSchema.superRefine((value, context) => {
+      formBaseSchema.superRefine((value, context) => {
         const quantity = Number(value.quantity);
         if (!isEditing && quantity <= 0) {
           context.addIssue({ code: "custom", path: ["quantity"], message: "新增持仓数量必须大于 0" });
         }
+        if (isEditing && !isClosed && quantity === 0) {
+          if (!value.close_price || Number(value.close_price) <= 0) {
+            context.addIssue({ code: "custom", path: ["close_price"], message: "清仓时请输入清仓价格" });
+          }
+          if (!value.closed_on) {
+            context.addIssue({ code: "custom", path: ["closed_on"], message: "清仓时请选择清仓日期" });
+          }
+        }
+        if (isClosed && value.closed_quantity && Number(value.closed_quantity) <= 0) {
+          context.addIssue({ code: "custom", path: ["closed_quantity"], message: "清仓数量必须大于 0" });
+        }
         if (value.opened_on > todayInShanghai()) {
           context.addIssue({ code: "custom", path: ["opened_on"], message: "建仓日期不得晚于今天" });
         }
+        if (value.closed_on && value.closed_on > todayInShanghai()) {
+          context.addIssue({ code: "custom", path: ["closed_on"], message: "清仓日期不得晚于今天" });
+        }
       }),
-    [isEditing],
+    [isClosed, isEditing],
   );
   const form = useForm<HoldingForm>({
     resolver: zodResolver(schema),
@@ -95,8 +196,40 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
       quantity: "",
       opened_on: todayInShanghai(),
       note: "",
+      close_price: "",
+      closed_on: "",
+      closed_quantity: "",
     },
   });
+  const watchedAverageCost = form.watch("average_cost");
+  const watchedQuantity = form.watch("quantity");
+  const watchedClosePrice = form.watch("close_price");
+  const watchedClosedQuantity = form.watch("closed_quantity");
+  const watchedOpenedOn = form.watch("opened_on");
+  const watchedClosedOn = form.watch("closed_on");
+  const isClosing = isEditing && !isClosed && Number(watchedQuantity) === 0;
+  const quantityMinimum = isEditing ? 0 : 1;
+
+  const adjustNumber = (
+    field: StepperField,
+    direction: 1 | -1,
+    minimum: number,
+    step: number,
+    precision: number,
+  ) => {
+    const rawValue = form.getValues(field);
+    const currentValue = rawValue === "" ? 0 : Number(rawValue);
+    const safeValue = Number.isFinite(currentValue) ? currentValue : 0;
+    const scale = 10 ** precision;
+    const currentUnits = Math.round(safeValue * scale);
+    const minimumUnits = Math.round(minimum * scale);
+    const stepUnits = Math.round(step * scale);
+    const nextUnits = Math.max(minimumUnits, currentUnits + direction * stepUnits);
+    const nextValue = precision === 0
+      ? String(nextUnits)
+      : (nextUnits / scale).toFixed(precision).replace(/\.?0+$/, "");
+    form.setValue(field, nextValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -110,6 +243,13 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
       quantity: holding ? String(holding.quantity) : "",
       opened_on: holding?.opened_on ?? todayInShanghai(),
       note: holding?.note ?? "",
+      close_price: holding?.close_price != null
+        ? String(holding.close_price)
+        : holding?.latest != null
+          ? String(holding.latest)
+          : "",
+      closed_on: holding?.closed_on ?? (holding && !isClosed ? todayInShanghai() : ""),
+      closed_quantity: holding?.closed_quantity != null ? String(holding.closed_quantity) : "",
     });
     createMutation.reset();
     updateMutation.reset();
@@ -143,12 +283,20 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
     try {
       if (holding) {
         const payload: HoldingUpdatePayload = isClosed
-          ? { note: values.note.trim() || null }
+          ? {
+              note: values.note.trim() || null,
+              ...(values.close_price ? { close_price: Number(values.close_price) } : {}),
+              ...(values.closed_on ? { closed_on: values.closed_on } : {}),
+              ...(values.closed_quantity ? { closed_quantity: Number(values.closed_quantity) } : {}),
+            }
           : {
               average_cost: Number(values.average_cost),
               quantity: Number(values.quantity),
               opened_on: values.opened_on,
               note: values.note.trim() || null,
+              ...(Number(values.quantity) === 0
+                ? { close_price: Number(values.close_price), closed_on: values.closed_on }
+                : {}),
             };
         if (!isClosed && payload.quantity === 0) {
           setPendingClose(payload);
@@ -176,7 +324,7 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
   };
 
   const onSubmit = form.handleSubmit(submitValues);
-  const title = isClosed ? "编辑清仓备注" : isEditing ? "编辑当前持仓" : "新增持仓";
+  const title = isClosed ? "编辑清仓记录" : isEditing ? "编辑当前持仓" : "新增持仓";
 
   return (
     <>
@@ -186,9 +334,9 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
               {isClosed
-                ? "已清仓记录只保留历史快照与备注；再次持有请创建新持仓。"
+                ? "可补录清仓数量、价格和日期；再次持有请创建新持仓。"
                 : isEditing
-                  ? "标的身份不可替换。数量保存为 0 时，将转入已清仓记录。"
+                  ? "标的身份不可替换。数量保存为 0 时，需要填写清仓价格和日期后转入已清仓记录。"
                   : "先从数据源返回的候选项中选定 A 股或 ETF，再记录成本与数量。"}
             </DialogDescription>
           </DialogHeader>
@@ -282,20 +430,101 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
                 <>
                   <div className="grid grid-cols-2 gap-5">
                     <Field label="平均持仓成本" error={form.formState.errors.average_cost?.message}>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.0001"
+                      <NumberStepper
+                        min={0}
+                        step={1}
+                        value={watchedAverageCost}
                         placeholder="0.0000"
-                        {...form.register("average_cost")}
+                        registration={form.register("average_cost")}
+                        onStep={(direction) => adjustNumber("average_cost", direction, 0, 1, 4)}
+                        ariaLabel="平均持仓成本"
                       />
                     </Field>
                     <Field label="持股数量" error={form.formState.errors.quantity?.message}>
-                      <Input type="number" min="0" step="1" placeholder="0" {...form.register("quantity")} />
+                      <NumberStepper
+                        min={quantityMinimum}
+                        step={1}
+                        value={watchedQuantity}
+                        placeholder="0"
+                        registration={form.register("quantity")}
+                        onStep={(direction) => adjustNumber("quantity", direction, quantityMinimum, 1, 0)}
+                        ariaLabel="持股数量"
+                      />
                     </Field>
                   </div>
                   <Field label="建仓日期" error={form.formState.errors.opened_on?.message}>
-                    <Input type="date" max={todayInShanghai()} {...form.register("opened_on")} />
+                    <SingleDateField
+                      value={watchedOpenedOn}
+                      max={todayInShanghai()}
+                      placeholder="请选择建仓日期"
+                      onChange={(value) =>
+                        form.setValue("opened_on", value, { shouldDirty: true, shouldTouch: true, shouldValidate: true })
+                      }
+                    />
+                  </Field>
+                  {isClosing && (
+                    <div className="grid grid-cols-2 gap-5 rounded-xl border border-primary/20 bg-primary/[0.05] p-4">
+                      <Field label="清仓价格" error={form.formState.errors.close_price?.message}>
+                        <NumberStepper
+                          min={0.0001}
+                          step={1}
+                          value={watchedClosePrice}
+                          placeholder="请输入实际清仓价格"
+                          registration={form.register("close_price")}
+                          onStep={(direction) => adjustNumber("close_price", direction, 0.0001, 1, 4)}
+                          ariaLabel="清仓价格"
+                        />
+                      </Field>
+                      <Field label="清仓日期" error={form.formState.errors.closed_on?.message}>
+                        <SingleDateField
+                          value={watchedClosedOn}
+                          max={todayInShanghai()}
+                          placeholder="请选择清仓日期"
+                          onChange={(value) =>
+                            form.setValue("closed_on", value, { shouldDirty: true, shouldTouch: true, shouldValidate: true })
+                          }
+                        />
+                      </Field>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {isClosed && (
+                <>
+                  <div className="grid grid-cols-2 gap-5 rounded-xl border border-border bg-card-deep/30 p-4">
+                    <Field label="清仓数量" error={form.formState.errors.closed_quantity?.message}>
+                      <NumberStepper
+                        min={1}
+                        step={1}
+                        value={watchedClosedQuantity}
+                        placeholder="历史记录可补录"
+                        registration={form.register("closed_quantity")}
+                        onStep={(direction) => adjustNumber("closed_quantity", direction, 1, 1, 0)}
+                        ariaLabel="清仓数量"
+                      />
+                    </Field>
+                    <Field label="清仓价格" error={form.formState.errors.close_price?.message}>
+                      <NumberStepper
+                        min={0.0001}
+                        step={1}
+                        value={watchedClosePrice}
+                        placeholder="历史记录可补录"
+                        registration={form.register("close_price")}
+                        onStep={(direction) => adjustNumber("close_price", direction, 0.0001, 1, 4)}
+                        ariaLabel="清仓价格"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="清仓日期" error={form.formState.errors.closed_on?.message}>
+                    <SingleDateField
+                      value={watchedClosedOn}
+                      max={todayInShanghai()}
+                      placeholder="请选择清仓日期"
+                      onChange={(value) =>
+                        form.setValue("closed_on", value, { shouldDirty: true, shouldTouch: true, shouldValidate: true })
+                      }
+                    />
                   </Field>
                 </>
               )}
@@ -321,7 +550,7 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
               </Button>
               <Button type="submit" className="!text-[12px]" disabled={isPending}>
                 {isPending && <LoaderCircle className="animate-spin" size={15} />}
-                {isClosed ? "保存备注" : isEditing ? "保存修改" : "保存持仓"}
+                {isClosed ? "保存清仓记录" : isEditing ? "保存修改" : "保存持仓"}
               </Button>
             </DialogFooter>
           </form>
@@ -333,7 +562,7 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
           <AlertDialogHeader>
             <AlertDialogTitle>确认清仓“{holding?.name}”？</AlertDialogTitle>
             <AlertDialogDescription>
-              保存后数量变为 0，系统会自动记录当前清仓时间并将该记录移入“已清仓”。V1 不计算已实现盈亏。
+              确认后会记录清仓数量、清仓价格和清仓日期，并计算本次清仓的已实现盈亏。本版本暂不计算佣金和税费。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -375,5 +604,59 @@ function Field({
       {children}
       {error && <span className="mt-1.5 block text-[0.8rem] text-danger">{error}</span>}
     </label>
+  );
+}
+
+function NumberStepper({
+  min,
+  step,
+  value,
+  placeholder,
+  registration,
+  onStep,
+  ariaLabel,
+}: {
+  min: number;
+  step: number;
+  value: string;
+  placeholder: string;
+  registration: UseFormRegisterReturn;
+  onStep: (direction: 1 | -1) => void;
+  ariaLabel?: string;
+}) {
+  const numericValue = value === "" ? 0 : Number(value);
+  const canDecrease = Number.isFinite(numericValue) && numericValue > min;
+
+  return (
+    <div className="group relative">
+      <Input
+        type="number"
+        min={min}
+        step={step}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className="holding-number-input pr-10"
+        {...registration}
+      />
+      <div className="invisible absolute right-1 top-1/2 z-10 flex -translate-y-1/2 flex-col overflow-hidden rounded-md border border-border/70 bg-card-deep shadow-subtle opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+        <button
+          type="button"
+          className="pointer-events-auto grid h-4 w-6 place-items-center text-muted-foreground/70 transition-colors hover:bg-secondary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
+          onClick={() => onStep(1)}
+          aria-label={`增加${ariaLabel ?? "数值"}`}
+        >
+          <ChevronUp size={12} strokeWidth={2.25} />
+        </button>
+        <button
+          type="button"
+          className="pointer-events-auto grid h-4 w-6 place-items-center text-muted-foreground/70 transition-colors hover:bg-secondary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
+          onClick={() => onStep(-1)}
+          disabled={!canDecrease}
+          aria-label={`减少${ariaLabel ?? "数值"}`}
+        >
+          <ChevronDown size={12} strokeWidth={2.25} />
+        </button>
+      </div>
+    </div>
   );
 }

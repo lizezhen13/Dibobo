@@ -211,7 +211,7 @@ export function HoldingsPage() {
             <AlertDialogTitle>永久删除“{deleteTarget?.name}”？</AlertDialogTitle>
             <AlertDialogDescription>
               该操作不可撤销，将删除这条{deleteTarget?.status === "closed" ? "清仓历史" : "当前持仓"}记录。
-              {deleteTarget?.status === "open" && " 如需保留历史，请编辑数量为 0 执行清仓。"}
+              {deleteTarget?.status === "open" && " 如需保留历史，请编辑数量为 0 并填写清仓价格和日期执行清仓。"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteMutation.error && (
@@ -518,7 +518,7 @@ function EmptyState({ status, onAdd }: { status: HoldingStatus; onAdd: () => voi
         </span>
         <h3 className="mt-4 font-display text-[1.4rem] tracking-tight text-foreground">{isOpen ? "还没有当前持仓" : "还没有清仓记录"}</h3>
         <p className="mx-auto mt-2 max-w-md text-[0.9rem] leading-7 text-muted-foreground">
-          {isOpen ? "从数据源检索 A 股或 ETF，记录一条不依赖券商连接的私有持仓。" : "数量调整为 0 的记录会自动归档到这里。"}
+          {isOpen ? "从数据源检索 A 股或 ETF，记录一条不依赖券商连接的私有持仓。" : "数量调整为 0 并完成清仓确认的记录会自动归档到这里。"}
         </p>
         {isOpen && <Button className="mt-6" size="sm" onClick={onAdd}><Plus size={14} /> 添加第一条持仓</Button>}
       </div>
