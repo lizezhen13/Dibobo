@@ -6,7 +6,9 @@ import {
   ArrowUpDown,
   Check,
   ChevronDown,
+  ChevronUp,
   Clock3,
+  Filter,
   GripVertical,
   LoaderCircle,
   PencilLine,
@@ -62,11 +64,23 @@ const DEFAULT_FILTERS: WatchlistFilters = { keyword: "", asset_type: "" };
 interface WatchlistAdvancedFilters {
   industry: string;
   concept: string;
+  pe_min: string;
+  pe_max: string;
+  pb_min: string;
+  pb_max: string;
+  dividend_min: string;
+  dividend_max: string;
 }
 
 const DEFAULT_ADVANCED_FILTERS: WatchlistAdvancedFilters = {
   industry: "",
   concept: "",
+  pe_min: "",
+  pe_max: "",
+  pb_min: "",
+  pb_max: "",
+  dividend_min: "",
+  dividend_max: "",
 };
 
 type SortKey =
@@ -309,11 +323,11 @@ export function WatchlistPage() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[142px] flex-col justify-center overflow-hidden rounded-xl border border-border bg-card px-5 py-4 shadow-raised">
+        <div className="relative flex min-h-[128px] flex-col justify-center overflow-hidden rounded-xl border border-border bg-card px-5 py-3 shadow-raised">
           <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-primary/10 bg-primary/8 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-1/4 h-px w-3/4 bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
           <div className="relative">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
               <div className="flex items-center gap-2.5">
                 <span className="grid size-8 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
                   <SlidersHorizontal size={15} />
@@ -334,8 +348,7 @@ export function WatchlistPage() {
               </span>
             </div>
 
-            <div className="rounded-xl border border-border/80 bg-background/35 p-3 shadow-subtle">
-              <div className="watchlist-filter-grid">
+            <div className="watchlist-filter-primary">
                 <div className="min-w-0">
                   <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">搜索标的</p>
                   <div className="relative">
@@ -365,21 +378,16 @@ export function WatchlistPage() {
                     onChange={(asset_type) => updateFilter("asset_type", asset_type)}
                   />
                 </div>
-                <WatchlistFilterSelect
-                  label="所属行业"
-                  value={advancedFilters.industry}
-                  placeholder="全部行业"
-                  options={industryOptions}
-                  onChange={(nextValue) => updateAdvancedFilter("industry", nextValue)}
-                />
-                <WatchlistFilterSelect
-                  label="所属概念"
-                  value={advancedFilters.concept}
-                  placeholder="全部概念"
-                  options={conceptOptions}
-                  onChange={(nextValue) => updateAdvancedFilter("concept", nextValue)}
-                />
-              </div>
+                <div className="min-w-0">
+                  <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">更多筛选</p>
+                  <WatchlistAdvancedFilter
+                    value={advancedFilters}
+                    activeCount={advancedFilterCount}
+                    industries={industryOptions}
+                    concepts={conceptOptions}
+                    onChange={setAdvancedFilters}
+                  />
+                </div>
             </div>
           </div>
           {(isFiltered || sort.key !== "custom") && (
@@ -571,6 +579,115 @@ export function WatchlistPage() {
   );
 }
 
+function WatchlistAdvancedFilter({
+  value,
+  activeCount,
+  industries,
+  concepts,
+  onChange,
+}: {
+  value: WatchlistAdvancedFilters;
+  activeCount: number;
+  industries: string[];
+  concepts: string[];
+  onChange: (value: WatchlistAdvancedFilters) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function update<K extends keyof WatchlistAdvancedFilters>(key: K, nextValue: WatchlistAdvancedFilters[K]) {
+    onChange({ ...value, [key]: nextValue });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="更多筛选条件"
+          aria-expanded={open}
+          className={cn(
+            "inline-flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-background px-3.5 text-[0.86rem] text-foreground transition hover:border-primary/40 hover:bg-secondary focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
+            activeCount > 0 ? "border-primary/40 bg-primary/[0.06]" : "border-input",
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <Filter size={15} className={activeCount > 0 ? "text-primary" : "text-muted-foreground"} />
+            更多筛选
+            {activeCount > 0 && (
+              <span className="grid size-5 place-items-center rounded-full bg-primary text-[0.68rem] font-semibold text-primary-foreground">
+                {activeCount}
+              </span>
+            )}
+          </span>
+          <ChevronDown size={15} className="text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(380px,calc(100vw-32px))] p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-semibold text-foreground">更多筛选条件</p>
+            <p className="mt-1 text-[0.75rem] text-muted-foreground/65">按分类和估值范围缩小观察列表</p>
+          </div>
+          {activeCount > 0 && (
+            <button
+              type="button"
+              className="shrink-0 text-[0.75rem] text-primary transition hover:text-primary-hover"
+              onClick={() => onChange({ ...DEFAULT_ADVANCED_FILTERS })}
+            >
+              清空条件
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <WatchlistFilterSelect
+            label="所属行业"
+            value={value.industry}
+            placeholder="全部行业"
+            options={industries}
+            onChange={(nextValue) => update("industry", nextValue)}
+          />
+          <WatchlistFilterSelect
+            label="所属概念"
+            value={value.concept}
+            placeholder="全部概念"
+            options={concepts}
+            onChange={(nextValue) => update("concept", nextValue)}
+          />
+        </div>
+
+        <div className="mt-4 border-t border-border/70 pt-3">
+          <p className="font-mono text-[0.65rem] tracking-[0.13em] text-muted-foreground/60">VALUATION RANGE / 估值区间</p>
+          <div className="mt-3 grid gap-3">
+            <WatchlistRangeField
+              label="市盈率 PE-TTM"
+              minimum={value.pe_min}
+              maximum={value.pe_max}
+              onMinimumChange={(nextValue) => update("pe_min", nextValue)}
+              onMaximumChange={(nextValue) => update("pe_max", nextValue)}
+            />
+            <WatchlistRangeField
+              label="市净率 PB"
+              minimum={value.pb_min}
+              maximum={value.pb_max}
+              onMinimumChange={(nextValue) => update("pb_min", nextValue)}
+              onMaximumChange={(nextValue) => update("pb_max", nextValue)}
+            />
+            <WatchlistRangeField
+              label="股息率"
+              suffix="%"
+              minimum={value.dividend_min}
+              maximum={value.dividend_max}
+              onMinimumChange={(nextValue) => update("dividend_min", nextValue)}
+              onMaximumChange={(nextValue) => update("dividend_max", nextValue)}
+            />
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function WatchlistFilterSelect({
   label,
   value,
@@ -637,6 +754,97 @@ function WatchlistFilterSelect({
           </div>
         </PopoverContent>
       </Popover>
+    </div>
+  );
+}
+
+function WatchlistRangeField({
+  label,
+  suffix,
+  minimum,
+  maximum,
+  onMinimumChange,
+  onMaximumChange,
+}: {
+  label: string;
+  suffix?: string;
+  minimum: string;
+  maximum: string;
+  onMinimumChange: (value: string) => void;
+  onMaximumChange: (value: string) => void;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2">
+        <div className="group relative min-w-0 flex-1">
+          <Input
+            type="number"
+            inputMode="decimal"
+            step="1"
+            value={minimum}
+            onChange={(event) => onMinimumChange(event.target.value)}
+            placeholder="最小"
+            aria-label={`${label}最小值`}
+            className={cn("watchlist-number-input h-9 px-2.5 pr-8 text-[0.8rem]", suffix && "pr-11")}
+          />
+          {suffix && <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[0.7rem] text-muted-foreground/60">{suffix}</span>}
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-7 flex-col overflow-hidden rounded-r-lg border-l border-input/80 bg-secondary/35 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+            <button
+              type="button"
+              aria-label={`${label}最小值增加`}
+              className="group flex min-h-0 flex-1 items-center justify-center text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onMinimumChange(stepRangeValue(minimum, 1))}
+            >
+              <ChevronUp size={12} strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              aria-label={`${label}最小值减少`}
+              className="group flex min-h-0 flex-1 items-center justify-center border-t border-input/70 text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onMinimumChange(stepRangeValue(minimum, -1))}
+            >
+              <ChevronDown size={12} strokeWidth={2.25} />
+            </button>
+          </div>
+        </div>
+        <span className="text-muted-foreground/50">—</span>
+        <div className="group relative min-w-0 flex-1">
+          <Input
+            type="number"
+            inputMode="decimal"
+            step="1"
+            value={maximum}
+            onChange={(event) => onMaximumChange(event.target.value)}
+            placeholder="最大"
+            aria-label={`${label}最大值`}
+            className={cn("watchlist-number-input h-9 px-2.5 pr-8 text-[0.8rem]", suffix && "pr-11")}
+          />
+          {suffix && <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[0.7rem] text-muted-foreground/60">{suffix}</span>}
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-7 flex-col overflow-hidden rounded-r-lg border-l border-input/80 bg-secondary/35 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+            <button
+              type="button"
+              aria-label={`${label}最大值增加`}
+              className="group flex min-h-0 flex-1 items-center justify-center text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onMaximumChange(stepRangeValue(maximum, 1))}
+            >
+              <ChevronUp size={12} strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              aria-label={`${label}最大值减少`}
+              className="group flex min-h-0 flex-1 items-center justify-center border-t border-input/70 text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onMaximumChange(stepRangeValue(maximum, -1))}
+            >
+              <ChevronDown size={12} strokeWidth={2.25} />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -929,7 +1137,29 @@ function countAdvancedFilters(filters: WatchlistAdvancedFilters): number {
 function matchesAdvancedFilters(item: WatchlistItem, filters: WatchlistAdvancedFilters): boolean {
   if (filters.industry && item.industry !== filters.industry) return false;
   if (filters.concept && !splitConcepts(item.concept).includes(filters.concept)) return false;
+  if (!matchesRange(item.pe_ttm, filters.pe_min, filters.pe_max)) return false;
+  if (!matchesRange(item.pb, filters.pb_min, filters.pb_max)) return false;
+  if (!matchesRange(item.dividend_yield, filters.dividend_min, filters.dividend_max)) return false;
   return true;
+}
+
+function matchesRange(value: number | null, minimum: string, maximum: string): boolean {
+  const minimumValue = parseRangeValue(minimum);
+  const maximumValue = parseRangeValue(maximum);
+  if (minimumValue !== null && (value === null || value < minimumValue)) return false;
+  if (maximumValue !== null && (value === null || value > maximumValue)) return false;
+  return true;
+}
+
+function parseRangeValue(value: string): number | null {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function stepRangeValue(value: string, direction: 1 | -1): string {
+  const currentValue = parseRangeValue(value) ?? 0;
+  return String(currentValue + direction);
 }
 
 function sortValue(item: WatchlistItem, key: SortKey): number | string | null {
