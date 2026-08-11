@@ -384,6 +384,28 @@ input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
 }
 
 @layer components {
+  .overview-carousel-viewport {
+    position: relative;
+    overflow: hidden;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
+    overflow-anchor: none;
+    scroll-behavior: auto;
+  }
+
+  .overview-carousel-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .overview-carousel-track {
+    width: 100%;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .overview-carousel-track[data-carousel-active="true"] {
+    will-change: transform;
+  }
+
   .watchlist-table-scroll {
     scrollbar-gutter: stable;
   }

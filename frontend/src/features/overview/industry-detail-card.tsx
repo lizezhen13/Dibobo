@@ -5,7 +5,33 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { formatMoney, formatPercent, formatPoint, movementClass } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { OverviewPanel, PanelState } from "./overview-panel";
-import type { OverviewIndustries } from "./types";
+import type { IndustryIndexItem, OverviewIndustries } from "./types";
+import { useAutoCarousel } from "./use-auto-carousel";
+
+function IndustryRow({ item }: { item: IndustryIndexItem }) {
+  return (
+    <tr
+      data-carousel-item
+      className="h-11 transition-colors hover:bg-row-hover"
+    >
+      <td className="px-4 py-2">
+        <p className="truncate text-[13px] font-medium text-foreground/88">{item.name}</p>
+        <p className="truncate font-mono text-[10px] tracking-normal text-muted-foreground/40">
+          {item.thscode}
+        </p>
+      </td>
+      <td className="truncate px-2 py-2 text-right font-mono text-xs tracking-normal text-foreground/78">
+        {formatPoint(item.latest, { group: false })}
+      </td>
+      <td className={cn("truncate px-2 py-2 text-right font-mono text-xs tracking-normal", movementClass(item.change_percent))}>
+        {formatPercent(item.change_percent)}
+      </td>
+      <td className="truncate px-4 py-2 text-right font-mono text-[11px] tracking-normal text-muted-foreground">
+        {formatMoney(item.turnover)}
+      </td>
+    </tr>
+  );
+}
 
 export function IndustryDetailCard({
   query,
@@ -22,6 +48,13 @@ export function IndustryDetailCard({
       `${item.name} ${item.thscode}`.toLowerCase().includes(deferredSearch),
     );
   }, [data, deferredSearch]);
+  const shouldLoop = deferredSearch.length === 0 && filtered.length > 1;
+  const carouselRef = useAutoCarousel<HTMLDivElement>({
+    itemCount: filtered.length,
+    enabled: shouldLoop,
+    speedPxPerSecond: 7,
+    itemSelector: "[data-carousel-item]",
+  });
 
   return (
     <OverviewPanel
@@ -63,9 +96,24 @@ export function IndustryDetailCard({
               {filtered.length} / {data.total}
             </span>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full table-fixed border-collapse text-left">
-              <thead className="sticky top-0 z-[1] bg-card">
+          <div className="shrink-0 border-b border-border/70">
+            <div className="grid grid-cols-[42%_19%_17%_22%] text-[10px] text-muted-foreground/55">
+              <span className="px-4 py-2.5">行业</span>
+              <span className="px-2 py-2.5 text-right">指数</span>
+              <span className="px-2 py-2.5 text-right">涨跌</span>
+              <span className="px-4 py-2.5 text-right">成交额</span>
+            </div>
+          </div>
+          <div ref={carouselRef} className="overview-carousel-viewport min-h-0 flex-1 overflow-hidden">
+            <div data-carousel-track className="overview-carousel-track">
+              <table className="w-full table-fixed border-collapse text-left">
+              <colgroup>
+                <col style={{ width: "42%" }} />
+                <col style={{ width: "19%" }} />
+                <col style={{ width: "17%" }} />
+                <col style={{ width: "22%" }} />
+              </colgroup>
+              <thead className="hidden">
                 <tr className="border-b border-border text-[10px] text-muted-foreground/55">
                   <th className="w-[42%] px-4 py-2.5 font-normal">行业</th>
                   <th className="w-[19%] px-2 py-2.5 text-right font-normal">指数</th>
@@ -74,27 +122,12 @@ export function IndustryDetailCard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {filtered.map((item) => (
-                  <tr key={item.thscode} className="h-11 transition-colors hover:bg-row-hover">
-                    <td className="px-4 py-2">
-                      <p className="truncate text-[13px] font-medium text-foreground/88">{item.name}</p>
-                      <p className="truncate font-mono text-[10px] tracking-normal text-muted-foreground/40">
-                        {item.thscode}
-                      </p>
-                    </td>
-                    <td className="truncate px-2 py-2 text-right font-mono text-xs tracking-normal text-foreground/78">
-                      {formatPoint(item.latest, { group: false })}
-                    </td>
-                    <td className={cn("truncate px-2 py-2 text-right font-mono text-xs tracking-normal", movementClass(item.change_percent))}>
-                      {formatPercent(item.change_percent)}
-                    </td>
-                    <td className="truncate px-4 py-2 text-right font-mono text-[11px] tracking-normal text-muted-foreground">
-                      {formatMoney(item.turnover)}
-                    </td>
-                  </tr>
+                {filtered.map((item, index) => (
+                  <IndustryRow key={`${item.thscode}-${index}`} item={item} />
                 ))}
               </tbody>
             </table>
+            </div>
             {filtered.length === 0 && (
               <div className="grid min-h-40 place-items-center text-[13px] text-muted-foreground">
                 未找到匹配行业
