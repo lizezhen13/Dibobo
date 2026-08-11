@@ -36,23 +36,9 @@ class Settings(BaseSettings):
     login_lock_seconds: int = Field(default=300, ge=30, le=3600)
 
     quote_refresh_seconds: int = Field(default=5, ge=3, le=60)
+    valuation_cache_minutes: int = Field(default=5, ge=1, le=1440)
     upstream_timeout_seconds: float = Field(default=8, gt=0, le=60)
     upstream_concurrency: int = Field(default=4, ge=1, le=32)
-    worker_concurrency: int = Field(default=2, ge=1, le=16)
-    radar_instrument_cache_hours: int = Field(default=24, ge=1, le=168)
-    radar_pb_cache_minutes: int = Field(default=5, ge=1, le=1440)
-    radar_fundamental_cache_hours: int = Field(default=24, ge=1, le=168)
-    radar_failure_retry_minutes: int = Field(default=10, ge=1, le=1440)
-    radar_search_chunk_size: int = Field(default=50, ge=10, le=200)
-    radar_search_reuse_seconds: int = Field(default=60, ge=0, le=3600)
-    radar_queued_stale_seconds: int = Field(default=120, ge=30, le=3600)
-    radar_running_stale_minutes: int = Field(default=20, ge=5, le=180)
-    radar_source_lock_seconds: int = Field(default=900, ge=60, le=3600)
-    radar_source_lock_retry_seconds: int = Field(default=2, ge=1, le=30)
-    radar_upstream_qps: int = Field(default=40, ge=1, le=500)
-    radar_breaker_failure_threshold: int = Field(default=5, ge=2, le=100)
-    radar_breaker_window_seconds: int = Field(default=30, ge=5, le=600)
-    radar_breaker_cooldown_seconds: int = Field(default=300, ge=10, le=3600)
 
     initial_username: str | None = None
     initial_password: SecretStr | None = None

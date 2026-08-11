@@ -1,1 +1,0 @@
-"""Dividend radar domain."""

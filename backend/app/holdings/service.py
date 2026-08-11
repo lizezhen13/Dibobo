@@ -422,7 +422,7 @@ async def _get_valuation_snapshots(
         cache,
         cache_key,
         batch.model_dump_json(),
-        max(settings.radar_pb_cache_minutes * 60, 60),
+        max(settings.valuation_cache_minutes * 60, 60),
     )
     return batch
 

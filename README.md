@@ -1,6 +1,6 @@
 # Dibobo
 
-Dibobo 是面向个人投资者的 A 股低波红利策略数据工作台。当前仓库已完成 V1 的工程基座、认证、总览、系统设置、持仓管理、红利雷达与投资日记纵向切片。
+Dibobo 是面向个人投资者的 A 股低波红利策略数据工作台。当前仓库已完成 V1 的工程基座、认证、总览、系统设置、持仓管理与投资日记纵向切片。
 
 产品需求基线见 [Dibobo V1 PRD](docs/requirements/Dibobo-V1-PRD.md)。
 
@@ -13,13 +13,10 @@ Dibobo 是面向个人投资者的 A 股低波红利策略数据工作台。当�
 - 四指数固定顺序、交易状态、5 秒交易时段轮询、后台标签页暂停、最后成功缓存降级；
 - 当前持仓与已清仓档案、持仓汇总、行情估值、缺失行情降级、数量归零清仓，以及用户级数据隔离；
 - 基于 TanStack Table 的项目级数据表格封装与横向滚动持仓账簿；
-- 红利雷达按用户搜索创建异步任务，根据筛选条件和排序字段规划实际需要的指标，按“行情 → PB → 分红 → ROE”逐层缩小候选集，不再要求预构建全市场快照；
-- 代码池、PB、ROE 与原始分红事件分层缓存；相同搜索短期复用，同一数据源任务串行合并，上游请求统一限流并对系统性故障熔断；
-- 搜索结果冻结 24 小时，支持三值筛选、稳定分页、重新搜索排序与当前页行情刷新；
 - 纯文本投资日记的新增、查看、编辑、永久删除、日期范围筛选、服务端分页，以及用户级数据隔离；
 - 用户可修改密码并立即撤销全部会话；
 - 数据源新增、编辑、永久删除、连接测试与单一启用，API Key 使用 Fernet 加密且查询只返回掩码；
-- `web`、`api`、`worker`、`postgres`、`valkey` 五服务 Compose 基座。
+- `web`、`api`、`postgres`、`valkey` 四服务 Compose 基座。
 
 ## Docker Compose 启动
 
@@ -90,9 +87,9 @@ docker compose exec -T postgres pg_dump -U dibobo -d dibobo -Fc > backups/dibobo
 恢复前先停止会写数据库的应用服务，并确保目标环境使用原部署的 `DIBOBO_API_KEY_ENCRYPTION_KEY`，否则已加密的数据源 API Key 无法解密：
 
 ```bash
-docker compose stop web api worker
+docker compose stop web api
 docker compose exec -T postgres pg_restore -U dibobo -d dibobo --clean --if-exists < backups/dibobo.dump
-docker compose start api worker web
+docker compose start api web
 ```
 
 升级前应先备份数据库和 `.env` 中的加密密钥。应用启动失败时不要回滚数据库卷；应恢复对应版本的应用镜像和升级前备份。
