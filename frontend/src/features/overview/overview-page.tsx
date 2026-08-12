@@ -1,28 +1,34 @@
 import { ArrowUpRight, DatabaseZap, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { HotStocksCard } from "./hot-stocks-card";
+import { GlobalMarketPanel } from "./global-market-panel";
 import { IndicesPanel } from "./indices-panel";
 import { IndustryDetailCard } from "./industry-detail-card";
 import { MarketBreadthCard } from "./market-breadth-card";
 import { NewsCard } from "./news-card";
-import { OverviewPanel, PanelState } from "./overview-panel";
 import {
   useHotStocksQuery,
   useIndustriesQuery,
   useMarketBreadthQuery,
   useOverviewQuery,
 } from "./queries";
+import { refreshGlobalMarketGroup as requestGlobalMarketGroup, useGlobalMarketQuery } from "./global-market-queries";
+import type { GlobalMarketGroupKey } from "./global-market-types";
 
 export function OverviewPage() {
   const indices = useOverviewQuery();
   const hotStocks = useHotStocksQuery();
   const marketBreadth = useMarketBreadthQuery();
   const industries = useIndustriesQuery();
+  const [activeTab, setActiveTab] = useState("a-share");
   const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [globalRefreshingGroups, setGlobalRefreshingGroups] = useState<Partial<Record<GlobalMarketGroupKey, boolean>>>({});
+  const globalRefreshingRef = useRef(new Set<GlobalMarketGroupKey>());
+  const globalMarket = useGlobalMarketQuery(activeTab === "global");
   const queries = [indices, hotStocks, marketBreadth, industries];
 
   const refreshAll = async () => {
@@ -36,6 +42,19 @@ export function OverviewPage() {
       }
     } finally {
       setManualRefreshing(false);
+    }
+  };
+
+  const refreshGlobalMarketGroup = async (group: GlobalMarketGroupKey) => {
+    if (globalRefreshingRef.current.has(group)) return;
+    globalRefreshingRef.current.add(group);
+    setGlobalRefreshingGroups((current) => ({ ...current, [group]: true }));
+    try {
+      await requestGlobalMarketGroup(group);
+      await globalMarket.refetch({ cancelRefetch: false });
+    } finally {
+      globalRefreshingRef.current.delete(group);
+      setGlobalRefreshingGroups((current) => ({ ...current, [group]: false }));
     }
   };
 
@@ -58,7 +77,7 @@ export function OverviewPage() {
         </div>
       )}
 
-      <Tabs defaultValue="a-share" className="flex flex-col gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-4">
         <TabsList>
           <TabsTrigger value="a-share">A股市场</TabsTrigger>
           <TabsTrigger value="global">全球市场</TabsTrigger>
@@ -90,9 +109,11 @@ export function OverviewPage() {
         </TabsContent>
 
         <TabsContent value="global" className="mt-0">
-          <OverviewPanel title="全球市场" label="GLOBAL MARKET">
-            <PanelState kind="empty" message="全球市场数据暂未接入" />
-          </OverviewPanel>
+          <GlobalMarketPanel
+            query={globalMarket}
+            onRefreshGroup={(group) => void refreshGlobalMarketGroup(group)}
+            refreshingGroups={globalRefreshingGroups}
+          />
         </TabsContent>
       </Tabs>
     </div>

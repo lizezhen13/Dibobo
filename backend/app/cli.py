@@ -3,11 +3,14 @@ import asyncio
 import getpass
 import sys
 
+from redis.asyncio import Redis
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.models import User
 from app.core.security import PasswordPolicyError, hash_password
+from app.global_market.service import refresh_global_market
 
 
 async def create_user(username: str) -> int:
@@ -40,15 +43,34 @@ async def create_user(username: str) -> int:
     return 0
 
 
+async def refresh_global_market_once() -> int:
+    settings = get_settings()
+    if not settings.akshare_enabled or not settings.global_market_enabled:
+        print("全球市场功能未启用，请先设置 DIBOBO_GLOBAL_MARKET_ENABLED=true", file=sys.stderr)
+        return 2
+    cache = Redis.from_url(settings.valkey_url, decode_responses=True)
+    try:
+        results = await refresh_global_market(cache, settings)
+    finally:
+        await cache.aclose()
+    for result in results:
+        state = result.state if result.acquired else "skipped"
+        print(f"{result.group}: {state}{f' — {result.message}' if result.message else ''}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Dibobo deployment commands")
     subparsers = parser.add_subparsers(dest="command", required=True)
     create_parser = subparsers.add_parser("create-user", help="Create a regular user")
     create_parser.add_argument("--username", required=True)
+    subparsers.add_parser("refresh-global-market", help="Refresh the global market snapshot once")
     args = parser.parse_args()
 
     if args.command == "create-user":
         return asyncio.run(create_user(args.username))
+    if args.command == "refresh-global-market":
+        return asyncio.run(refresh_global_market_once())
     return 2
 
 

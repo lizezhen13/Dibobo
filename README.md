@@ -10,6 +10,7 @@ Dibobo 是面向个人投资者的 A 股低波红利策略数据工作台。当�
 - FastAPI、SQLAlchemy 2、Alembic、PostgreSQL 18、Valkey 8；
 - Argon2id 密码哈希、可撤销服务端会话、HttpOnly Cookie、CSRF 双提交校验；
 - 扶摇数据源适配器的指数行情、交易日历、A 股/ETF 标的检索和持仓行情能力；
+- 系统级 AKShare 全球市场快照能力：21 个固定槽位，覆盖全球指数、汇率、伦敦金银现货、商品主连/连续合约和国债日频收益率；
 - 四指数固定顺序、交易状态、5 秒交易时段轮询、后台标签页暂停、最后成功缓存降级；
 - 当前持仓与已清仓档案、持仓汇总、行情估值、缺失行情降级、数量归零清仓，以及用户级数据隔离；
 - 基于 TanStack Table 的项目级数据表格封装与横向滚动持仓账簿；
@@ -17,6 +18,14 @@ Dibobo 是面向个人投资者的 A 股低波红利策略数据工作台。当�
 - 用户可修改密码并立即撤销全部会话；
 - 数据源新增、编辑、永久删除、连接测试与单一启用，API Key 使用 Fernet 加密且查询只返回掩码；
 - `web`、`api`、`postgres`、`valkey` 四服务 Compose 基座。
+
+全球市场功能由 `DIBOBO_AKSHARE_ENABLED` 与 `DIBOBO_GLOBAL_MARKET_ENABLED` 两个独立开关共同控制，默认关闭发布。开启后由 API 进程中的锁保护刷新任务直接请求 AKShare 并写入 Valkey：指数/汇率默认每 10 秒刷新，商品每 8 秒刷新，收益率每天刷新一次，启动时各组错峰 5 秒；`GET /api/overview/global-market` 每 8 秒读取已发布快照，不在请求链路调用 AKShare。卡片上的手动同步按钮仍会立即触发对应分组的上游请求。首次联调可执行一次性刷新：
+
+```bash
+docker compose exec api python -m app.cli refresh-global-market
+```
+
+全球市场当前仅用于私有研究部署；伦敦金银通过 AKShare 的新浪外盘现货适配，其他海外连续合约通过东方财富全球期货适配。若上游映射无法通过身份校验，项目保留固定槽位并显示缺失原因，不以相近品种或虚构值替换。
 
 ## Docker Compose 启动
 

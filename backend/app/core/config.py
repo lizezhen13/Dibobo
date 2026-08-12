@@ -40,6 +40,21 @@ class Settings(BaseSettings):
     upstream_timeout_seconds: float = Field(default=8, gt=0, le=60)
     upstream_concurrency: int = Field(default=4, ge=1, le=32)
 
+    # System-level AKShare global market feed. It is deliberately independent
+    # from the user-configured A-share data source and ships behind its own flag.
+    akshare_enabled: bool = True
+    global_market_enabled: bool = False
+    global_market_refresh_seconds: int = Field(default=10, ge=10, le=3600)
+    global_market_commodity_refresh_seconds: int = Field(default=8, ge=8, le=3600)
+    global_market_yield_refresh_seconds: int = Field(default=86_400, ge=300, le=86_400)
+    global_market_group_stagger_seconds: float = Field(default=5, ge=0, le=60)
+    global_market_fresh_seconds: int = Field(default=120, ge=30, le=3600)
+    global_market_delayed_seconds: int = Field(default=600, ge=120, le=86_400)
+    global_market_retention_seconds: int = Field(default=2_592_000, ge=3600, le=31_536_000)
+    global_market_timeout_seconds: float = Field(default=30, gt=0, le=120)
+    global_market_lock_seconds: int = Field(default=90, ge=60, le=600)
+    global_market_quality_profile: str = "global-market-v1"
+
     initial_username: str | None = None
     initial_password: SecretStr | None = None
 
