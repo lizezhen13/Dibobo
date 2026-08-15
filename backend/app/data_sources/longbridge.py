@@ -157,6 +157,9 @@ class LongbridgeHttpClient:
             headers={"Accept": "application/json"},
             timeout=timeout_seconds,
         )
+        self._request_lock = asyncio.Lock()
+        self._last_request_at = 0.0
+        self._min_request_interval = 0.12
 
     async def __aenter__(self) -> "LongbridgeHttpClient":
         return self
@@ -211,6 +214,12 @@ class LongbridgeHttpClient:
         headers = self._headers(method, path, query, body)
         if payload is not None:
             headers["Content-Type"] = "application/json"
+
+        async with self._request_lock:
+            elapsed = time.monotonic() - self._last_request_at
+            if elapsed < self._min_request_interval:
+                await asyncio.sleep(self._min_request_interval - elapsed)
+            self._last_request_at = time.monotonic()
 
         try:
             response = await self._client.request(
@@ -268,10 +277,10 @@ class LongbridgeHttpClient:
                 "financial_calendar",
                 "/v1/quote/finance_calendar",
                 {
-                    "category": "report",
-                    "start": today.isoformat(),
-                    "end": (today + timedelta(days=7)).isoformat(),
-                    "market": "HK",
+                    "types[]": "report",
+                    "date": today.isoformat(),
+                    "date_end": (today + timedelta(days=7)).isoformat(),
+                    "markets[]": "HK",
                 },
             ),
         )
@@ -313,6 +322,221 @@ class LongbridgeHttpClient:
         else:
             message = "连接成功，行情、基本面、市场、资讯与财经日历接口均返回正常"
         return LongbridgeProbeResult(status="success", capabilities=capabilities, message=message)
+
+
+CalendarCategory = Literal["macro", "earnings", "dividend", "split", "closed"]
+_CALENDAR_MARKETS = frozenset({"US", "HK", "SH", "SZ"})
+
+
+def _normalize_calendar_symbol(value: object) -> tuple[str | None, str | None]:
+    """Convert Longbridge calendar symbols to Dibobo's ``ticker.MARKET`` form."""
+
+    if not isinstance(value, str):
+        return None, None
+    raw = value.strip().upper()
+    if not raw:
+        return None, None
+
+    if "." in raw:
+        ticker, market = raw.rsplit(".", 1)
+        if ticker and market in _CALENDAR_MARKETS:
+            return f"{ticker}.{market}", market
+
+    parts = [part for part in raw.split("/") if part]
+    market_index = next(
+        (index for index, part in enumerate(parts) if part in _CALENDAR_MARKETS),
+        None,
+    )
+    if market_index is None or len(parts) < 2:
+        return raw, None
+
+    ticker = parts[0] if market_index == len(parts) - 1 else parts[-1]
+    if not ticker:
+        return raw, None
+    market = parts[market_index]
+    return f"{ticker}.{market}", market
+
+
+class LongbridgeCalendarAdapter:
+    """Small domain adapter around Longbridge's finance-calendar endpoint.
+
+    The OpenAPI response is intentionally returned as raw event dictionaries
+    here. The calendar service owns user scope, deduplication and product-level
+    normalization so the provider vocabulary never leaks to the frontend.
+    """
+
+    _CATEGORY_MAP: dict[CalendarCategory, str] = {
+        "macro": "macrodata",
+        "earnings": "report",
+        "dividend": "dividend",
+        "split": "split",
+        "closed": "closed",
+    }
+
+    def __init__(self, client: LongbridgeHttpClient) -> None:
+        self._client = client
+
+    async def get_calendar_events(
+        self,
+        category: CalendarCategory,
+        start: date,
+        end: date,
+        markets: list[str] | None = None,
+        symbols: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        provider_category = self._CATEGORY_MAP[category]
+        market_values: list[str | None] = markets or [None]
+        if symbols:
+            symbol_markets = {
+                market
+                for symbol in symbols
+                for _, market in [_normalize_calendar_symbol(symbol)]
+                if market is not None
+            }
+            if symbol_markets:
+                if markets:
+                    market_values = [
+                        market for market in market_values if market in symbol_markets
+                    ]
+                else:
+                    market_values = sorted(symbol_markets)
+                # A selected market with no symbols in the current universe can
+                # be answered locally without making an upstream request.
+                if not market_values:
+                    return []
+
+        async def fetch(market: str | None) -> list[dict[str, Any]]:
+            events: list[dict[str, Any]] = []
+            cursor = start
+            seen_cursors: set[date] = set()
+
+            # Longbridge paginates this endpoint with data.next_date. Keep the
+            # end date fixed and advance the start date until the provider has
+            # no more pages or the cursor leaves the requested range.
+            for _ in range(32):
+                if cursor in seen_cursors:
+                    break
+                seen_cursors.add(cursor)
+                params = {
+                    "types[]": provider_category,
+                    "date": cursor.isoformat(),
+                    "date_end": end.isoformat(),
+                }
+                if market:
+                    params["markets[]"] = market
+                payload = await self._client.get_json(
+                    "/v1/quote/finance_calendar", params=params
+                )
+                page_events, next_date = _calendar_page(payload)
+                events.extend(page_events)
+                next_cursor = _parse_calendar_date(next_date)
+                if next_cursor is None or next_cursor > end or next_cursor <= cursor:
+                    break
+                cursor = next_cursor
+            return events
+
+        # The HTTP client spaces request starts globally. Fetching the small
+        # set of market partitions concurrently keeps network latency from
+        # multiplying while retaining the provider rate guard.
+        batches = await asyncio.gather(*(fetch(market) for market in market_values))
+        events = [
+            event
+            for batch in batches
+            for event in batch
+            if (event_date := _parse_calendar_date(event.get("date"))) is not None
+            and start <= event_date <= end
+        ]
+        if not symbols:
+            return events
+
+        wanted = {symbol.upper() for symbol in symbols}
+        return [
+            event
+            for event in events
+            if isinstance(event.get("symbol"), str)
+            and event["symbol"].upper() in wanted
+        ]
+
+
+def _calendar_infos(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten Longbridge's date-grouped calendar response safely."""
+
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return []
+    groups = data.get("list")
+    if not isinstance(groups, list):
+        return []
+
+    events: list[dict[str, Any]] = []
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        group_date = group.get("date")
+        infos = group.get("infos")
+        if not isinstance(infos, list):
+            continue
+        for info in infos:
+            if isinstance(info, dict):
+                normalized = dict(info)
+                if (
+                    isinstance(group_date, str)
+                    and _parse_calendar_date(normalized.get("date")) is None
+                ):
+                    clock = _calendar_clock(normalized.get("datetime")) or _calendar_clock(
+                        normalized.get("date")
+                    )
+                    normalized["date"] = group_date
+                    if clock:
+                        normalized["datetime"] = f"{group_date} {clock}"
+                # The raw HTTP API and SDK use different names for these
+                # fields. Normalize both forms at the provider boundary.
+                if "symbol" not in normalized and "counter_id" in normalized:
+                    normalized["symbol"] = normalized["counter_id"]
+                if "event_type" not in normalized and "type" in normalized:
+                    normalized["event_type"] = normalized["type"]
+                provider_symbol = normalized.get("symbol")
+                canonical_symbol, symbol_market = _normalize_calendar_symbol(provider_symbol)
+                if canonical_symbol:
+                    normalized["provider_symbol"] = provider_symbol
+                    normalized["symbol"] = canonical_symbol
+                if symbol_market:
+                    normalized["market"] = symbol_market
+                events.append(normalized)
+    return events
+
+
+def _parse_calendar_date(value: object) -> date | None:
+    if not isinstance(value, str):
+        return None
+    raw = value.strip().replace(".", "-")
+    try:
+        return date.fromisoformat(raw[:10])
+    except ValueError:
+        return None
+
+
+def _calendar_clock(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    parts = value.strip().split(":")
+    if len(parts) not in {2, 3} or not all(part.isdigit() for part in parts):
+        return None
+    hours, minutes = int(parts[0]), int(parts[1])
+    seconds = int(parts[2]) if len(parts) == 3 else 0
+    if hours > 23 or minutes > 59 or seconds > 59:
+        return None
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def _calendar_page(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return [], None
+    next_date = data.get("next_date")
+    if not isinstance(next_date, str):
+        next_date = None
+    return _calendar_infos(payload), next_date
 
 
 async def _oauth_request(

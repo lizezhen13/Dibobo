@@ -310,6 +310,21 @@
   animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+@keyframes calendar-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.calendar-drawer {
+  animation: calendar-drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* dialog 动画定义 */
 @keyframes fade-out {
   from {
@@ -402,6 +417,88 @@ input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
     --page-viewport-height: calc(100vh - 132px);
     height: var(--page-viewport-height);
     min-height: 0;
+  }
+
+  .calendar-page {
+    --calendar-viewport-height: calc(100dvh - 68px);
+    height: var(--calendar-viewport-height);
+    min-height: 0;
+  }
+
+  .calendar-content,
+  .calendar-workspace,
+  .calendar-pane,
+  .calendar-timeline-panel {
+    min-height: 0;
+  }
+
+  .calendar-timeline-scroll,
+  .calendar-days-scroll {
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  }
+
+  .calendar-timeline-scroll::-webkit-scrollbar,
+  .calendar-days-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .calendar-timeline-scroll::-webkit-scrollbar-track,
+  .calendar-days-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .calendar-timeline-scroll::-webkit-scrollbar-thumb,
+  .calendar-days-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .calendar-timeline-scroll::-webkit-scrollbar-thumb:hover,
+  .calendar-days-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .calendar-days-grid {
+    min-height: 120%;
+    grid-template-rows: auto repeat(6, minmax(0, 1fr));
+  }
+
+  @media (max-width: 1279px) {
+    .calendar-content {
+      overflow-y: auto;
+    }
+
+    .calendar-workspace {
+      min-height: 700px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .calendar-page {
+      height: var(--calendar-viewport-height);
+      overflow: hidden;
+    }
+
+    .calendar-content {
+      overflow-y: auto;
+    }
+
+    .calendar-workspace {
+      min-height: 0;
+      flex: none;
+    }
+
+    .calendar-pane {
+      min-height: 540px;
+    }
+
+    .calendar-timeline-panel {
+      min-height: 420px;
+    }
   }
 
   .watchlist-table-card {

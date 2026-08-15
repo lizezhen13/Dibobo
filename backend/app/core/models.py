@@ -250,3 +250,79 @@ class Journal(TimestampMixin, Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="journals")
+
+
+class CalendarEvent(TimestampMixin, Base):
+    __tablename__ = "calendar_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    canonical_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    country_code: Mapped[str] = mapped_column(String, nullable=False)
+    country_name: Mapped[str] = mapped_column(String, nullable=False)
+    market: Mapped[str | None] = mapped_column(String)
+    security_id: Mapped[str | None] = mapped_column(String)
+    security_name: Mapped[str | None] = mapped_column(String)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    timezone: Mapped[str] = mapped_column(String, nullable=False)
+    all_day: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # Provider lifecycle state is retained for sync compatibility only. It is
+    # intentionally not exposed by the calendar API.
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    importance: Mapped[str] = mapped_column(String, nullable=False)
+    period: Mapped[str | None] = mapped_column(String)
+    actual_value: Mapped[str | None] = mapped_column(String)
+    forecast_value: Mapped[str | None] = mapped_column(String)
+    previous_value: Mapped[str | None] = mapped_column(String)
+    revised_value: Mapped[str | None] = mapped_column(String)
+    unit: Mapped[str | None] = mapped_column(String)
+    issuer: Mapped[str | None] = mapped_column(String)
+    summary: Mapped[str | None] = mapped_column(Text)
+    source_name: Mapped[str] = mapped_column(String, nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String)
+    source_timezone_label: Mapped[str | None] = mapped_column(String)
+    extra_data: Mapped[dict[str, object]] = mapped_column(JSON_VALUE, default=dict, nullable=False)
+    last_synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CalendarEventSource(Base):
+    __tablename__ = "calendar_event_sources"
+    __table_args__ = (UniqueConstraint("provider", "provider_event_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calendar_events.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String, nullable=False)
+    provider_event_id: Mapped[str] = mapped_column(String, nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String)
+    provider_importance: Mapped[str | None] = mapped_column(String)
+    is_authoritative: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    raw_payload: Mapped[dict[str, object]] = mapped_column(JSON_VALUE, default=dict, nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+
+class CalendarSyncRun(Base):
+    __tablename__ = "calendar_sync_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String, nullable=False)
+    source_name: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    merged_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    cancelled_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    used_cache: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    error_type: Mapped[str | None] = mapped_column(String)
+    error_message: Mapped[str | None] = mapped_column(String)

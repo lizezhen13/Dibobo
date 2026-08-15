@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 
 from app.auth.router import router as auth_router
 from app.bootstrap import bootstrap_initial_user
+from app.calendar.router import router as calendar_router
 from app.core.config import get_settings
 from app.core.security import ApiKeyCipher
 from app.global_market.router import router as global_market_router
@@ -69,6 +70,7 @@ async def request_id_middleware(request: Request, call_next):  # type: ignore[no
 
 app.include_router(health_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(calendar_router, prefix="/api")
 app.include_router(overview_router, prefix="/api")
 app.include_router(global_market_router, prefix="/api")
 app.include_router(portfolios_router, prefix="/api")
