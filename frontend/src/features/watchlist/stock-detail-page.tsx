@@ -19,17 +19,13 @@ export function StockDetailPage() {
   return (
     <div className="-mx-8 -my-8 flex h-[calc(100vh-68px)] min-h-0 flex-col overflow-hidden bg-background xl:-mx-10 xl:-my-10">
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
-        <Link
-          to="/watchlist"
-          className="inline-flex items-center gap-2 rounded-lg border border-border/90 bg-background px-3.5 py-1.5 text-[0.86rem] font-semibold text-foreground shadow-subtle transition hover:border-primary/40 hover:bg-secondary hover:text-primary"
-        >
-          <ArrowLeft size={16} />
-          返回自选管理
-        </Link>
         <div className="hidden items-center gap-2 text-[0.7rem] text-muted-foreground/65 sm:flex">
           <span className="size-1.5 rounded-full bg-market-up" />
           <span className="font-mono tracking-[0.14em]">INLINE DETAIL · {ticker}</span>
         </div>
+        <Button asChild variant="outline">
+          <Link to="/watchlist">返回</Link>
+        </Button>
       </div>
       <iframe
         src={stockPageUrl}

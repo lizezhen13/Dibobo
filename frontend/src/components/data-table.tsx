@@ -25,6 +25,7 @@ interface DataTableProps<TData> {
   className?: string;
   stickyHeader?: boolean;
   centered?: boolean;
+  pagination?: ReactNode;
   rowReorder?: {
     enabled: boolean;
     onReorder: (activeId: string, overId: string) => void | Promise<void>;
@@ -40,12 +41,14 @@ export function DataTable<TData>({
   className,
   stickyHeader = false,
   centered = false,
+  pagination,
   rowReorder,
 }: DataTableProps<TData>) {
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null);
   const [dragOverRowId, setDragOverRowId] = useState<string | null>(null);
 
   const rowReorderEnabled = rowReorder?.enabled ?? false;
+  const hasPagination = pagination !== undefined && pagination !== null;
 
   function handleDragStart(event: DragEvent<HTMLTableRowElement>, rowId: string) {
     if (!rowReorderEnabled) return;
@@ -93,12 +96,22 @@ export function DataTable<TData>({
     <div
       className={cn(
         stickyHeader
-          ? "h-full overflow-auto rounded-xl border border-border bg-card shadow-raised"
+          ? hasPagination
+            ? "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised"
+            : "h-full overflow-auto rounded-xl border border-border bg-card shadow-raised"
           : "overflow-hidden rounded-xl border border-border bg-card shadow-raised",
         className,
       )}
     >
-      <div className={stickyHeader ? "overflow-visible" : "overflow-x-auto"}>
+      <div
+        className={cn(
+          stickyHeader
+            ? hasPagination
+              ? "min-h-0 flex-1 overflow-auto"
+              : "overflow-visible"
+            : "overflow-x-auto",
+        )}
+      >
         <table className={cn("w-full min-w-max border-collapse text-left text-[13px]", stickyHeader && "border-separate border-spacing-0")}>
           <thead className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary")}>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -179,6 +192,7 @@ export function DataTable<TData>({
         </table>
       </div>
       {!isLoading && data.length === 0 && <div className="border-t border-border/60">{empty}</div>}
+      {pagination}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   CircleDollarSign,
   Edit3,
@@ -85,6 +87,7 @@ const DEFAULT_FILTERS: HoldingsFilters = {
   opened_from: "",
   opened_to: "",
 };
+const HOLDINGS_PAGE_SIZE = 10;
 
 type HoldingSortKey =
   | "market_value"
@@ -110,6 +113,7 @@ export function PortfoliosPage() {
   const [filters, setFilters] = useState<HoldingsFilters>(DEFAULT_FILTERS);
   const [holdingSort, setHoldingSort] = useState<HoldingSortState>(null);
   const [openOrderIds, setOpenOrderIds] = useState<string[]>([]);
+  const [holdingPage, setHoldingPage] = useState(1);
 
   const portfoliosQuery = usePortfoliosQuery();
   const portfolios = portfoliosQuery.data?.items ?? [];
@@ -163,11 +167,17 @@ export function PortfoliosPage() {
   useEffect(() => {
     setHoldingSort(null);
     setOpenOrderIds([]);
+    setHoldingPage(1);
   }, [selectedPortfolioId]);
 
   useEffect(() => {
     setHoldingSort(null);
+    setHoldingPage(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    setHoldingPage(1);
+  }, [filters.asset_type, filters.keyword, filters.opened_from, filters.opened_to, holdingSort?.direction, holdingSort?.key]);
 
   useEffect(() => {
     if (hasHoldingFilters || openHoldings.isFetching || !openHoldings.data) return;
@@ -190,6 +200,24 @@ export function PortfoliosPage() {
     () => sortHoldings(closedItems, holdingSort),
     [closedItems, holdingSort],
   );
+  const activeHoldings = activeTab === "open" ? sortedOpenHoldings : sortedClosedHoldings;
+  const totalHoldingPages = Math.max(1, Math.ceil(activeHoldings.length / HOLDINGS_PAGE_SIZE));
+  const currentHoldingPage = Math.min(holdingPage, totalHoldingPages);
+  const holdingPageOffset = (currentHoldingPage - 1) * HOLDINGS_PAGE_SIZE;
+  const pagedOpenHoldings = sortedOpenHoldings.slice(
+    holdingPageOffset,
+    holdingPageOffset + HOLDINGS_PAGE_SIZE,
+  );
+  const pagedClosedHoldings = sortedClosedHoldings.slice(
+    holdingPageOffset,
+    holdingPageOffset + HOLDINGS_PAGE_SIZE,
+  );
+  const holdingPageStart = activeHoldings.length === 0 ? 0 : holdingPageOffset + 1;
+  const holdingPageEnd = Math.min(holdingPageOffset + HOLDINGS_PAGE_SIZE, activeHoldings.length);
+
+  useEffect(() => {
+    if (holdingPage > totalHoldingPages) setHoldingPage(totalHoldingPages);
+  }, [holdingPage, totalHoldingPages]);
 
   const openColumns = useMemo(
     () =>
@@ -225,6 +253,12 @@ export function PortfoliosPage() {
     setFilters({ ...DEFAULT_FILTERS });
     setHoldingSort(null);
     setOpenOrderIds([]);
+    setHoldingPage(1);
+  }
+
+  function goToHoldingPage(nextPage: number) {
+    const boundedPage = Math.max(1, Math.min(nextPage, totalHoldingPages));
+    setHoldingPage(boundedPage);
   }
 
   function openPortfolioEditor(portfolio: Portfolio | null) {
@@ -322,8 +356,8 @@ export function PortfoliosPage() {
     portfoliosQuery.isFetching || openHoldings.isFetching || summary.isFetching;
 
   return (
-    <div className="mx-auto max-w-[1700px] animate-enter">
-      <div className="grid gap-6 xl:h-[calc(100vh-136px)] xl:min-h-0 xl:grid-cols-[276px_minmax(0,1fr)] xl:items-stretch">
+    <div className="portfolio-page mx-auto flex min-h-0 max-w-[1700px] flex-col animate-enter">
+      <div className="grid min-h-0 flex-1 gap-6 xl:grid-cols-[276px_minmax(0,1fr)] xl:items-stretch">
         <PortfolioRail
           portfolios={portfolios}
           selectedId={selectedPortfolioId}
@@ -354,7 +388,7 @@ export function PortfoliosPage() {
               />
 
               {summary.data?.incomplete && summary.data.holding_count > 0 && (
-                <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/8 px-5 py-3.5 text-[0.85rem] text-primary/90">
+                <div className="mt-4 flex shrink-0 items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/8 px-5 py-3.5 text-[0.85rem] text-primary/90">
                   <AlertTriangle size={16} />
                   <span className="leading-relaxed">
                     部分持仓行情缺失，组合汇总不完整；缺失值没有按 0 计算。
@@ -363,7 +397,7 @@ export function PortfoliosPage() {
               )}
 
               {source && source.state !== "ready" && (
-                <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-subtle sm:flex-row sm:items-center">
+                <div className="mt-4 flex shrink-0 flex-col justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-subtle sm:flex-row sm:items-center">
                   <div className="flex items-center gap-3">
                     <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary/90">
                       <Settings size={16} />
@@ -381,8 +415,8 @@ export function PortfoliosPage() {
                 </div>
               )}
 
-              <div className="mt-[10px] flex min-h-0 flex-1 flex-col border-b border-border/80 bg-transparent shadow-none">
-                <div className="flex flex-col gap-4 bg-transparent px-5 pt-3 sm:px-6 sm:pt-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="mt-[10px] flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+                <div className="flex shrink-0 flex-col gap-2 bg-transparent px-5 pt-0 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
                   <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as HoldingStatus)}>
                     <TabsList className="h-auto gap-7 rounded-none border-0 bg-transparent p-0 shadow-none">
                       <TabsTrigger
@@ -424,12 +458,13 @@ export function PortfoliosPage() {
                   onValueChange={(value) => setActiveTab(value as HoldingStatus)}
                   className="flex min-h-0 flex-1 flex-col overflow-hidden"
                 >
-                  <TabsContent value="open" className="mt-0 min-h-0 flex-1 overflow-hidden !outline-none !ring-0 !ring-offset-0 focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0">
+                  <TabsContent value="open" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden !outline-none !ring-0 !ring-offset-0 focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0">
                     {openHoldings.isError && <LoadError title="当前持仓加载失败" onRetry={() => void openHoldings.refetch()} />}
                     {!openHoldings.isError && (
                       <DataTable
+                        key={`open-${currentHoldingPage}-${openItems.length}`}
                         columns={openColumns}
-                        data={sortedOpenHoldings}
+                        data={pagedOpenHoldings}
                         isLoading={openHoldings.isLoading}
                         getRowId={(holding) => holding.id}
                         stickyHeader
@@ -437,21 +472,46 @@ export function PortfoliosPage() {
                         rowReorder={{ enabled: canReorderOpen, onReorder: reorderOpenHoldings }}
                         className="rounded-none border-0 bg-transparent shadow-none"
                         empty={<EmptyState status="open" onAdd={() => openHoldingEditor(null)} />}
+                        pagination={
+                          activeTab === "open" && !openHoldings.isLoading && openItems.length > 0 ? (
+                            <PortfolioPagination
+                              page={currentHoldingPage}
+                              totalPages={totalHoldingPages}
+                              pageStart={holdingPageStart}
+                              pageEnd={holdingPageEnd}
+                              totalItems={activeHoldings.length}
+                              onPageChange={goToHoldingPage}
+                            />
+                          ) : undefined
+                        }
                       />
                     )}
                   </TabsContent>
-                  <TabsContent value="closed" className="mt-0 min-h-0 flex-1 overflow-hidden !outline-none !ring-0 !ring-offset-0 focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0">
+                  <TabsContent value="closed" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden !outline-none !ring-0 !ring-offset-0 focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0">
                     {closedHoldings.isError && <LoadError title="清仓历史加载失败" onRetry={() => void closedHoldings.refetch()} />}
                     {!closedHoldings.isError && (
                       <DataTable
+                        key={`closed-${currentHoldingPage}-${closedItems.length}`}
                         columns={closedColumns}
-                        data={sortedClosedHoldings}
+                        data={pagedClosedHoldings}
                         isLoading={closedHoldings.isLoading}
                         getRowId={(holding) => holding.id}
                         stickyHeader
                         centered
                         className="rounded-none border-0 bg-transparent shadow-none"
                         empty={<EmptyState status="closed" />}
+                        pagination={
+                          activeTab === "closed" && !closedHoldings.isLoading && closedItems.length > 0 ? (
+                            <PortfolioPagination
+                              page={currentHoldingPage}
+                              totalPages={totalHoldingPages}
+                              pageStart={holdingPageStart}
+                              pageEnd={holdingPageEnd}
+                              totalItems={activeHoldings.length}
+                              onPageChange={goToHoldingPage}
+                            />
+                          ) : undefined
+                        }
                       />
                     )}
                   </TabsContent>
@@ -730,7 +790,7 @@ function PortfolioHeader({
   error: Error | null;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-6 shadow-raised sm:px-7">
+    <section className="relative shrink-0 overflow-hidden rounded-2xl border border-border bg-card px-6 py-6 shadow-raised sm:px-7">
       <div className="pointer-events-none absolute -right-8 -top-16 size-48 rounded-full border border-primary/10" />
       <div className="pointer-events-none absolute -right-2 -top-10 size-32 rounded-full border border-primary/10" />
       <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
@@ -874,7 +934,7 @@ function FilterBar({
 }) {
   const update = (patch: Partial<HoldingsFilters>) => onChange({ ...filters, ...patch });
   return (
-    <div className="rounded-t-xl border-b border-border bg-card-deep/25 px-5 py-4 sm:px-6">
+    <div className="border-b border-border bg-transparent px-5 py-4 sm:px-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 md:grid-cols-3">
           <div>
@@ -1082,6 +1142,39 @@ function RowActions({
       <Button variant="ghost" size="icon" className="size-9 text-danger hover:bg-danger/10 hover:text-danger" onClick={() => onDelete(holding)} aria-label={`删除 ${holding.name}`} title="删除">
         <Trash2 size={15} />
       </Button>
+    </div>
+  );
+}
+
+function PortfolioPagination({
+  page,
+  totalPages,
+  pageStart,
+  pageEnd,
+  totalItems,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  pageStart: number;
+  pageEnd: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary/15 px-5 py-3.5">
+      <p className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">
+        显示 {pageStart}-{pageEnd} / 共 {totalItems} 条 · PAGE {page.toString().padStart(2, "0")} / {totalPages.toString().padStart(2, "0")}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft size={14} /> 上一页
+        </Button>
+        <span className="min-w-20 text-center text-[0.85rem] text-muted-foreground">第 {page} 页</span>
+        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          下一页 <ChevronRight size={14} />
+        </Button>
+      </div>
     </div>
   );
 }

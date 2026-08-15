@@ -6,6 +6,8 @@ import {
   ArrowUpDown,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   FileText,
   GripVertical,
@@ -80,11 +82,13 @@ interface SortState {
 }
 
 const DEFAULT_SORT: SortState = { key: "custom", direction: "asc" };
+const WATCHLIST_PAGE_SIZE = 10;
 
 export function WatchlistPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<WatchlistFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -97,6 +101,7 @@ export function WatchlistPage() {
   const batchDeleteMutation = useBatchDeleteWatchlistMutation();
   const reorderMutation = useReorderWatchlistMutation();
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const items = query.data?.items ?? [];
   const activeFilterCount = (filters.keyword.trim() ? 1 : 0) + (filters.asset_type ? 1 : 0);
@@ -111,8 +116,17 @@ export function WatchlistPage() {
     });
   }, [items, sort]);
 
-  const allVisibleSelected = displayItems.length > 0 && displayItems.every((item) => selectedIds.has(item.id));
-  const someVisibleSelected = displayItems.some((item) => selectedIds.has(item.id));
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / WATCHLIST_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = useMemo(() => {
+    const start = (currentPage - 1) * WATCHLIST_PAGE_SIZE;
+    return displayItems.slice(start, start + WATCHLIST_PAGE_SIZE);
+  }, [currentPage, displayItems]);
+  const pageStart = displayItems.length === 0 ? 0 : (currentPage - 1) * WATCHLIST_PAGE_SIZE + 1;
+  const pageEnd = Math.min(currentPage * WATCHLIST_PAGE_SIZE, displayItems.length);
+
+  const allVisibleSelected = pageItems.length > 0 && pageItems.every((item) => selectedIds.has(item.id));
+  const someVisibleSelected = pageItems.some((item) => selectedIds.has(item.id));
   const selectedVisibleCount = displayItems.filter((item) => selectedIds.has(item.id)).length;
   const latestQuoteTime = useMemo(() => {
     const timestamps = items
@@ -133,6 +147,15 @@ export function WatchlistPage() {
     setSelectedIds(new Set());
   }, [filters.asset_type, filters.keyword]);
 
+  useEffect(() => {
+    setPage(1);
+    tableScrollRef.current?.scrollTo({ top: 0 });
+  }, [filters.asset_type, filters.keyword, sort.direction, sort.key]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   function updateFilter<K extends keyof WatchlistFilters>(key: K, value: WatchlistFilters[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
   }
@@ -150,9 +173,9 @@ export function WatchlistPage() {
     setSelectedIds((current) => {
       const next = new Set(current);
       if (allVisibleSelected) {
-        displayItems.forEach((item) => next.delete(item.id));
+        pageItems.forEach((item) => next.delete(item.id));
       } else {
-        displayItems.forEach((item) => next.add(item.id));
+        pageItems.forEach((item) => next.add(item.id));
       }
       return next;
     });
@@ -168,6 +191,13 @@ export function WatchlistPage() {
   function clearFilters() {
     setFilters(DEFAULT_FILTERS);
     setSort(DEFAULT_SORT);
+    setPage(1);
+  }
+
+  function goToPage(nextPage: number) {
+    const boundedPage = Math.max(1, Math.min(nextPage, totalPages));
+    setPage(boundedPage);
+    tableScrollRef.current?.scrollTo({ top: 0 });
   }
 
   async function dropRow(targetId: string) {
@@ -217,8 +247,8 @@ export function WatchlistPage() {
   const mutationErrorMessage = mutationError instanceof ApiError ? mutationError.message : mutationError ? "操作失败，请稍后重试" : null;
 
   return (
-    <div className="mx-auto max-w-[1700px] animate-enter">
-      <div className="mb-8 flex items-end justify-between gap-8">
+    <div className="watchlist-page mx-auto flex min-h-0 max-w-[1700px] flex-col animate-enter">
+      <div className="mb-8 flex shrink-0 items-end justify-between gap-8">
         <div>
           <p className="eyebrow text-primary/90">WATCHLIST / 自选管理</p>
           <h1 className="mt-2 font-display text-4xl tracking-tight text-foreground">自选管理</h1>
@@ -236,7 +266,7 @@ export function WatchlistPage() {
         </div>
       </div>
 
-      <section className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(320px,0.7fr)_minmax(0,1.3fr)]">
+      <section className="grid shrink-0 grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(320px,0.7fr)_minmax(0,1.3fr)]">
         <div className="relative min-h-[142px] overflow-hidden rounded-xl border border-primary/20 bg-card shadow-raised">
           <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary via-primary/55 to-primary/10" />
           <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-primary/10 bg-primary/8 blur-3xl" />
@@ -379,8 +409,8 @@ export function WatchlistPage() {
         </div>
       )}
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card shadow-raised">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-secondary/25 px-5 py-4">
+      <div className="watchlist-table-card mt-8 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border bg-secondary/25 px-5 py-4">
           <div className="flex items-center gap-3">
             <span className="font-mono text-[0.66rem] tracking-[0.14em] text-muted-foreground/60">MY WATCHLIST</span>
             {selectedVisibleCount > 0 && (
@@ -401,9 +431,10 @@ export function WatchlistPage() {
         {query.isError ? (
           <LoadError onRetry={() => void query.refetch()} />
         ) : (
-          <div className="watchlist-table-scroll max-h-[calc(100vh-340px)] overflow-auto">
+          <>
+            <div ref={tableScrollRef} className="watchlist-table-scroll min-h-0 flex-1 overflow-auto">
             <table className="watchlist-table w-full min-w-[1420px] whitespace-nowrap border-separate border-spacing-0 text-center text-[13px]">
-              <thead className="sticky top-0 z-20 border-b border-border bg-secondary/55">
+              <thead className="sticky top-0 z-20 border-b border-border bg-secondary">
                 <tr>
                   <th className="watchlist-sticky-left watchlist-sticky-select sticky left-0 top-0 z-30 w-12 bg-secondary px-4 py-3 text-center">
                     <input
@@ -411,7 +442,7 @@ export function WatchlistPage() {
                       type="checkbox"
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
-                      aria-label="选择当前筛选结果"
+                      aria-label="选择当前页"
                       className="size-4 accent-[var(--primary)]"
                     />
                   </th>
@@ -430,7 +461,7 @@ export function WatchlistPage() {
               <tbody className="divide-y divide-border/60">
                 {query.isLoading
                   ? Array.from({ length: 5 }, (_, index) => <LoadingRow key={index} />)
-                  : displayItems.map((item, index) => (
+                  : pageItems.map((item, index) => (
                     <WatchlistRow
                       key={item.id}
                       item={item}
@@ -455,7 +486,18 @@ export function WatchlistPage() {
             {!query.isLoading && displayItems.length === 0 && (
               <EmptyState filtered={isFiltered} onAdd={() => setAddDialogOpen(true)} onClear={clearFilters} />
             )}
-          </div>
+            </div>
+            {!query.isLoading && displayItems.length > 0 && (
+              <WatchlistPagination
+                page={currentPage}
+                totalPages={totalPages}
+                pageStart={pageStart}
+                pageEnd={pageEnd}
+                totalItems={displayItems.length}
+                onPageChange={goToPage}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -740,6 +782,39 @@ function LoadingRow() {
         </td>
       ))}
     </tr>
+  );
+}
+
+function WatchlistPagination({
+  page,
+  totalPages,
+  pageStart,
+  pageEnd,
+  totalItems,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  pageStart: number;
+  pageEnd: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary/15 px-5 py-3.5">
+      <p className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">
+        显示 {pageStart}-{pageEnd} / 共 {totalItems} 条 · PAGE {page.toString().padStart(2, "0")} / {totalPages.toString().padStart(2, "0")}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft size={14} /> 上一页
+        </Button>
+        <span className="min-w-20 text-center text-[0.85rem] text-muted-foreground">第 {page} 页</span>
+        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          下一页 <ChevronRight size={14} />
+        </Button>
+      </div>
+    </div>
   );
 }
 
