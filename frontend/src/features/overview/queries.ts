@@ -14,9 +14,11 @@ export const overviewQueryKey = ["overview"] as const;
 
 const initialDelay = {
   indices: 0,
-  hotStocks: 650,
-  marketBreadth: 2450,
-  industries: 3600,
+  // Keep a small spread between modules so the first paint is not followed by
+  // a request burst, while avoiding multi-second gates for visible cards.
+  hotStocks: 150,
+  marketBreadth: 450,
+  industries: 750,
 } as const;
 
 interface PollingModule {

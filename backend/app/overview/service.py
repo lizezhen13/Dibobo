@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 from collections.abc import Awaitable, Callable
@@ -52,6 +53,14 @@ MARKET_BREADTH_REFRESH_SECONDS = 47
 INDUSTRY_REFRESH_SECONDS = 83
 INDUSTRY_CATALOG_CACHE_SECONDS = 12 * 60 * 60
 INDUSTRY_QUOTE_BATCH_SIZE = 80
+
+
+_cache_locks: dict[str, asyncio.Lock] = {}
+
+
+def _cache_lock(key: str) -> asyncio.Lock:
+    return _cache_locks.setdefault(key, asyncio.Lock())
+
 
 @dataclass(slots=True)
 class ModuleLoad[TModule: BaseModel]:
@@ -131,9 +140,14 @@ async def get_cached_calendar(
     if cached:
         return TradingCalendar.model_validate_json(cached)
 
-    calendar = await adapter.get_trading_calendar()
-    await _cache_set(cache, key, calendar.model_dump_json(), 12 * 60 * 60)
-    return calendar
+    async with _cache_lock(key):
+        cached = await _cache_get(cache, key)
+        if cached:
+            return TradingCalendar.model_validate_json(cached)
+
+        calendar = await adapter.get_trading_calendar()
+        await _cache_set(cache, key, calendar.model_dump_json(), 12 * 60 * 60)
+        return calendar
 
 
 def _source_error_summary(source: DataSource, error: DataSourceError) -> DataSourceSummary:
@@ -159,18 +173,23 @@ async def _get_cached_model[TModule: BaseModel](
     if cached:
         return model_type.model_validate_json(cached), False
 
-    try:
-        result = await fetcher()
-    except DataSourceError:
-        stale = await _cache_get(cache, stale_key)
-        if stale:
-            return model_type.model_validate_json(stale), True
-        raise
+    async with _cache_lock(cache_key):
+        cached = await _cache_get(cache, cache_key)
+        if cached:
+            return model_type.model_validate_json(cached), False
 
-    serialized = result.model_dump_json()
-    await _cache_set(cache, cache_key, serialized, seconds)
-    await _cache_set(cache, stale_key, serialized, 24 * 60 * 60)
-    return result, False
+        try:
+            result = await fetcher()
+        except DataSourceError:
+            stale = await _cache_get(cache, stale_key)
+            if stale:
+                return model_type.model_validate_json(stale), True
+            raise
+
+        serialized = result.model_dump_json()
+        await _cache_set(cache, cache_key, serialized, seconds)
+        await _cache_set(cache, stale_key, serialized, 24 * 60 * 60)
+        return result, False
 
 
 async def _load_module[TModule: BaseModel](
@@ -438,8 +457,13 @@ async def get_overview_industries(
         quote_by_code = {}
         updated_at = catalog.quoted_at
         codes = [item.thscode for item in catalog.items]
-        for start in range(0, len(codes), INDUSTRY_QUOTE_BATCH_SIZE):
-            batch = await adapter.get_index_quotes(codes[start : start + INDUSTRY_QUOTE_BATCH_SIZE])
+        batches = await asyncio.gather(
+            *(
+                adapter.get_index_quotes(codes[start : start + INDUSTRY_QUOTE_BATCH_SIZE])
+                for start in range(0, len(codes), INDUSTRY_QUOTE_BATCH_SIZE)
+            )
+        )
+        for batch in batches:
             for quote in batch.quotes:
                 quote_by_code[quote.thscode] = quote
                 if quote.quoted_at is not None and (

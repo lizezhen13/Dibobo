@@ -261,7 +261,7 @@ async def test_fuyao_index_catalog_mapping() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fuyao_market_snapshot_reads_pages_sequentially() -> None:
+async def test_fuyao_market_snapshot_reads_all_pages_in_order() -> None:
     offsets: list[int] = []
 
     def handler(request: httpx.Request) -> httpx.Response:

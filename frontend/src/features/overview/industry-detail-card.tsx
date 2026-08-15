@@ -1,17 +1,33 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { RefCallback, UIEvent } from "react";
 
 import { formatMoney, formatPercent, formatPoint, movementClass } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { OverviewPanel, PanelState } from "./overview-panel";
 import type { IndustryIndexItem, OverviewIndustries } from "./types";
-import { useAutoCarousel } from "./use-auto-carousel";
 
-function IndustryRow({ item }: { item: IndustryIndexItem }) {
+const DEFAULT_INDUSTRY_ROW_HEIGHT = 52;
+const INDUSTRY_OVERSCAN = 8;
+
+interface IndustryRowProps {
+  item: IndustryIndexItem;
+  measureRef?: RefCallback<HTMLTableRowElement>;
+}
+
+const IndustryRow = memo(function IndustryRow({ item, measureRef }: IndustryRowProps) {
   return (
     <tr
-      data-carousel-item
+      ref={measureRef}
       className="h-11 transition-colors hover:bg-row-hover"
     >
       <td className="px-4 py-2">
@@ -31,6 +47,95 @@ function IndustryRow({ item }: { item: IndustryIndexItem }) {
       </td>
     </tr>
   );
+});
+
+function useVirtualIndustryRows(itemCount: number, resetKey: string) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const measuredRowRef = useRef<HTMLTableRowElement | null>(null);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [rowHeight, setRowHeight] = useState(DEFAULT_INDUSTRY_ROW_HEIGHT);
+
+  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const nextScrollTop = event.currentTarget.scrollTop;
+    setScrollTop((current) => (current === nextScrollTop ? current : nextScrollTop));
+  }, []);
+
+  const measureRow = useCallback<RefCallback<HTMLTableRowElement>>((node) => {
+    measuredRowRef.current = node;
+    if (!node) return;
+
+    const measuredHeight = node.getBoundingClientRect().height;
+    if (measuredHeight > 0) {
+      setRowHeight((current) =>
+        Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current,
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const syncViewport = () => {
+      setViewportHeight(viewport.clientHeight);
+      setScrollTop(viewport.scrollTop);
+    };
+
+    syncViewport();
+
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncViewport);
+    resizeObserver?.observe(viewport);
+
+    return () => {
+      resizeObserver?.disconnect();
+    };
+  }, [itemCount]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    viewport.scrollTop = 0;
+    setScrollTop(0);
+  }, [itemCount, resetKey]);
+
+  const firstIndex = Math.max(
+    0,
+    Math.floor(scrollTop / rowHeight) - INDUSTRY_OVERSCAN,
+  );
+  const visibleCount = Math.max(
+    1,
+    Math.ceil(viewportHeight / rowHeight) + INDUSTRY_OVERSCAN * 2,
+  );
+  const lastIndex = Math.min(itemCount, firstIndex + visibleCount);
+
+  useEffect(() => {
+    const row = measuredRowRef.current;
+    if (!row || typeof ResizeObserver === "undefined") return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      const measuredHeight = row.getBoundingClientRect().height;
+      if (measuredHeight > 0) {
+        setRowHeight((current) =>
+          Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current,
+        );
+      }
+    });
+    resizeObserver.observe(row);
+
+    return () => resizeObserver.disconnect();
+  }, [firstIndex, lastIndex, itemCount, resetKey]);
+
+  return {
+    firstIndex,
+    handleScroll,
+    lastIndex,
+    measureRow,
+    rowHeight,
+    totalHeight: itemCount * rowHeight,
+    viewportRef,
+  };
 }
 
 export function IndustryDetailCard({
@@ -48,13 +153,15 @@ export function IndustryDetailCard({
       `${item.name} ${item.thscode}`.toLowerCase().includes(deferredSearch),
     );
   }, [data, deferredSearch]);
-  const shouldLoop = deferredSearch.length === 0 && filtered.length > 1;
-  const carouselRef = useAutoCarousel<HTMLDivElement>({
-    itemCount: filtered.length,
-    enabled: shouldLoop,
-    speedPxPerSecond: 7,
-    itemSelector: "[data-carousel-item]",
-  });
+  const {
+    firstIndex,
+    handleScroll,
+    lastIndex,
+    measureRow,
+    rowHeight,
+    totalHeight,
+    viewportRef,
+  } = useVirtualIndustryRows(filtered.length, deferredSearch);
 
   return (
     <OverviewPanel
@@ -104,33 +211,48 @@ export function IndustryDetailCard({
               <span className="px-4 py-2.5 text-right">成交额</span>
             </div>
           </div>
-          <div ref={carouselRef} className="overview-carousel-viewport min-h-0 flex-1 overflow-hidden">
-            <div data-carousel-track className="overview-carousel-track">
-              <table className="w-full table-fixed border-collapse text-left">
-              <colgroup>
-                <col style={{ width: "42%" }} />
-                <col style={{ width: "19%" }} />
-                <col style={{ width: "17%" }} />
-                <col style={{ width: "22%" }} />
-              </colgroup>
-              <thead className="hidden">
-                <tr className="border-b border-border text-[10px] text-muted-foreground/55">
-                  <th className="w-[42%] px-4 py-2.5 font-normal">行业</th>
-                  <th className="w-[19%] px-2 py-2.5 text-right font-normal">指数</th>
-                  <th className="w-[17%] px-2 py-2.5 text-right font-normal">涨跌</th>
-                  <th className="w-[22%] px-4 py-2.5 text-right font-normal">成交额</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {filtered.map((item, index) => (
-                  <IndustryRow key={`${item.thscode}-${index}`} item={item} />
-                ))}
-              </tbody>
-            </table>
-            </div>
-            {filtered.length === 0 && (
+          <div
+            ref={viewportRef}
+            onScroll={handleScroll}
+            className="overview-list-viewport min-h-0 flex-1"
+          >
+            {filtered.length === 0 ? (
               <div className="grid min-h-40 place-items-center text-[13px] text-muted-foreground">
                 未找到匹配行业
+              </div>
+            ) : (
+              <div className="relative w-full" style={{ height: totalHeight }}>
+                <table
+                  className="absolute inset-x-0 top-0 w-full table-fixed border-collapse text-left"
+                  style={{ top: firstIndex * rowHeight }}
+                >
+                  <colgroup>
+                    <col style={{ width: "42%" }} />
+                    <col style={{ width: "19%" }} />
+                    <col style={{ width: "17%" }} />
+                    <col style={{ width: "22%" }} />
+                  </colgroup>
+                  <thead className="hidden">
+                    <tr className="border-b border-border text-[10px] text-muted-foreground/55">
+                      <th className="w-[42%] px-4 py-2.5 font-normal">行业</th>
+                      <th className="w-[19%] px-2 py-2.5 text-right font-normal">指数</th>
+                      <th className="w-[17%] px-2 py-2.5 text-right font-normal">涨跌</th>
+                      <th className="w-[22%] px-4 py-2.5 text-right font-normal">成交额</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {filtered.slice(firstIndex, lastIndex).map((item, index) => {
+                      const absoluteIndex = firstIndex + index;
+                      return (
+                        <IndustryRow
+                          key={item.thscode}
+                          item={item}
+                          measureRef={absoluteIndex === firstIndex ? measureRow : undefined}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

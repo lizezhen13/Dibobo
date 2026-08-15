@@ -1,18 +1,20 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { memo } from "react";
 
 import { cn } from "../../lib/utils";
 import { OverviewPanel, PanelState } from "./overview-panel";
 import type { HotStockItem, OverviewHotStocks, RankTrend } from "./types";
-import { useAutoCarousel } from "./use-auto-carousel";
+
+const heatFormatter = new Intl.NumberFormat("zh-CN", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 function formatHeat(value: string) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return value || "-";
-  return new Intl.NumberFormat("zh-CN", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(numeric);
+  return heatFormatter.format(numeric);
 }
 
 const trendIcon = {
@@ -22,7 +24,7 @@ const trendIcon = {
   unknown: Minus,
 } satisfies Record<RankTrend, typeof ArrowUp>;
 
-function HotStockRow({ item }: { item: HotStockItem }) {
+const HotStockRow = memo(function HotStockRow({ item }: { item: HotStockItem }) {
   const TrendIcon = trendIcon[item.rank_trend];
   const trendTone =
     item.rank_trend === "up"
@@ -33,7 +35,6 @@ function HotStockRow({ item }: { item: HotStockItem }) {
 
   return (
     <div
-      data-carousel-item
       className="grid min-h-11 grid-cols-[32px_minmax(0,1fr)_72px_52px] items-center gap-2 px-4 transition-colors hover:bg-row-hover"
     >
       <span
@@ -57,7 +58,7 @@ function HotStockRow({ item }: { item: HotStockItem }) {
       </span>
     </div>
   );
-}
+});
 
 export function HotStocksCard({
   query,
@@ -66,10 +67,6 @@ export function HotStocksCard({
 }) {
   const data = query.data;
   const items = data?.items.slice(0, 30) ?? [];
-  const carouselRef = useAutoCarousel<HTMLDivElement>({
-    itemCount: items.length,
-    speedPxPerSecond: 8,
-  });
 
   return (
     <OverviewPanel
@@ -98,12 +95,10 @@ export function HotStocksCard({
             <span className="text-right">热度</span>
             <span className="text-right">趋势</span>
           </div>
-          <div ref={carouselRef} className="overview-carousel-viewport min-h-0 flex-1 overflow-hidden">
-            <div data-carousel-track className="overview-carousel-track divide-y divide-border/65">
-              {items.map((item, index) => (
-                <HotStockRow key={`${item.thscode}-${index}`} item={item} />
-              ))}
-            </div>
+          <div className="overview-list-viewport min-h-0 flex-1 divide-y divide-border/65">
+            {items.map((item) => (
+              <HotStockRow key={item.thscode} item={item} />
+            ))}
           </div>
         </div>
       )}

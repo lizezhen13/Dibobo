@@ -451,36 +451,59 @@ class FuyaoAdapter(DataSourceAdapter):
         )
 
     async def get_market_snapshot(self, page_size: int = 1000) -> MarketSnapshotBatch:
-        offset = 0
-        total = 0
-        quoted_at: datetime | None = None
-        quotes: list[MarketSnapshotQuote] = []
-        while True:
+        async def fetch_page(
+            offset: int,
+        ) -> tuple[datetime | None, list[MarketSnapshotQuote], int | None, int]:
             data = await self._get(
                 "/api/a-share/prices/snapshot",
                 params={"limit": str(page_size), "offset": str(offset)},
             )
             page_time = _timestamp_to_datetime(data.get("timestamp"))
-            if page_time is not None and (quoted_at is None or page_time > quoted_at):
-                quoted_at = page_time
             raw_items = data.get("item")
             items = raw_items if isinstance(raw_items, list) else []
-            for item in items:
-                if not isinstance(item, dict) or not isinstance(item.get("thscode"), str):
-                    continue
-                quotes.append(
-                    MarketSnapshotQuote(
-                        thscode=item["thscode"].upper(),
-                        change_percent=_optional_number(item.get("price_change_ratio_pct")),
-                        turnover=_optional_number(item.get("turnover")),
+            quotes = [
+                MarketSnapshotQuote(
+                    thscode=item["thscode"].upper(),
+                    change_percent=_optional_number(item.get("price_change_ratio_pct")),
+                    turnover=_optional_number(item.get("turnover")),
+                )
+                for item in items
+                if isinstance(item, dict) and isinstance(item.get("thscode"), str)
+            ]
+            return (
+                page_time,
+                quotes,
+                _optional_integer(data.get("total")),
+                len(items),
+            )
+
+        first_page = await fetch_page(0)
+        pages = [first_page]
+        first_page_time, _, first_page_total, first_page_item_count = first_page
+        if (
+            first_page_total is not None
+            and first_page_item_count >= page_size
+            and page_size < first_page_total
+        ):
+            pages.extend(
+                await asyncio.gather(
+                    *(
+                        fetch_page(offset)
+                        for offset in range(page_size, first_page_total, page_size)
                     )
                 )
-            response_total = _optional_integer(data.get("total"))
+            )
+
+        total = 0
+        quoted_at = first_page_time
+        quotes: list[MarketSnapshotQuote] = []
+        for page_time, page_quotes, response_total, _ in pages:
+            if page_time is not None and (quoted_at is None or page_time > quoted_at):
+                quoted_at = page_time
             if response_total is not None:
                 total = max(total, response_total)
-            if len(items) < page_size or not items or offset + len(items) >= total:
-                break
-            offset += page_size
+            quotes.extend(page_quotes)
+
         return MarketSnapshotBatch(
             quotes=quotes,
             total=max(total, len(quotes)),
