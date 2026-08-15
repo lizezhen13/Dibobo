@@ -20,8 +20,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { Link } from "react-router-dom";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   AlertDialog,
@@ -54,9 +54,14 @@ import {
   useReorderWatchlistMutation,
   useWatchlistQuery,
 } from "./queries";
-import { WatchlistAddDialog } from "./watchlist-add-dialog";
-import { WatchlistNoteDialog } from "./watchlist-note-dialog";
 import type { WatchlistAssetType, WatchlistFilters, WatchlistItem } from "./types";
+
+const WatchlistAddDialog = lazy(() =>
+  import("./watchlist-add-dialog").then(({ WatchlistAddDialog: Dialog }) => ({ default: Dialog })),
+);
+const WatchlistNoteDialog = lazy(() =>
+  import("./watchlist-note-dialog").then(({ WatchlistNoteDialog: Dialog }) => ({ default: Dialog })),
+);
 
 const DEFAULT_FILTERS: WatchlistFilters = { keyword: "", asset_type: "" };
 
@@ -77,6 +82,7 @@ interface SortState {
 const DEFAULT_SORT: SortState = { key: "custom", direction: "asc" };
 
 export function WatchlistPage() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<WatchlistFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -433,6 +439,7 @@ export function WatchlistPage() {
                       canDrag={canDrag}
                       isDragging={draggedId === item.id}
                       onToggle={() => toggleSelected(item.id)}
+                      onDetails={() => navigate(`/watchlist/detail/${encodeURIComponent(item.ticker)}`)}
                       onEditNote={() => setNoteDialogItem(item)}
                       onDelete={() => setDeleteTarget(item)}
                       onDragStart={() => setDraggedId(item.id)}
@@ -452,12 +459,18 @@ export function WatchlistPage() {
         )}
       </div>
 
-      <WatchlistAddDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
-      <WatchlistNoteDialog
-        open={noteDialogItem !== null}
-        onOpenChange={(open) => !open && setNoteDialogItem(null)}
-        item={noteDialogItem}
-      />
+      <Suspense fallback={null}>
+        {addDialogOpen && (
+          <WatchlistAddDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
+        )}
+        {noteDialogItem && (
+          <WatchlistNoteDialog
+            open
+            onOpenChange={(open) => !open && setNoteDialogItem(null)}
+            item={noteDialogItem}
+          />
+        )}
+      </Suspense>
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -587,6 +600,7 @@ function WatchlistRow({
   canDrag,
   isDragging,
   onToggle,
+  onDetails,
   onEditNote,
   onDelete,
   onDragStart,
@@ -600,6 +614,7 @@ function WatchlistRow({
   canDrag: boolean;
   isDragging: boolean;
   onToggle: () => void;
+  onDetails: () => void;
   onEditNote: () => void;
   onDelete: () => void;
   onDragStart: () => void;
@@ -653,10 +668,10 @@ function WatchlistRow({
         <div className="flex justify-center gap-1">
           <button
             type="button"
-            disabled
+            onClick={onDetails}
             aria-label={`查看${item.name}详情`}
-            title="详情功能待定"
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground/55 transition disabled:cursor-not-allowed"
+            title="查看详情"
+            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
           >
             <FileText size={15} />
           </button>

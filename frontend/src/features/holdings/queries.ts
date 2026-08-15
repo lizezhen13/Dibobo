@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
+import { liveQueryOptions } from "../../lib/query-lifecycle";
 import type {
   Holding,
   HoldingCreatePayload,
@@ -34,7 +35,7 @@ export const portfolioSummaryQueryKey = (portfolioId: string) =>
 export function usePortfoliosQuery() {
   return useQuery({
     queryKey: portfoliosQueryKey,
-    queryFn: () => apiFetch<PortfolioList>("/api/portfolios"),
+    queryFn: ({ signal }) => apiFetch<PortfolioList>("/api/portfolios", { signal }),
     refetchOnWindowFocus: true,
     retry: 1,
   });
@@ -44,12 +45,13 @@ export function usePortfolioHoldingsQuery(
   portfolioId: string | undefined,
   status: HoldingStatus,
   filters: HoldingsFilters,
+  active = true,
 ) {
   return useQuery({
     queryKey: portfolioId
       ? portfolioHoldingsQueryKey(portfolioId, status, filters)
       : ["portfolios", "empty", "holdings", status, filters],
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       const params = new URLSearchParams({ status });
       const trimmedKeyword = filters.keyword.trim();
       if (trimmedKeyword) params.set("keyword", trimmedKeyword);
@@ -58,35 +60,32 @@ export function usePortfolioHoldingsQuery(
       if (filters.opened_to) params.set("opened_to", filters.opened_to);
       return apiFetch<HoldingsList>(
         `/api/portfolios/${portfolioId}/holdings?${params.toString()}`,
+        { signal },
       );
     },
-    enabled: Boolean(portfolioId),
+    ...liveQueryOptions,
+    enabled: Boolean(portfolioId) && active,
     refetchInterval: (query) => {
       const data = query.state.data;
-      return status === "open" && data?.polling_enabled && !document.hidden
+      return status === "open" && data?.polling_enabled
         ? data.refresh_seconds * 1000
         : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 }
 
 export function usePortfolioSummaryQuery(portfolioId: string | undefined) {
   return useQuery({
+    ...liveQueryOptions,
     queryKey: portfolioId
       ? portfolioSummaryQueryKey(portfolioId)
       : ["portfolios", "empty", "summary"],
-    queryFn: () => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`),
+    queryFn: ({ signal }) => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`, { signal }),
     enabled: Boolean(portfolioId),
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+      return data?.polling_enabled ? data.refresh_seconds * 1000 : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 }
 
@@ -94,61 +93,58 @@ export function usePortfolioSummariesQuery(portfolioIds: string[]) {
   return useQueries({
     queries: portfolioIds.map((portfolioId) => ({
       queryKey: portfolioSummaryQueryKey(portfolioId),
-      queryFn: () => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`),
+      queryFn: ({ signal }) => apiFetch<HoldingSummary>(`/api/portfolios/${portfolioId}/summary`, { signal }),
+      ...liveQueryOptions,
       refetchInterval: (query: Query<HoldingSummary>) => {
         const data = query.state.data;
-        return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+        return data?.polling_enabled ? data.refresh_seconds * 1000 : false;
       },
-      refetchIntervalInBackground: false,
-      refetchOnWindowFocus: true,
-      retry: 1,
     })),
   });
 }
 
 export function useHoldingsQuery(status: HoldingStatus, filters: HoldingsFilters) {
   return useQuery({
+    ...liveQueryOptions,
     queryKey: holdingsQueryKey(status, filters),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       const params = new URLSearchParams({ status });
       const trimmedKeyword = filters.keyword.trim();
       if (trimmedKeyword) params.set("keyword", trimmedKeyword);
       if (filters.asset_type) params.set("asset_type", filters.asset_type);
       if (filters.opened_from) params.set("opened_from", filters.opened_from);
       if (filters.opened_to) params.set("opened_to", filters.opened_to);
-      return apiFetch<HoldingsList>(`/api/holdings?${params.toString()}`);
+      return apiFetch<HoldingsList>(`/api/holdings?${params.toString()}`, { signal });
     },
     refetchInterval: (query) => {
       const data = query.state.data;
-      return status === "open" && data?.polling_enabled && !document.hidden
+      return status === "open" && data?.polling_enabled
         ? data.refresh_seconds * 1000
         : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 }
 
 export function useHoldingSummaryQuery() {
   return useQuery({
+    ...liveQueryOptions,
     queryKey: holdingSummaryQueryKey,
-    queryFn: () => apiFetch<HoldingSummary>("/api/holdings/summary"),
+    queryFn: ({ signal }) => apiFetch<HoldingSummary>("/api/holdings/summary", { signal }),
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+      return data?.polling_enabled ? data.refresh_seconds * 1000 : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 }
 
 export function useInstrumentSearchQuery(query: string) {
   return useQuery({
     queryKey: ["instruments", "search", query],
-    queryFn: () =>
-      apiFetch<{ items: Instrument[] }>(`/api/instruments/search?q=${encodeURIComponent(query)}`),
+    queryFn: ({ signal }) =>
+      apiFetch<{ items: Instrument[] }>(
+        `/api/instruments/search?q=${encodeURIComponent(query)}`,
+        { signal },
+      ),
     enabled: query.trim().length > 0,
     staleTime: 60_000,
     retry: false,

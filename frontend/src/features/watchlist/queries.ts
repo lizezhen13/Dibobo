@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
+import { liveQueryOptions } from "../../lib/query-lifecycle";
 import type {
   WatchlistCreatePayload,
   WatchlistFilters,
@@ -13,22 +14,23 @@ export const watchlistQueryKey = (filters: WatchlistFilters) =>
 
 export function useWatchlistQuery(filters: WatchlistFilters) {
   return useQuery({
+    ...liveQueryOptions,
     queryKey: watchlistQueryKey(filters),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       const params = new URLSearchParams();
       const keyword = filters.keyword.trim();
       if (keyword) params.set("keyword", keyword);
       if (filters.asset_type) params.set("asset_type", filters.asset_type);
       const query = params.toString();
-      return apiFetch<WatchlistResponse>(`/api/watchlist${query ? `?${query}` : ""}`);
+      return apiFetch<WatchlistResponse>(
+        `/api/watchlist${query ? `?${query}` : ""}`,
+        { signal },
+      );
     },
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data?.polling_enabled && !document.hidden ? data.refresh_seconds * 1000 : false;
+      return data?.polling_enabled ? data.refresh_seconds * 1000 : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
   });
 }
 

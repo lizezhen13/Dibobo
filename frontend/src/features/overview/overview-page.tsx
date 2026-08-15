@@ -1,11 +1,10 @@
 import { ArrowUpRight, DatabaseZap, Settings2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { HotStocksCard } from "./hot-stocks-card";
-import { GlobalMarketPanel } from "./global-market-panel";
 import { IndicesPanel } from "./indices-panel";
 import { IndustryDetailCard } from "./industry-detail-card";
 import { MarketBreadthCard } from "./market-breadth-card";
@@ -19,12 +18,25 @@ import {
 import { refreshGlobalMarketGroup as requestGlobalMarketGroup, useGlobalMarketQuery } from "./global-market-queries";
 import type { GlobalMarketGroupKey } from "./global-market-types";
 
+const GlobalMarketPanel = lazy(() =>
+  import("./global-market-panel").then(({ GlobalMarketPanel: Panel }) => ({ default: Panel })),
+);
+
+function GlobalMarketLoading() {
+  return (
+    <div className="grid min-h-[360px] place-items-center rounded-xl border border-border/70 bg-card/40 text-sm text-muted-foreground" role="status">
+      全球市场模块加载中…
+    </div>
+  );
+}
+
 export function OverviewPage() {
-  const indices = useOverviewQuery();
-  const hotStocks = useHotStocksQuery();
-  const marketBreadth = useMarketBreadthQuery();
-  const industries = useIndustriesQuery();
   const [activeTab, setActiveTab] = useState("a-share");
+  const isAShareActive = activeTab === "a-share";
+  const indices = useOverviewQuery(isAShareActive);
+  const hotStocks = useHotStocksQuery(isAShareActive);
+  const marketBreadth = useMarketBreadthQuery(isAShareActive);
+  const industries = useIndustriesQuery(isAShareActive);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [globalRefreshingGroups, setGlobalRefreshingGroups] = useState<Partial<Record<GlobalMarketGroupKey, boolean>>>({});
   const globalRefreshingRef = useRef(new Set<GlobalMarketGroupKey>());
@@ -109,11 +121,13 @@ export function OverviewPage() {
         </TabsContent>
 
         <TabsContent value="global" className="mt-0">
-          <GlobalMarketPanel
-            query={globalMarket}
-            onRefreshGroup={(group) => void refreshGlobalMarketGroup(group)}
-            refreshingGroups={globalRefreshingGroups}
-          />
+          <Suspense fallback={<GlobalMarketLoading />}>
+            <GlobalMarketPanel
+              query={globalMarket}
+              onRefreshGroup={(group) => void refreshGlobalMarketGroup(group)}
+              refreshingGroups={globalRefreshingGroups}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

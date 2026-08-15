@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
 import { sessionQueryKey } from "./features/auth/queries";
+import { LiveQueryVisibilityManager } from "./lib/query-lifecycle";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -23,6 +24,7 @@ window.addEventListener("dibobo:unauthorized", () => {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <LiveQueryVisibilityManager />
       <BrowserRouter>
         <App />
       </BrowserRouter>

@@ -24,7 +24,7 @@ import {
   Tags,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { DataTable } from "../../components/data-table";
@@ -52,7 +52,6 @@ import {
 import { ApiError } from "../../lib/api";
 import { cn } from "../../lib/utils";
 import { DateRangeField } from "../holdings/date-range-field";
-import { HoldingDialog } from "../holdings/holding-dialog";
 import {
   useDeleteHoldingMutation,
   useDeletePortfolioMutation,
@@ -72,7 +71,13 @@ import type {
   HoldingsFilters,
   Portfolio,
 } from "../holdings/types";
-import { PortfolioDialog } from "./portfolio-dialog";
+
+const HoldingDialog = lazy(() =>
+  import("../holdings/holding-dialog").then(({ HoldingDialog: Dialog }) => ({ default: Dialog })),
+);
+const PortfolioDialog = lazy(() =>
+  import("./portfolio-dialog").then(({ PortfolioDialog: Dialog }) => ({ default: Dialog })),
+);
 
 const DEFAULT_FILTERS: HoldingsFilters = {
   keyword: "",
@@ -109,8 +114,18 @@ export function PortfoliosPage() {
   const portfoliosQuery = usePortfoliosQuery();
   const portfolios = portfoliosQuery.data?.items ?? [];
   const selectedPortfolio = portfolios.find((portfolio) => portfolio.id === selectedPortfolioId) ?? null;
-  const openHoldings = usePortfolioHoldingsQuery(selectedPortfolioId, "open", filters);
-  const closedHoldings = usePortfolioHoldingsQuery(selectedPortfolioId, "closed", filters);
+  const openHoldings = usePortfolioHoldingsQuery(
+    selectedPortfolioId,
+    "open",
+    filters,
+    activeTab === "open",
+  );
+  const closedHoldings = usePortfolioHoldingsQuery(
+    selectedPortfolioId,
+    "closed",
+    filters,
+    activeTab === "closed",
+  );
   const summary = usePortfolioSummaryQuery(selectedPortfolioId);
   const deleteHoldingMutation = useDeleteHoldingMutation(selectedPortfolioId);
   const deletePortfolioMutation = useDeletePortfolioMutation();
@@ -225,8 +240,8 @@ export function PortfoliosPage() {
   const refresh = async () => {
     await Promise.all([
       portfoliosQuery.refetch(),
-      selectedPortfolioId ? openHoldings.refetch() : Promise.resolve(),
-      selectedPortfolioId ? closedHoldings.refetch() : Promise.resolve(),
+      selectedPortfolioId && activeTab === "open" ? openHoldings.refetch() : Promise.resolve(),
+      selectedPortfolioId && activeTab === "closed" ? closedHoldings.refetch() : Promise.resolve(),
       selectedPortfolioId ? summary.refetch() : Promise.resolve(),
     ]);
   };
@@ -449,18 +464,24 @@ export function PortfoliosPage() {
         </main>
       </div>
 
-      <PortfolioDialog
-        open={portfolioDialogOpen}
-        onOpenChange={setPortfolioDialogOpen}
-        portfolio={editingPortfolio}
-        onCreated={(portfolio) => setSelectedPortfolioId(portfolio.id)}
-      />
-      <HoldingDialog
-        open={holdingDialogOpen}
-        onOpenChange={setHoldingDialogOpen}
-        holding={editingHolding}
-        portfolioId={selectedPortfolioId}
-      />
+      <Suspense fallback={null}>
+        {portfolioDialogOpen && (
+          <PortfolioDialog
+            open={portfolioDialogOpen}
+            onOpenChange={setPortfolioDialogOpen}
+            portfolio={editingPortfolio}
+            onCreated={(portfolio) => setSelectedPortfolioId(portfolio.id)}
+          />
+        )}
+        {holdingDialogOpen && (
+          <HoldingDialog
+            open={holdingDialogOpen}
+            onOpenChange={setHoldingDialogOpen}
+            holding={editingHolding}
+            portfolioId={selectedPortfolioId}
+          />
+        )}
+      </Suspense>
 
       <AlertDialog
         open={deleteHoldingTarget !== null}

@@ -1,42 +1,78 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/app-shell";
 import { AuthGuard, GuestGuard } from "./features/auth/auth-guard";
-import { LoginPage } from "./features/auth/login-page";
-import { CalendarPage } from "./features/calendar/calendar-page";
-import { JournalsPage } from "./features/journals/journals-page";
-import { NewsPage } from "./features/news/news-page";
-import { OverviewPage } from "./features/overview/overview-page";
-import { PortfoliosPage } from "./features/portfolios/portfolios-page";
-import { WatchlistPage } from "./features/watchlist/watchlist-page";
-import { RadarPage } from "./features/radar/radar-page";
-import { ReviewPage } from "./features/review/review-page";
-import { SettingsPage } from "./features/settings/settings-page";
+
+const LoginPage = lazy(() =>
+  import("./features/auth/login-page").then(({ LoginPage: Page }) => ({ default: Page })),
+);
+const CalendarPage = lazy(() =>
+  import("./features/calendar/calendar-page").then(({ CalendarPage: Page }) => ({ default: Page })),
+);
+const JournalsPage = lazy(() =>
+  import("./features/journals/journals-page").then(({ JournalsPage: Page }) => ({ default: Page })),
+);
+const NewsPage = lazy(() =>
+  import("./features/news/news-page").then(({ NewsPage: Page }) => ({ default: Page })),
+);
+const OverviewPage = lazy(() =>
+  import("./features/overview/overview-page").then(({ OverviewPage: Page }) => ({ default: Page })),
+);
+const PortfoliosPage = lazy(() =>
+  import("./features/portfolios/portfolios-page").then(({ PortfoliosPage: Page }) => ({ default: Page })),
+);
+const WatchlistPage = lazy(() =>
+  import("./features/watchlist/watchlist-page").then(({ WatchlistPage: Page }) => ({ default: Page })),
+);
+const StockDetailPage = lazy(() =>
+  import("./features/watchlist/stock-detail-page").then(({ StockDetailPage: Page }) => ({ default: Page })),
+);
+const RadarPage = lazy(() =>
+  import("./features/radar/radar-page").then(({ RadarPage: Page }) => ({ default: Page })),
+);
+const ReviewPage = lazy(() =>
+  import("./features/review/review-page").then(({ ReviewPage: Page }) => ({ default: Page })),
+);
+const SettingsPage = lazy(() =>
+  import("./features/settings/settings-page").then(({ SettingsPage: Page }) => ({ default: Page })),
+);
+
+function RouteLoading() {
+  return (
+    <div className="grid min-h-[50vh] place-items-center" role="status" aria-label="页面加载中">
+      <div className="size-8 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+    </div>
+  );
+}
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<GuestGuard />}>
-        <Route path="/login" element={<LoginPage />} />
-      </Route>
-
-      <Route element={<AuthGuard />}>
-        <Route element={<AppShell />}>
-          <Route path="/overview" element={<OverviewPage />} />
-          <Route path="/news" element={<NewsPage />} />
-          <Route path="/watchlist" element={<WatchlistPage />} />
-          <Route path="/portfolios" element={<PortfoliosPage />} />
-          <Route path="/holdings" element={<Navigate to="/portfolios" replace />} />
-          <Route path="/review" element={<ReviewPage />} />
-          <Route path="/radar" element={<RadarPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/journals" element={<JournalsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
+        <Route element={<GuestGuard />}>
+          <Route path="/login" element={<LoginPage />} />
         </Route>
-      </Route>
 
-      <Route path="/" element={<Navigate to="/overview" replace />} />
-      <Route path="*" element={<Navigate to="/overview" replace />} />
-    </Routes>
+        <Route element={<AuthGuard />}>
+          <Route element={<AppShell />}>
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/news" element={<NewsPage />} />
+            <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/watchlist/detail/:ticker" element={<StockDetailPage />} />
+            <Route path="/portfolios" element={<PortfoliosPage />} />
+            <Route path="/holdings" element={<Navigate to="/portfolios" replace />} />
+            <Route path="/review" element={<ReviewPage />} />
+            <Route path="/radar" element={<RadarPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/journals" element={<JournalsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Route>
+
+        <Route path="/" element={<Navigate to="/overview" replace />} />
+        <Route path="*" element={<Navigate to="/overview" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

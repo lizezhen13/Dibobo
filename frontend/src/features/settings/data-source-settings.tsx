@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import {
   AlertDialog,
@@ -35,7 +35,6 @@ import { ApiError } from "../../lib/api";
 import { formatDateTime } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import type { DataSource } from "./types";
-import { DataSourceDialog } from "./data-source-dialog";
 import {
   useActivateDataSourceMutation,
   useDataSourcesQuery,
@@ -43,6 +42,10 @@ import {
   useDeleteDataSourceMutation,
   useTestDataSourceMutation,
 } from "./queries";
+
+const DataSourceDialog = lazy(() =>
+  import("./data-source-dialog").then(({ DataSourceDialog: Dialog }) => ({ default: Dialog })),
+);
 
 type Notice = { tone: "success" | "error" | "warning"; message: string } | null;
 
@@ -188,7 +191,11 @@ export function DataSourceSettings() {
         </div>
       )}
 
-      <DataSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} source={editingSource} />
+      <Suspense fallback={null}>
+        {dialogOpen && (
+          <DataSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} source={editingSource} />
+        )}
+      </Suspense>
     </div>
   );
 }

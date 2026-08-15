@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "../../lib/api";
+import { liveQueryOptions } from "../../lib/query-lifecycle";
 import type {
   OverviewHotStocks,
   OverviewIndices,
@@ -23,14 +24,23 @@ interface PollingModule {
   refresh_seconds: number;
 }
 
-function useStaggeredEnabled(delayMs: number) {
-  const [enabled, setEnabled] = useState(delayMs === 0);
+function useStaggeredEnabled(delayMs: number, active: boolean) {
+  const [enabled, setEnabled] = useState(active && delayMs === 0);
 
   useEffect(() => {
-    if (delayMs === 0) return;
+    if (!active) {
+      setEnabled(false);
+      return;
+    }
+    if (delayMs === 0) {
+      setEnabled(true);
+      return;
+    }
+
+    setEnabled(false);
     const timer = window.setTimeout(() => setEnabled(true), delayMs);
     return () => window.clearTimeout(timer);
-  }, [delayMs]);
+  }, [active, delayMs]);
 
   return enabled;
 }
@@ -39,54 +49,57 @@ function useOverviewModule<T extends PollingModule>(
   slug: string,
   path: string,
   delayMs: number,
+  active: boolean,
 ) {
-  const enabled = useStaggeredEnabled(delayMs);
+  const enabled = useStaggeredEnabled(delayMs, active);
   const jitter = useRef(1 + Math.random() * 0.08).current;
 
   return useQuery({
+    ...liveQueryOptions,
     queryKey: [...overviewQueryKey, slug],
-    queryFn: () => apiFetch<T>(path),
-    enabled,
+    queryFn: ({ signal }) => apiFetch<T>(path, { signal }),
+    enabled: active && enabled,
     refetchInterval: (query) => {
       const data = query.state.data;
       return data?.polling_enabled
         ? Math.round(data.refresh_seconds * 1000 * jitter)
         : false;
     },
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-    retry: 1,
   });
 }
 
-export function useOverviewQuery() {
+export function useOverviewQuery(active = true) {
   return useOverviewModule<OverviewIndices>(
     "indices",
     "/api/overview/indices",
     initialDelay.indices,
+    active,
   );
 }
 
-export function useHotStocksQuery() {
+export function useHotStocksQuery(active = true) {
   return useOverviewModule<OverviewHotStocks>(
     "hot-stocks",
     "/api/overview/hot-stocks",
     initialDelay.hotStocks,
+    active,
   );
 }
 
-export function useMarketBreadthQuery() {
+export function useMarketBreadthQuery(active = true) {
   return useOverviewModule<OverviewMarketBreadth>(
     "market-breadth",
     "/api/overview/market-breadth",
     initialDelay.marketBreadth,
+    active,
   );
 }
 
-export function useIndustriesQuery() {
+export function useIndustriesQuery(active = true) {
   return useOverviewModule<OverviewIndustries>(
     "industries",
     "/api/overview/industries",
     initialDelay.industries,
+    active,
   );
 }
