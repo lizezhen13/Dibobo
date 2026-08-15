@@ -6,9 +6,8 @@ import {
   ArrowUpDown,
   Check,
   ChevronDown,
-  ChevronUp,
   Clock3,
-  Filter,
+  FileText,
   GripVertical,
   LoaderCircle,
   PencilLine,
@@ -61,42 +60,13 @@ import type { WatchlistAssetType, WatchlistFilters, WatchlistItem } from "./type
 
 const DEFAULT_FILTERS: WatchlistFilters = { keyword: "", asset_type: "" };
 
-interface WatchlistAdvancedFilters {
-  industry: string;
-  concept: string;
-  pe_min: string;
-  pe_max: string;
-  pb_min: string;
-  pb_max: string;
-  dividend_min: string;
-  dividend_max: string;
-}
-
-const DEFAULT_ADVANCED_FILTERS: WatchlistAdvancedFilters = {
-  industry: "",
-  concept: "",
-  pe_min: "",
-  pe_max: "",
-  pb_min: "",
-  pb_max: "",
-  dividend_min: "",
-  dividend_max: "",
-};
-
 type SortKey =
   | "custom"
   | "latest"
   | "change"
   | "change_percent"
-  | "total_market_cap"
-  | "pe_ttm"
-  | "pe_dynamic"
-  | "pb"
-  | "dividend_yield"
   | "volume"
   | "turnover"
-  | "volume_ratio"
-  | "turnover_rate"
   | "added_at";
 type SortDirection = "asc" | "desc";
 interface SortState {
@@ -108,7 +78,6 @@ const DEFAULT_SORT: SortState = { key: "custom", direction: "asc" };
 
 export function WatchlistPage() {
   const [filters, setFilters] = useState<WatchlistFilters>(DEFAULT_FILTERS);
-  const [advancedFilters, setAdvancedFilters] = useState<WatchlistAdvancedFilters>({ ...DEFAULT_ADVANCED_FILTERS });
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -124,26 +93,17 @@ export function WatchlistPage() {
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const items = query.data?.items ?? [];
-  const advancedFilterCount = countAdvancedFilters(advancedFilters);
-  const activeFilterCount = (filters.keyword.trim() ? 1 : 0) + (filters.asset_type ? 1 : 0) + advancedFilterCount;
-  const isFiltered = Boolean(filters.keyword.trim() || filters.asset_type || advancedFilterCount > 0);
+  const activeFilterCount = (filters.keyword.trim() ? 1 : 0) + (filters.asset_type ? 1 : 0);
+  const isFiltered = Boolean(filters.keyword.trim() || filters.asset_type);
   const canDrag = !isFiltered && sort.key === "custom" && !reorderMutation.isPending;
 
-  const industryOptions = useMemo(() => (
-    uniqueValues(items.map((item) => item.industry))
-  ), [items]);
-  const conceptOptions = useMemo(() => (
-    uniqueValues(items.flatMap((item) => splitConcepts(item.concept)))
-  ), [items]);
-
   const displayItems = useMemo(() => {
-    const filteredItems = items.filter((item) => matchesAdvancedFilters(item, advancedFilters));
-    if (sort.key === "custom") return filteredItems;
-    return [...filteredItems].sort((left, right) => {
+    if (sort.key === "custom") return items;
+    return [...items].sort((left, right) => {
       const comparison = compareValues(sortValue(left, sort.key), sortValue(right, sort.key));
       return sort.direction === "asc" ? comparison : -comparison;
     });
-  }, [advancedFilters, items, sort]);
+  }, [items, sort]);
 
   const allVisibleSelected = displayItems.length > 0 && displayItems.every((item) => selectedIds.has(item.id));
   const someVisibleSelected = displayItems.some((item) => selectedIds.has(item.id));
@@ -165,17 +125,10 @@ export function WatchlistPage() {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [advancedFilters, filters.asset_type, filters.keyword]);
+  }, [filters.asset_type, filters.keyword]);
 
   function updateFilter<K extends keyof WatchlistFilters>(key: K, value: WatchlistFilters[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateAdvancedFilter<K extends keyof WatchlistAdvancedFilters>(
-    key: K,
-    value: WatchlistAdvancedFilters[K],
-  ) {
-    setAdvancedFilters((current) => ({ ...current, [key]: value }));
   }
 
   function toggleSelected(id: string) {
@@ -208,7 +161,6 @@ export function WatchlistPage() {
 
   function clearFilters() {
     setFilters(DEFAULT_FILTERS);
-    setAdvancedFilters({ ...DEFAULT_ADVANCED_FILTERS });
     setSort(DEFAULT_SORT);
   }
 
@@ -349,7 +301,7 @@ export function WatchlistPage() {
             </div>
 
             <div className="watchlist-filter-primary">
-                <div className="min-w-0">
+              <div className="min-w-0">
                   <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">搜索标的</p>
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/65" size={16} />
@@ -370,24 +322,14 @@ export function WatchlistPage() {
                       </button>
                     )}
                   </div>
-                </div>
-                <div className="min-w-0">
-                  <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">标的类型</p>
-                  <WatchlistTypeFilter
-                    value={filters.asset_type}
-                    onChange={(asset_type) => updateFilter("asset_type", asset_type)}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">更多筛选</p>
-                  <WatchlistAdvancedFilter
-                    value={advancedFilters}
-                    activeCount={advancedFilterCount}
-                    industries={industryOptions}
-                    concepts={conceptOptions}
-                    onChange={setAdvancedFilters}
-                  />
-                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">标的类型</p>
+                <WatchlistTypeFilter
+                  value={filters.asset_type}
+                  onChange={(asset_type) => updateFilter("asset_type", asset_type)}
+                />
+              </div>
             </div>
           </div>
           {(isFiltered || sort.key !== "custom") && (
@@ -454,7 +396,7 @@ export function WatchlistPage() {
           <LoadError onRetry={() => void query.refetch()} />
         ) : (
           <div className="watchlist-table-scroll max-h-[calc(100vh-340px)] overflow-auto">
-            <table className="watchlist-table w-full min-w-[2160px] whitespace-nowrap border-separate border-spacing-0 text-center text-[13px]">
+            <table className="watchlist-table w-full min-w-[1420px] whitespace-nowrap border-separate border-spacing-0 text-center text-[13px]">
               <thead className="sticky top-0 z-20 border-b border-border bg-secondary/55">
                 <tr>
                   <th className="watchlist-sticky-left watchlist-sticky-select sticky left-0 top-0 z-30 w-12 bg-secondary px-4 py-3 text-center">
@@ -472,20 +414,11 @@ export function WatchlistPage() {
                   <SortableHeader label="最新价" sortKey="latest" sort={sort} onSort={requestSort} />
                   <SortableHeader label="涨跌额" sortKey="change" sort={sort} onSort={requestSort} />
                   <SortableHeader label="涨跌幅" sortKey="change_percent" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="总市值" sortKey="total_market_cap" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="市盈率 PE-TTM" sortKey="pe_ttm" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="市盈率 PE-动态" sortKey="pe_dynamic" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="市净率 PB" sortKey="pb" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="股息率" sortKey="dividend_yield" sort={sort} onSort={requestSort} />
                   <SortableHeader label="成交量" sortKey="volume" sort={sort} onSort={requestSort} />
                   <SortableHeader label="成交额" sortKey="turnover" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="量比" sortKey="volume_ratio" sort={sort} onSort={requestSort} />
-                  <SortableHeader label="换手率" sortKey="turnover_rate" sort={sort} onSort={requestSort} />
-                  <th className="min-w-[130px] px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">行业</th>
-                  <th className="min-w-[180px] px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">所属概念</th>
                   <SortableHeader label="添加时间" sortKey="added_at" sort={sort} onSort={requestSort} />
                   <th className="min-w-[180px] px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">备注</th>
-                  <th className="watchlist-sticky-right sticky right-0 top-0 z-30 w-24 bg-secondary px-5 py-3 text-center text-[13px] font-bold tracking-[0.1em] text-muted-foreground">操作</th>
+                  <th className="watchlist-sticky-right sticky right-0 top-0 z-30 w-36 bg-secondary px-5 py-3 text-center text-[13px] font-bold tracking-[0.1em] text-muted-foreground">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -575,276 +508,6 @@ export function WatchlistPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function WatchlistAdvancedFilter({
-  value,
-  activeCount,
-  industries,
-  concepts,
-  onChange,
-}: {
-  value: WatchlistAdvancedFilters;
-  activeCount: number;
-  industries: string[];
-  concepts: string[];
-  onChange: (value: WatchlistAdvancedFilters) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  function update<K extends keyof WatchlistAdvancedFilters>(key: K, nextValue: WatchlistAdvancedFilters[K]) {
-    onChange({ ...value, [key]: nextValue });
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="更多筛选条件"
-          aria-expanded={open}
-          className={cn(
-            "inline-flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-background px-3.5 text-[0.86rem] text-foreground transition hover:border-primary/40 hover:bg-secondary focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
-            activeCount > 0 ? "border-primary/40 bg-primary/[0.06]" : "border-input",
-          )}
-        >
-          <span className="flex items-center gap-2">
-            <Filter size={15} className={activeCount > 0 ? "text-primary" : "text-muted-foreground"} />
-            更多筛选
-            {activeCount > 0 && (
-              <span className="grid size-5 place-items-center rounded-full bg-primary text-[0.68rem] font-semibold text-primary-foreground">
-                {activeCount}
-              </span>
-            )}
-          </span>
-          <ChevronDown size={15} className="text-muted-foreground" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(380px,calc(100vw-32px))] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="font-semibold text-foreground">更多筛选条件</p>
-            <p className="mt-1 text-[0.75rem] text-muted-foreground/65">按分类和估值范围缩小观察列表</p>
-          </div>
-          {activeCount > 0 && (
-            <button
-              type="button"
-              className="shrink-0 text-[0.75rem] text-primary transition hover:text-primary-hover"
-              onClick={() => onChange({ ...DEFAULT_ADVANCED_FILTERS })}
-            >
-              清空条件
-            </button>
-          )}
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <WatchlistFilterSelect
-            label="所属行业"
-            value={value.industry}
-            placeholder="全部行业"
-            options={industries}
-            onChange={(nextValue) => update("industry", nextValue)}
-          />
-          <WatchlistFilterSelect
-            label="所属概念"
-            value={value.concept}
-            placeholder="全部概念"
-            options={concepts}
-            onChange={(nextValue) => update("concept", nextValue)}
-          />
-        </div>
-
-        <div className="mt-4 border-t border-border/70 pt-3">
-          <p className="font-mono text-[0.65rem] tracking-[0.13em] text-muted-foreground/60">VALUATION RANGE / 估值区间</p>
-          <div className="mt-3 grid gap-3">
-            <WatchlistRangeField
-              label="市盈率 PE-TTM"
-              minimum={value.pe_min}
-              maximum={value.pe_max}
-              onMinimumChange={(nextValue) => update("pe_min", nextValue)}
-              onMaximumChange={(nextValue) => update("pe_max", nextValue)}
-            />
-            <WatchlistRangeField
-              label="市净率 PB"
-              minimum={value.pb_min}
-              maximum={value.pb_max}
-              onMinimumChange={(nextValue) => update("pb_min", nextValue)}
-              onMaximumChange={(nextValue) => update("pb_max", nextValue)}
-            />
-            <WatchlistRangeField
-              label="股息率"
-              suffix="%"
-              minimum={value.dividend_min}
-              maximum={value.dividend_max}
-              onMinimumChange={(nextValue) => update("dividend_min", nextValue)}
-              onMaximumChange={(nextValue) => update("dividend_max", nextValue)}
-            />
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function WatchlistFilterSelect({
-  label,
-  value,
-  placeholder,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  options: string[];
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selectedLabel = value || placeholder;
-  const displayOptions = value && !options.includes(value) ? [value, ...options] : options;
-
-  return (
-    <div className="min-w-0">
-      <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">{label}</p>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={label}
-            aria-expanded={open}
-            className={cn(
-              "flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-background px-3 text-left text-[0.8rem] text-foreground transition hover:border-primary/40 hover:bg-secondary focus-visible:border-primary/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15",
-              value ? "border-primary/40 bg-primary/[0.06]" : "border-input",
-            )}
-          >
-            <span className="truncate">{selectedLabel}</span>
-            <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[220px] p-1.5">
-          <div role="listbox" aria-label={label} className="max-h-56 space-y-0.5 overflow-y-auto">
-            {["", ...displayOptions].map((option, index) => {
-              const isSelected = option === value;
-              return (
-                <button
-                  key={option || `all-${index}`}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[0.8rem] transition",
-                    isSelected
-                      ? "bg-primary/10 font-semibold text-primary"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  )}
-                  onClick={() => {
-                    onChange(option);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="grid w-4 place-items-center">
-                    {isSelected && <Check size={13} />}
-                  </span>
-                  {option || placeholder}
-                </button>
-              );
-            })}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-function WatchlistRangeField({
-  label,
-  suffix,
-  minimum,
-  maximum,
-  onMinimumChange,
-  onMaximumChange,
-}: {
-  label: string;
-  suffix?: string;
-  minimum: string;
-  maximum: string;
-  onMinimumChange: (value: string) => void;
-  onMaximumChange: (value: string) => void;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="mb-1.5 text-[0.72rem] font-medium text-muted-foreground">{label}</p>
-      <div className="flex items-center gap-2">
-        <div className="group relative min-w-0 flex-1">
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="1"
-            value={minimum}
-            onChange={(event) => onMinimumChange(event.target.value)}
-            placeholder="最小"
-            aria-label={`${label}最小值`}
-            className={cn("watchlist-number-input h-9 px-2.5 pr-8 text-[0.8rem]", suffix && "pr-11")}
-          />
-          {suffix && <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[0.7rem] text-muted-foreground/60">{suffix}</span>}
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-7 flex-col overflow-hidden rounded-r-lg border-l border-input/80 bg-secondary/35 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-            <button
-              type="button"
-              aria-label={`${label}最小值增加`}
-              className="group flex min-h-0 flex-1 items-center justify-center text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onMinimumChange(stepRangeValue(minimum, 1))}
-            >
-              <ChevronUp size={12} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              aria-label={`${label}最小值减少`}
-              className="group flex min-h-0 flex-1 items-center justify-center border-t border-input/70 text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onMinimumChange(stepRangeValue(minimum, -1))}
-            >
-              <ChevronDown size={12} strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
-        <span className="text-muted-foreground/50">—</span>
-        <div className="group relative min-w-0 flex-1">
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="1"
-            value={maximum}
-            onChange={(event) => onMaximumChange(event.target.value)}
-            placeholder="最大"
-            aria-label={`${label}最大值`}
-            className={cn("watchlist-number-input h-9 px-2.5 pr-8 text-[0.8rem]", suffix && "pr-11")}
-          />
-          {suffix && <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[0.7rem] text-muted-foreground/60">{suffix}</span>}
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-7 flex-col overflow-hidden rounded-r-lg border-l border-input/80 bg-secondary/35 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-            <button
-              type="button"
-              aria-label={`${label}最大值增加`}
-              className="group flex min-h-0 flex-1 items-center justify-center text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onMaximumChange(stepRangeValue(maximum, 1))}
-            >
-              <ChevronUp size={12} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              aria-label={`${label}最大值减少`}
-              className="group flex min-h-0 flex-1 items-center justify-center border-t border-input/70 text-muted-foreground/65 transition hover:bg-primary/10 hover:text-primary focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 active:bg-primary/15"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onMaximumChange(stepRangeValue(maximum, -1))}
-            >
-              <ChevronDown size={12} strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -978,25 +641,25 @@ function WatchlistRow({
       <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] font-semibold text-foreground">{formatPoint(item.latest)}</td>
       <td className={cn("px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px]", movementClass(item.change))}>{formatSignedPoint(item.change)}</td>
       <td className={cn("px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px]", movementClass(item.change_percent))}>{formatPercent(item.change_percent)}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatMoney(item.total_market_cap)}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatPoint(item.pe_ttm, { group: false })}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatPoint(item.pe_dynamic, { group: false })}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatPoint(item.pb, { group: false })}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatUnsignedPercent(item.dividend_yield)}</td>
       <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatVolume(item.volume)}</td>
       <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatMoney(item.turnover)}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatPoint(item.volume_ratio, { group: false })}</td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">{formatUnsignedPercent(item.turnover_rate)}</td>
-      <td className="max-w-[150px] truncate px-5 py-3 text-center align-middle text-[13px] text-muted-foreground" title={item.industry ?? undefined}>{item.industry ?? "—"}</td>
-      <td className="max-w-[180px] truncate px-5 py-3 text-center align-middle text-[13px] text-muted-foreground" title={item.concept ?? undefined}>{item.concept ?? "—"}</td>
       <td className="px-5 py-3 text-center align-middle font-mono text-[13px] text-muted-foreground/70">{formatDateTime(item.added_at)}</td>
       <td className="max-w-[220px] px-5 py-3 text-center align-middle">
         <button type="button" className="max-w-full truncate text-center text-[13px] text-muted-foreground transition hover:text-primary" title={item.note ?? "添加备注"} onClick={onEditNote}>
           {item.note || <span className="text-muted-foreground/45">添加备注</span>}
         </button>
       </td>
-      <td className="watchlist-sticky-right sticky right-0 z-10 w-24 bg-card px-5 py-3 text-center align-middle group-hover:bg-secondary">
+      <td className="watchlist-sticky-right sticky right-0 z-10 w-36 bg-card px-5 py-3 text-center align-middle group-hover:bg-secondary">
         <div className="flex justify-center gap-1">
+          <button
+            type="button"
+            disabled
+            aria-label={`查看${item.name}详情`}
+            title="详情功能待定"
+            className="grid size-8 place-items-center rounded-lg text-muted-foreground/55 transition disabled:cursor-not-allowed"
+          >
+            <FileText size={15} />
+          </button>
           <button type="button" onClick={onEditNote} aria-label={`编辑${item.name}备注`} className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-primary/10 hover:text-primary">
             <PencilLine size={15} />
           </button>
@@ -1056,7 +719,7 @@ function SortButton({
 function LoadingRow() {
   return (
     <tr>
-      {Array.from({ length: 20 }, (_, index) => (
+      {Array.from({ length: 11 }, (_, index) => (
         <td key={index} className="px-5 py-6">
           <div className="h-3 animate-pulse rounded-full bg-secondary" style={{ width: `${42 + (index % 4) * 12}%` }} />
         </td>
@@ -1112,70 +775,13 @@ function MutationError({ error }: { error: Error | null }) {
   );
 }
 
-function uniqueValues(values: Array<string | null>): string[] {
-  return Array.from(
-    new Set(
-      values
-        .filter((value): value is string => Boolean(value?.trim()))
-        .map((value) => value.trim()),
-    ),
-  ).sort((left, right) => left.localeCompare(right, "zh-CN"));
-}
-
-function splitConcepts(value: string | null): string[] {
-  if (!value) return [];
-  return value
-    .split(/[、,，]/)
-    .map((concept) => concept.trim())
-    .filter(Boolean);
-}
-
-function countAdvancedFilters(filters: WatchlistAdvancedFilters): number {
-  return Object.values(filters).filter((value) => value.trim()).length;
-}
-
-function matchesAdvancedFilters(item: WatchlistItem, filters: WatchlistAdvancedFilters): boolean {
-  if (filters.industry && item.industry !== filters.industry) return false;
-  if (filters.concept && !splitConcepts(item.concept).includes(filters.concept)) return false;
-  if (!matchesRange(item.pe_ttm, filters.pe_min, filters.pe_max)) return false;
-  if (!matchesRange(item.pb, filters.pb_min, filters.pb_max)) return false;
-  if (!matchesRange(item.dividend_yield, filters.dividend_min, filters.dividend_max)) return false;
-  return true;
-}
-
-function matchesRange(value: number | null, minimum: string, maximum: string): boolean {
-  const minimumValue = parseRangeValue(minimum);
-  const maximumValue = parseRangeValue(maximum);
-  if (minimumValue !== null && (value === null || value < minimumValue)) return false;
-  if (maximumValue !== null && (value === null || value > maximumValue)) return false;
-  return true;
-}
-
-function parseRangeValue(value: string): number | null {
-  if (!value.trim()) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function stepRangeValue(value: string, direction: 1 | -1): string {
-  const currentValue = parseRangeValue(value) ?? 0;
-  return String(currentValue + direction);
-}
-
 function sortValue(item: WatchlistItem, key: SortKey): number | string | null {
   switch (key) {
     case "latest": return item.latest;
     case "change": return item.change;
     case "change_percent": return item.change_percent;
-    case "total_market_cap": return item.total_market_cap;
-    case "pe_ttm": return item.pe_ttm;
-    case "pe_dynamic": return item.pe_dynamic;
-    case "pb": return item.pb;
-    case "dividend_yield": return item.dividend_yield;
     case "volume": return item.volume;
     case "turnover": return item.turnover;
-    case "volume_ratio": return item.volume_ratio;
-    case "turnover_rate": return item.turnover_rate;
     case "added_at": return item.added_at;
     case "custom": return item.sort_order;
   }
@@ -1195,20 +801,9 @@ function sortLabel(key: SortKey): string {
     latest: "最新价",
     change: "涨跌额",
     change_percent: "涨跌幅",
-    total_market_cap: "总市值",
-    pe_ttm: "市盈率 PE-TTM",
-    pe_dynamic: "市盈率 PE-动态",
-    pb: "市净率 PB",
-    dividend_yield: "股息率",
     volume: "成交量",
     turnover: "成交额",
-    volume_ratio: "量比",
-    turnover_rate: "换手率",
     added_at: "添加时间",
   };
   return labels[key];
-}
-
-function formatUnsignedPercent(value: number | null): string {
-  return value === null ? "暂无数据" : `${value.toFixed(2)}%`;
 }

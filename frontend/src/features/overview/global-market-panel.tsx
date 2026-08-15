@@ -123,7 +123,7 @@ function stateLabel(state: GlobalMarketGroupData["state"]) {
 function freshnessLabel(value: GlobalMarketItem["freshness"]) {
   switch (value) {
     case "fresh":
-      return "新鲜";
+      return "最新数据";
     case "delayed":
       return "延迟";
     case "interrupted":
