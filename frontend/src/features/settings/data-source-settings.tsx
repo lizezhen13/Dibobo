@@ -6,6 +6,7 @@ import {
   DatabaseZap,
   KeyRound,
   LoaderCircle,
+  Minus,
   Pencil,
   Plus,
   Power,
@@ -14,7 +15,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   AlertDialog,
@@ -60,6 +62,12 @@ const capabilityLabels: Record<string, string> = {
   corporate_action_dividend: "现金分红",
   total_market_cap: "总市值",
   instrument_status: "证券状态",
+  quote: "行情接口",
+  quote_realtime: "实时行情",
+  fundamental: "基本面",
+  market: "市场数据",
+  content: "资讯内容",
+  financial_calendar: "财经日历",
 };
 
 export function DataSourceSettings() {
@@ -71,6 +79,23 @@ export function DataSourceSettings() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const oauthStatus = searchParams.get("oauth");
+    if (!oauthStatus) return;
+    const oauthMessage = searchParams.get("message");
+    if (oauthStatus === "success") {
+      setNotice({ tone: "success", message: "Longbridge OAuth 授权成功，请测试连接以识别接口能力" });
+    } else if (oauthStatus === "failed") {
+      setNotice({ tone: "error", message: oauthMessage ?? "Longbridge OAuth 授权失败，请重试" });
+    }
+    const cleaned = new URLSearchParams(searchParams);
+    cleaned.delete("oauth");
+    cleaned.delete("message");
+    cleaned.delete("source_id");
+    setSearchParams(cleaned, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const openCreate = () => {
     setEditingSource(null);
@@ -155,7 +180,7 @@ export function DataSourceSettings() {
             </div>
             <h3 className="mt-5 font-display text-2xl">还没有数据源</h3>
             <p className="mt-3 text-[0.95rem] leading-7 text-muted-foreground">
-              添加同花顺或兼容配置，测试通过并启用后，总览与持仓页面即可请求真实行情。
+              添加同花顺配置并启用，或接入 Longbridge 作为独立测试源。所有凭证都会在服务端加密保存。
             </p>
             <Button className="mt-7" onClick={openCreate}>
               <Plus size={17} /> 添加第一条配置
@@ -226,6 +251,7 @@ function DataSourceCard({
   onDelete: () => void;
 }) {
   const capabilities = Object.entries(source.capabilities);
+  const isLongbridge = source.provider_type === "longbridge";
   return (
     <Card
       className={cn(
@@ -241,7 +267,7 @@ function DataSourceCard({
         <div className="p-5">
           <div className="flex items-start gap-4">
             <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary font-mono text-xs font-bold text-primary/90">
-              FY
+              {isLongbridge ? "LB" : "FY"}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">
@@ -251,6 +277,7 @@ function DataSourceCard({
                     <Activity size={10} className="mr-1" /> 当前启用
                   </Badge>
                 )}
+                {isLongbridge && <Badge variant="warning">独立测试源</Badge>}
                 <Button
                   variant="outline"
                   size="sm"
@@ -271,10 +298,15 @@ function DataSourceCard({
           <div className="mt-4 grid grid-cols-[150px_1fr] gap-4 border-t border-border pt-3.5">
             <div>
               <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
-                API KEY
+                {isLongbridge ? "鉴权方式" : "API KEY"}
               </p>
               <p className="mt-1.5 flex items-center gap-2 font-mono text-[0.8rem] text-muted-foreground">
-                <KeyRound size={12} /> {source.api_key_mask}
+                <KeyRound size={12} />
+                {isLongbridge
+                  ? source.auth_type === "oauth"
+                    ? source.credential_mask
+                    : `API 凭证 · ${source.credential_mask}`
+                  : source.api_key_mask}
               </p>
             </div>
             <div>
@@ -287,6 +319,8 @@ function DataSourceCard({
                     <span key={key} className="flex items-center gap-1">
                       {state === "supported" ? (
                         <Check className="text-market-down" size={11} />
+                      ) : state === "partial" ? (
+                        <Minus className="text-warning" size={11} />
                       ) : (
                         <CircleOff className="text-muted-foreground/60" size={11} />
                       )}
@@ -307,24 +341,32 @@ function DataSourceCard({
         <div className="border-l border-border bg-secondary/45 p-4">
           <TestStatus source={source} />
           <div className="-mt-1 grid grid-cols-2 gap-2.5">
-            <Button
-              variant={source.is_active ? "ghost" : "outline"}
-              size="sm"
-              onClick={onActivate}
-              disabled={source.is_active || source.last_test_status !== "success" || activating}
-            >
-              {activating ? <LoaderCircle className="animate-spin" size={13} /> : <Power size={13} />}
-              {source.is_active ? "已启用" : "启用"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDeactivate}
-              disabled={!source.is_active || deactivating}
-            >
-              {deactivating ? <LoaderCircle className="animate-spin" size={13} /> : <PowerOff size={13} />}
-              停用
-            </Button>
+            {isLongbridge ? (
+              <div className="col-span-2 rounded-lg border border-warning/20 bg-warning/8 px-3 py-2 text-[0.75rem] leading-5 text-muted-foreground">
+                Longbridge 当前只做连通性与能力测试，不会替换当前业务数据源。
+              </div>
+            ) : (
+              <>
+                <Button
+                  variant={source.is_active ? "ghost" : "outline"}
+                  size="sm"
+                  onClick={onActivate}
+                  disabled={source.is_active || source.last_test_status !== "success" || activating}
+                >
+                  {activating ? <LoaderCircle className="animate-spin" size={13} /> : <Power size={13} />}
+                  {source.is_active ? "已启用" : "启用"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onDeactivate}
+                  disabled={!source.is_active || deactivating}
+                >
+                  {deactivating ? <LoaderCircle className="animate-spin" size={13} /> : <PowerOff size={13} />}
+                  停用
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" onClick={onEdit}>
               <Pencil size={13} /> 编辑
             </Button>
@@ -344,7 +386,9 @@ function TestStatus({ source }: { source: DataSource }) {
           <CircleOff size={14} /> 尚未测试
         </p>
         <p className="mt-2 text-[0.75rem] leading-5 text-muted-foreground/60">
-          启用前需要验证地址、鉴权与代表接口。
+          {source.provider_type === "longbridge"
+            ? "授权后可验证地址、鉴权与代表接口。"
+            : "启用前需要验证地址、鉴权与代表接口。"}
         </p>
       </div>
     );

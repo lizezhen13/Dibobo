@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sessionQueryKey } from "../auth/queries";
 import { apiFetch } from "../../lib/api";
 import { overviewQueryKey } from "../overview/queries";
-import type { ConnectionTestResult, DataSource, DataSourcePayload } from "./types";
+import type {
+  ConnectionTestResult,
+  DataSource,
+  DataSourcePayload,
+  OAuthStartPayload,
+  OAuthStartResult,
+} from "./types";
 
 export const dataSourcesQueryKey = ["settings", "data-sources"] as const;
 
@@ -23,6 +29,16 @@ export function useCreateDataSourceMutation() {
         body: JSON.stringify(payload),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+  });
+}
+
+export function useStartLongbridgeOAuthMutation() {
+  return useMutation({
+    mutationFn: (payload: OAuthStartPayload) =>
+      apiFetch<OAuthStartResult>("/api/settings/data-sources/oauth/start", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
   });
 }
 

@@ -107,8 +107,19 @@ class DataSource(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     provider_type: Mapped[str] = mapped_column(String(32), nullable=False)
     base_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    auth_type: Mapped[str] = mapped_column(
+        String(16), default="api_key", server_default="api_key", nullable=False
+    )
     api_key_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
     api_key_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    # Kept for compatibility with databases created by an older schema that
+    # required a priority value for every data source.
+    priority: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    oauth_client_id: Mapped[str | None] = mapped_column(String(200))
+    oauth_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    oauth_authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_test_status: Mapped[str | None] = mapped_column(String(32))
     last_test_latency_ms: Mapped[int | None] = mapped_column(Integer)

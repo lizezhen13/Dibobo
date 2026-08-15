@@ -1,6 +1,8 @@
 import uuid
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,13 +17,17 @@ from app.settings.schemas import (
     DataSourceResponse,
     DataSourceUpdate,
     MessageResponse,
+    OAuthStartRequest,
+    OAuthStartResponse,
 )
 from app.settings.service import (
     activate_source,
     create_source,
     deactivate_source,
     delete_source,
+    finish_oauth,
     list_sources,
+    start_oauth,
     test_source_connection,
     to_response,
     update_source,
@@ -51,6 +57,64 @@ async def post_data_source(
     settings: Settings = Depends(get_settings),
 ) -> DataSourceResponse:
     return to_response(await create_source(db, user, payload, settings))
+
+
+@router.post(
+    "/oauth/start",
+    response_model=OAuthStartResponse,
+    dependencies=[Depends(require_csrf)],
+)
+async def start_longbridge_oauth(
+    payload: OAuthStartRequest,
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache),
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> OAuthStartResponse:
+    return await start_oauth(db, cache, user, payload, settings)
+
+
+@router.get("/oauth/callback")
+async def longbridge_oauth_callback(
+    state: str | None = None,
+    code: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache),
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    redirect_base = f"{settings.app_public_url.rstrip('/')}/settings"
+    if error or not state or not code:
+        message = "Longbridge OAuth 授权未完成，请重试"
+        return RedirectResponse(
+            url=f"{redirect_base}?{urlencode({'oauth': 'failed', 'message': message})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        source = await finish_oauth(
+            db,
+            cache,
+            user,
+            state=state,
+            code=code,
+            settings=settings,
+        )
+    except HTTPException as exc:
+        message = (
+            exc.detail
+            if isinstance(exc.detail, str)
+            else "Longbridge OAuth 授权失败，请稍后重试"
+        )
+        return RedirectResponse(
+            url=f"{redirect_base}?{urlencode({'oauth': 'failed', 'message': message})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        url=f"{redirect_base}?{urlencode({'oauth': 'success', 'source_id': str(source.id)})}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.patch(
