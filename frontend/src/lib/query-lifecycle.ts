@@ -17,6 +17,13 @@ export const liveQueryOptions = {
   meta: { live: true },
 } as const;
 
+/** Stable per-query jitter prevents synchronized polling without render-time randomness. */
+export function pollingJitter(key: string): number {
+  let hash = 0;
+  for (const character of key) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return 1 + (hash % 80) / 1_000;
+}
+
 /**
  * React Query already pauses interval timers in a hidden document. This small
  * manager makes the resume behavior explicit: active live queries are
@@ -50,18 +57,21 @@ export function LiveQueryVisibilityManager() {
         .filter((query) => query.meta?.live === true);
 
       scheduledRefreshes = liveQueries.map((query, index) =>
-        window.setTimeout(() => {
-          if (document.visibilityState !== "visible") return;
-          void queryClient.refetchQueries(
-            {
-              type: "active",
-              exact: true,
-              queryKey: query.queryKey,
-              predicate: (candidate) => candidate.meta?.live === true,
-            },
-            { cancelRefetch: false },
-          );
-        }, Math.min(index * 120, 1_200)),
+        window.setTimeout(
+          () => {
+            if (document.visibilityState !== "visible") return;
+            void queryClient.refetchQueries(
+              {
+                type: "active",
+                exact: true,
+                queryKey: query.queryKey,
+                predicate: (candidate) => candidate.meta?.live === true,
+              },
+              { cancelRefetch: false },
+            );
+          },
+          Math.min(index * 120, 1_200),
+        ),
       );
     };
 

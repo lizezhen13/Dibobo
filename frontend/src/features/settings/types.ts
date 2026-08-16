@@ -52,4 +52,3 @@ export interface ConnectionTestResult {
   message: string;
   capabilities: Record<string, CapabilityState>;
 }
-

@@ -30,12 +30,7 @@ export function LoginPage() {
     }
   };
 
-  const errorMessage =
-    login.error instanceof ApiError
-      ? login.error.message
-      : login.error
-        ? "登录失败，请稍后重试"
-        : null;
+  const errorMessage = login.error instanceof ApiError ? login.error.message : login.error ? "登录失败，请稍后重试" : null;
 
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden bg-shell px-6 py-12 text-paper">
@@ -46,9 +41,7 @@ export function LoginPage() {
             <Landmark size={30} strokeWidth={1.4} />
           </div>
           <h1 className="font-display text-4xl tracking-[0.04em] text-paper">DIBOBO</h1>
-          <p className="mt-3 text-[0.9rem] leading-relaxed text-paper/45">
-            你的私人投资工作台
-          </p>
+          <p className="mt-3 text-[0.9rem] leading-relaxed text-paper/45">你的私人投资工作台</p>
         </div>
 
         {/* 登录卡片 */}
@@ -67,9 +60,7 @@ export function LoginPage() {
                 className="border-white/10 bg-white/[0.05] text-paper placeholder:text-paper/30 focus-visible:border-primary/40 focus-visible:ring-primary/25"
                 {...register("username", { required: "请输入用户名" })}
               />
-              {errors.username && (
-                <p className="text-[0.75rem] text-danger">{errors.username.message}</p>
-              )}
+              {errors.username && <p className="text-[0.75rem] text-danger">{errors.username.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -84,36 +75,23 @@ export function LoginPage() {
                 className="border-white/10 bg-white/[0.05] text-paper placeholder:text-paper/30 focus-visible:border-primary/40 focus-visible:ring-primary/25"
                 {...register("password", { required: "请输入密码" })}
               />
-              {errors.password && (
-                <p className="text-[0.75rem] text-danger">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="text-[0.75rem] text-danger">{errors.password.message}</p>}
             </div>
 
             {errorMessage && (
-              <div
-                role="alert"
-                className="rounded-lg border-l-4 border-danger bg-danger/10 px-4 py-3 text-[0.9rem] text-danger"
-              >
+              <div role="alert" className="rounded-lg border-l-4 border-danger bg-danger/10 px-4 py-3 text-[0.9rem] text-danger">
                 {errorMessage}
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full text-base"
-              disabled={login.isPending}
-            >
-              {login.isPending ? (
-                <LoaderCircle className="animate-spin" size={17} />
-              ) : null}
+            <Button type="submit" className="w-full text-base" disabled={login.isPending}>
+              {login.isPending ? <LoaderCircle className="animate-spin" size={17} /> : null}
               {login.isPending ? "登录中…" : "进入工作台"}
             </Button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-[0.7rem] tracking-[0.08em] text-paper/25">
-          数据仅供参考，不构成任何投资建议
-        </p>
+        <p className="mt-6 text-center text-[0.7rem] tracking-[0.08em] text-paper/25">数据仅供参考，不构成任何投资建议</p>
       </div>
     </div>
   );

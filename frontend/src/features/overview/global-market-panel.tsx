@@ -1,22 +1,26 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Check,
-  Clock3,
-  Database,
-  Info,
-  LoaderCircle,
-  Minus,
-  RefreshCw,
-  TriangleAlert,
-  WifiOff,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Check, Clock3, Info, Minus, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
+import {
+  EMPTY_VALUE,
+  formatBp,
+  formatDate,
+  formatPercent,
+  formatSigned,
+  formatTime,
+  formatValue,
+  freshnessLabel,
+  materializeItems,
+  movement,
+  quoteDirection,
+  stateLabel,
+  stateTone,
+  statusTone,
+} from "./global-market-formatters";
 import { OverviewPanel, PanelState } from "./overview-panel";
 import {
   GLOBAL_MARKET_GROUPS,
@@ -27,164 +31,9 @@ import {
   type GlobalMarketResponse,
 } from "./global-market-types";
 
-const EMPTY_VALUE = "—";
-
-function formatValue(value: number | null, precision: number) {
-  if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
-  return new Intl.NumberFormat("zh-CN", {
-    minimumFractionDigits: precision,
-    maximumFractionDigits: precision,
-    useGrouping: true,
-  }).format(value);
-}
-
-function formatSigned(value: number | null, precision: number) {
-  if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
-  const formatted = formatValue(Math.abs(value), precision);
-  if (value > 0) return `+${formatted}`;
-  if (value < 0) return `-${formatted}`;
-  return formatted;
-}
-
-function formatPercent(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
-  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
-}
-
-function formatBp(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return EMPTY_VALUE;
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)} bp`;
-}
-
-function formatTime(value: string | null) {
-  if (!value) return EMPTY_VALUE;
-  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return EMPTY_VALUE;
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
-function formatDate(value: string | null) {
-  if (!value) return EMPTY_VALUE;
-  const date = new Date(`${value}T00:00:00+08:00`);
-  if (Number.isNaN(date.getTime())) return EMPTY_VALUE;
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
-    .format(date)
-    .replaceAll("/", "-");
-}
-
-function movement(value: number | null) {
-  if (value === null || value === 0) return "text-muted-foreground";
-  return value > 0 ? "text-market-up" : "text-market-down";
-}
-
 function MovementIcon({ value }: { value: number | null }) {
   if (value === null || value === 0) return <Minus size={13} aria-hidden />;
   return value > 0 ? <ArrowUpRight size={13} aria-hidden /> : <ArrowDownRight size={13} aria-hidden />;
-}
-
-function stateTone(state: GlobalMarketGroupData["state"]) {
-  switch (state) {
-    case "ready":
-      return "text-success";
-    case "partial":
-      return "text-warning";
-    case "stale":
-      return "text-warning";
-    default:
-      return "text-danger";
-  }
-}
-
-function stateLabel(state: GlobalMarketGroupData["state"]) {
-  switch (state) {
-    case "ready":
-      return "数据就绪";
-    case "partial":
-      return "部分数据";
-    case "stale":
-      return "缓存值";
-    default:
-      return "数据不可用";
-  }
-}
-
-function freshnessLabel(value: GlobalMarketItem["freshness"]) {
-  switch (value) {
-    case "fresh":
-      return "最新数据";
-    case "delayed":
-      return "延迟";
-    case "interrupted":
-      return "数据中断";
-    case "stale":
-      return "缓存值";
-    default:
-      return "未知";
-  }
-}
-
-function statusTone(status: GlobalMarketItem["market_status"]) {
-  if (status === "交易中") return "text-success";
-  if (status === "未知") return "text-warning";
-  return "text-muted-foreground";
-}
-
-function quoteDirection(item: GlobalMarketItem) {
-  if (!item.quote_direction) return null;
-  return item.quote_direction.replace("X", formatValue(item.latest, item.precision));
-}
-
-function materializeItems(
-  group: GlobalMarketGroupKey,
-  data: GlobalMarketGroupData | undefined,
-): GlobalMarketItem[] {
-  const byId = new Map((data?.items ?? []).map((item) => [item.id, item]));
-  return catalogForGroup(group).map((definition) => {
-    const item = byId.get(definition.id);
-    if (item) return item;
-    return {
-      id: definition.id,
-      group,
-      subgroup: definition.subgroup,
-      name: definition.name,
-      display_code: definition.displayCode,
-      source_symbol: null,
-      value_kind: definition.valueKind,
-      latest: null,
-      change: null,
-      change_percent: null,
-      change_bp: null,
-      unit: definition.unit,
-      quote_direction: definition.quoteDirection,
-      precision: definition.precision,
-      market_status: "未知",
-      freshness: "unknown",
-      quoted_at: null,
-      as_of_date: null,
-      fetched_at: null,
-      mapped_contract: null,
-      provider_type: "akshare",
-      adapter_version: "1.18.84",
-      capability: null,
-      origin: null,
-      missing_reason: "后端未返回该固定项目",
-      snapshot_id: null,
-      quality_profile: "global-market-v1",
-      source_status: "missing",
-    } satisfies GlobalMarketItem;
-  });
 }
 
 function InfoPopover({ item }: { item: GlobalMarketItem }) {
@@ -257,12 +106,10 @@ function InfoPopover({ item }: { item: GlobalMarketItem }) {
     scheduleClose();
   };
 
-  useEffect(
-    () => () => {
-      clearOpenTimer();
-      clearCloseTimer();
-    },
-  );
+  useEffect(() => () => {
+    clearOpenTimer();
+    clearCloseTimer();
+  });
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -306,7 +153,10 @@ function InfoPopover({ item }: { item: GlobalMarketItem }) {
           <InfoRow label="能力" value={item.capability} />
           <InfoRow label="数据来源" value={item.origin} />
           <InfoRow label="单位/方向" value={item.quote_direction ?? item.unit} />
-          <InfoRow label={item.as_of_date ? "数据日期" : "行情时间"} value={item.as_of_date ? formatDate(item.as_of_date) : formatTime(item.quoted_at)} />
+          <InfoRow
+            label={item.as_of_date ? "数据日期" : "行情时间"}
+            value={item.as_of_date ? formatDate(item.as_of_date) : formatTime(item.quoted_at)}
+          />
           <InfoRow label="抓取时间" value={formatTime(item.fetched_at)} />
           <InfoRow label="当前映射合约" value={item.mapped_contract} />
           <InfoRow label="数据新鲜度" value={freshnessLabel(item.freshness)} />
@@ -342,7 +192,12 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
   const changeValue = yieldMode ? item.change_bp : item.change_percent;
   const hasValue = item.latest !== null;
   return (
-    <article className={cn("group/quote min-w-0 rounded-xl border border-border/70 bg-background/35 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-secondary/25", !hasValue && "opacity-80")}>
+    <article
+      className={cn(
+        "group/quote min-w-0 rounded-xl border border-border/70 bg-background/35 p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-secondary/25",
+        !hasValue && "opacity-80",
+      )}
+    >
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-[13px] font-semibold text-foreground">{item.name}</p>
@@ -364,12 +219,12 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
           {formatValue(item.latest, item.precision)}
         </p>
         <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[10px] text-muted-foreground/65">
-            {yieldMode ? item.unit : direction ?? item.unit}
-          </p>
+          <p className="min-w-0 truncate text-[10px] text-muted-foreground/65">{yieldMode ? item.unit : (direction ?? item.unit)}</p>
           <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[11px]", movement(changeValue))}>
             <MovementIcon value={changeValue} />
-            <span>{yieldMode ? formatBp(item.change_bp) : `${formatSigned(item.change, item.precision)}  ${formatPercent(item.change_percent)}`}</span>
+            <span>
+              {yieldMode ? formatBp(item.change_bp) : `${formatSigned(item.change, item.precision)}  ${formatPercent(item.change_percent)}`}
+            </span>
           </div>
         </div>
       </div>
@@ -378,21 +233,27 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
         <span className="truncate">{yieldMode ? `截至 ${formatDate(item.as_of_date)}` : freshnessLabel(item.freshness)}</span>
         <span className="shrink-0 font-mono">{yieldMode ? "日频" : formatTime(item.quoted_at || item.fetched_at)}</span>
       </div>
-      {item.missing_reason ? <p className="mt-2 truncate text-[10px] text-warning" title={item.missing_reason}>{item.missing_reason}</p> : null}
+      {item.missing_reason ? (
+        <p className="mt-2 truncate text-[10px] text-warning" title={item.missing_reason}>
+          {item.missing_reason}
+        </p>
+      ) : null}
     </article>
   );
 }
 
 function LoadingItems({ group }: { group: GlobalMarketGroupKey }) {
   return (
-    <div className={cn(
-      "grid gap-2.5 p-3.5 sm:p-4",
-      group === "fx"
-        ? "grid-cols-1 min-[520px]:grid-cols-3"
-        : group === "yields" || group === "commodities"
-          ? "grid-cols-1 min-[520px]:grid-cols-2 min-[1100px]:grid-cols-4"
-          : "grid-cols-1 min-[520px]:grid-cols-2 min-[820px]:grid-cols-3",
-    )}>
+    <div
+      className={cn(
+        "grid gap-2.5 p-3.5 sm:p-4",
+        group === "fx"
+          ? "grid-cols-1 min-[520px]:grid-cols-3"
+          : group === "yields" || group === "commodities"
+            ? "grid-cols-1 min-[520px]:grid-cols-2 min-[1100px]:grid-cols-4"
+            : "grid-cols-1 min-[520px]:grid-cols-2 min-[820px]:grid-cols-3",
+      )}
+    >
       {catalogForGroup(group).map((item) => (
         <div key={item.id} className="rounded-xl border border-border/60 bg-background/35 p-3">
           <div className="flex items-center justify-between gap-3">
@@ -418,7 +279,11 @@ function IndicesBody({ items }: { items: GlobalMarketItem[] }) {
             <span className="h-px flex-1 bg-border/70" />
           </div>
           <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 min-[820px]:grid-cols-3">
-            {items.filter((item) => item.subgroup === subgroup).map((item) => <QuoteItem key={item.id} item={item} />)}
+            {items
+              .filter((item) => item.subgroup === subgroup)
+              .map((item) => (
+                <QuoteItem key={item.id} item={item} />
+              ))}
           </div>
         </section>
       ))}
@@ -429,7 +294,9 @@ function IndicesBody({ items }: { items: GlobalMarketItem[] }) {
 function FxBody({ items }: { items: GlobalMarketItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-2.5 p-3.5 min-[520px]:grid-cols-3">
-      {items.map((item) => <QuoteItem key={item.id} item={item} />)}
+      {items.map((item) => (
+        <QuoteItem key={item.id} item={item} />
+      ))}
     </div>
   );
 }
@@ -444,7 +311,11 @@ function CommoditiesBody({ items }: { items: GlobalMarketItem[] }) {
             <span className="h-px flex-1 bg-border/70" />
           </div>
           <div className="grid gap-2.5">
-            {items.filter((item) => item.subgroup === subgroup).map((item) => <QuoteItem key={item.id} item={item} />)}
+            {items
+              .filter((item) => item.subgroup === subgroup)
+              .map((item) => (
+                <QuoteItem key={item.id} item={item} />
+              ))}
           </div>
         </section>
       ))}
@@ -455,7 +326,9 @@ function CommoditiesBody({ items }: { items: GlobalMarketItem[] }) {
 function YieldsBody({ items }: { items: GlobalMarketItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-2.5 p-3.5 sm:p-4 min-[520px]:grid-cols-2 min-[1100px]:grid-cols-4">
-      {items.map((item) => <QuoteItem key={item.id} item={item} yieldMode />)}
+      {items.map((item) => (
+        <QuoteItem key={item.id} item={item} yieldMode />
+      ))}
     </div>
   );
 }
@@ -495,9 +368,21 @@ function GroupCard({
       toolbar={
         <div className="flex items-center gap-2">
           <div className={cn("flex items-center gap-1.5 text-[10px]", stateTone(state))}>
-            {state === "ready" ? <Check size={12} /> : state === "stale" ? <Clock3 size={12} /> : state === "partial" ? <TriangleAlert size={12} /> : <WifiOff size={12} />}
+            {state === "ready" ? (
+              <Check size={12} />
+            ) : state === "stale" ? (
+              <Clock3 size={12} />
+            ) : state === "partial" ? (
+              <TriangleAlert size={12} />
+            ) : (
+              <WifiOff size={12} />
+            )}
             <span>{isLoading ? "读取中" : stateLabel(state)}</span>
-            {data ? <span className="font-mono text-muted-foreground/55">{data.available_count}/{data.expected_count}</span> : null}
+            {data ? (
+              <span className="font-mono text-muted-foreground/55">
+                {data.available_count}/{data.expected_count}
+              </span>
+            ) : null}
           </div>
           <Button
             variant="ghost"
@@ -534,29 +419,27 @@ function GlobalMarketToolbar({
   const allUnavailable = data && Object.values(data.groups).every((group) => group.state === "unavailable");
   return (
     <div className="contents">
-      {false && (
-        <div className="hidden">
-        <div className="flex min-w-0 items-center gap-2.5 text-xs text-muted-foreground">
-          <Database size={14} className="shrink-0 text-primary" />
-          <span>系统级数据源</span>
-          <span className="font-mono text-foreground">{data?.provider.type ?? "akshare"}</span>
-          <span className="font-mono text-muted-foreground/55">v{data?.provider.version ?? "1.18.84"}</span>
-          {query.isFetching ? <span className="flex items-center gap-1.5 text-primary"><LoaderCircle size={12} className="animate-spin" />同步中</span> : null}
-        </div>
-        </div>
-      )}
       {query.isError && !data ? (
-        <div className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground" role="alert">
+        <div
+          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          role="alert"
+        >
           <WifiOff size={15} className="mt-0.5 shrink-0 text-danger" />
           <p>全球市场聚合接口暂时无法读取，请稍后重试。</p>
         </div>
       ) : !data?.enabled ? (
-        <div className="flex items-start gap-3 border-l-2 border-warning bg-warning/[0.07] px-4 py-3 text-xs text-muted-foreground" role="status">
+        <div
+          className="flex items-start gap-3 border-l-2 border-warning bg-warning/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          role="status"
+        >
           <TriangleAlert size={15} className="mt-0.5 shrink-0 text-warning" />
           <p>{data?.message ?? "全球市场功能尚未启用，请由部署配置开启 AKShare 全局快照。"}</p>
         </div>
       ) : allUnavailable ? (
-        <div className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground" role="alert">
+        <div
+          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          role="alert"
+        >
           <WifiOff size={15} className="mt-0.5 shrink-0 text-danger" />
           <p>{data.message ?? "当前没有可读取的全球市场快照，后台任务恢复后会自动显示。"}</p>
         </div>
@@ -576,10 +459,7 @@ export function GlobalMarketPanel({
 }) {
   return (
     <section aria-label="全球市场行情">
-      <GlobalMarketToolbar
-        data={query.data}
-        query={query}
-      />
+      <GlobalMarketToolbar data={query.data} query={query} />
       <div className="grid min-w-0 grid-cols-1 items-start gap-4">
         {GLOBAL_MARKET_GROUPS.map((group) => (
           <GroupCard

@@ -3,28 +3,25 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "../../components/ui/button";
+import { PageContainer } from "../../components/patterns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { HotStocksCard } from "./hot-stocks-card";
 import { IndicesPanel } from "./indices-panel";
 import { IndustryDetailCard } from "./industry-detail-card";
 import { MarketBreadthCard } from "./market-breadth-card";
 import { NewsCard } from "./news-card";
-import {
-  useHotStocksQuery,
-  useIndustriesQuery,
-  useMarketBreadthQuery,
-  useOverviewQuery,
-} from "./queries";
+import { useHotStocksQuery, useIndustriesQuery, useMarketBreadthQuery, useOverviewQuery } from "./queries";
 import { refreshGlobalMarketGroup as requestGlobalMarketGroup, useGlobalMarketQuery } from "./global-market-queries";
 import type { GlobalMarketGroupKey } from "./global-market-types";
 
-const GlobalMarketPanel = lazy(() =>
-  import("./global-market-panel").then(({ GlobalMarketPanel: Panel }) => ({ default: Panel })),
-);
+const GlobalMarketPanel = lazy(() => import("./global-market-panel").then(({ GlobalMarketPanel: Panel }) => ({ default: Panel })));
 
 function GlobalMarketLoading() {
   return (
-    <div className="grid min-h-[360px] place-items-center rounded-xl border border-border/70 bg-card/40 text-sm text-muted-foreground" role="status">
+    <div
+      className="grid min-h-[360px] place-items-center rounded-xl border border-border/70 bg-card/40 text-sm text-muted-foreground"
+      role="status"
+    >
       全球市场模块加载中…
     </div>
   );
@@ -71,7 +68,8 @@ export function OverviewPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] animate-enter">
+    <PageContainer size="wide">
+      <h1 className="sr-only">市场概览</h1>
       {indices.data?.data_source.state === "not_configured" && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-l-2 border-primary bg-primary/[0.07] px-4 py-3">
           <div className="flex items-center gap-3">
@@ -99,11 +97,7 @@ export function OverviewPage() {
           {/* 2xl 下压缩人气榜列宽、加宽涨跌分布列 */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)_minmax(340px,0.95fr)] 2xl:grid-rows-[auto_350px_350px]">
             <div className="min-w-0 xl:col-span-2 2xl:col-span-3">
-              <IndicesPanel
-                query={indices}
-                onRefresh={() => void refreshAll()}
-                isRefreshing={manualRefreshing}
-              />
+              <IndicesPanel query={indices} onRefresh={() => void refreshAll()} isRefreshing={manualRefreshing} />
             </div>
             <div className="min-w-0 2xl:col-start-1 2xl:row-start-2">
               <HotStocksCard query={hotStocks} />
@@ -130,6 +124,6 @@ export function OverviewPage() {
           </Suspense>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

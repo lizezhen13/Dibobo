@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { format, parse, addMonths, subMonths, startOfMonth, isAfter, isBefore, isSameDay } from "date-fns";
 import { CalendarDays } from "lucide-react";
 
@@ -33,29 +33,20 @@ function formatLocalDate(date?: Date): string {
 
 export function DateRangeField({ openedFrom, openedTo, onChange }: DateRangeFieldProps) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRange>(() => ({
-    from: parseLocalDate(openedFrom),
-    to: parseLocalDate(openedTo),
-  }));
+  const draft = useMemo<DateRange>(() => ({ from: parseLocalDate(openedFrom), to: parseLocalDate(openedTo) }), [openedFrom, openedTo]);
   const [leftMonth, setLeftMonth] = useState<Date>(() => startOfMonth(parseLocalDate(openedFrom) || new Date()));
   const [rightMonth, setRightMonth] = useState<Date>(() => addMonths(startOfMonth(parseLocalDate(openedFrom) || new Date()), 1));
 
-  // 外部值变化时（如点击重置），同步内部草稿
-  useEffect(() => {
-    setDraft({ from: parseLocalDate(openedFrom), to: parseLocalDate(openedTo) });
-  }, [openedFrom, openedTo]);
-
-  // 弹窗打开时，将月份定位到已选区间或当前月，保证两侧日历连续
-  useEffect(() => {
-    if (!open) return;
+  // 弹窗打开时，将月份定位到已选区间或当前月，保证两侧日历连续。
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) return;
     const base = startOfMonth(parseLocalDate(openedFrom) || parseLocalDate(openedTo) || new Date());
     setLeftMonth(base);
     setRightMonth(addMonths(base, 1));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  };
 
   const commit = (next: DateRange) => {
-    setDraft(next);
     onChange(formatLocalDate(next.from), formatLocalDate(next.to));
   };
 
@@ -129,7 +120,7 @@ export function DateRangeField({ openedFrom, openedTo, onChange }: DateRangeFiel
   }, [draft]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"

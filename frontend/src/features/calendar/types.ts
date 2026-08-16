@@ -1,10 +1,4 @@
-export const CALENDAR_CATEGORIES = [
-  "macro",
-  "earnings",
-  "dividend",
-  "split",
-  "closed",
-] as const;
+export const CALENDAR_CATEGORIES = ["macro", "earnings", "dividend", "split", "closed"] as const;
 
 export type CalendarCategory = (typeof CALENDAR_CATEGORIES)[number];
 export type CalendarScope = "all" | "watchlist" | "holding";

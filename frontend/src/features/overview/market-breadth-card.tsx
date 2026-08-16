@@ -16,11 +16,7 @@ function countPercent(count: number, total: number) {
   return total > 0 ? (count / total) * 100 : 0;
 }
 
-export function MarketBreadthCard({
-  query,
-}: {
-  query: UseQueryResult<OverviewMarketBreadth, Error>;
-}) {
+export function MarketBreadthCard({ query }: { query: UseQueryResult<OverviewMarketBreadth, Error> }) {
   const data = query.data;
   const maxCount = Math.max(1, ...(data?.bins.map((bin) => bin.count) ?? [1]));
 
@@ -33,9 +29,7 @@ export function MarketBreadthCard({
       isFetching={query.isFetching}
       toolbar={
         data ? (
-          <span className="hidden font-mono text-[11px] tracking-normal text-muted-foreground/60 sm:inline">
-            {data.valid_count} 家
-          </span>
+          <span className="hidden font-mono text-[11px] tracking-normal text-muted-foreground/60 sm:inline">{data.valid_count} 家</span>
         ) : null
       }
       className="min-h-[350px]"

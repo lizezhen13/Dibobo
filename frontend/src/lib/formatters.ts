@@ -65,9 +65,7 @@ export function formatDateTime(value: string | null): string {
   const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}Z`;
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return MISSING_VALUE;
-  return dateTimeFormatter
-    .format(date)
-    .replaceAll("/", "-");
+  return dateTimeFormatter.format(date).replaceAll("/", "-");
 }
 
 export function movementClass(value: number | null): string {

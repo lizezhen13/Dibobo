@@ -1,26 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRound, Link2, LoaderCircle, ShieldCheck } from "lucide-react";
+import { KeyRound, Link2, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "../../components/ui/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
+import { FormField, InlineAlert, LoadingButton } from "../../components/patterns";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
 import { ApiError } from "../../lib/api";
-import {
-  useCreateDataSourceMutation,
-  useStartLongbridgeOAuthMutation,
-  useUpdateDataSourceMutation,
-} from "./queries";
+import { useCreateDataSourceMutation, useStartLongbridgeOAuthMutation, useUpdateDataSourceMutation } from "./queries";
 import type { DataSource, DataSourcePayload } from "./types";
 
 interface DataSourceDialogProps {
@@ -89,17 +79,14 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
     },
   });
 
+  // Mutation/form object identities can change while a request is pending; reset only when the dialog target changes.
   useEffect(() => {
     if (!open) return;
     form.reset({
       name: source?.name ?? "",
       provider_type: source?.provider_type ?? "fuyao",
       auth_type: source?.auth_type ?? "api_key",
-      base_url:
-        source?.base_url ??
-        (source?.provider_type === "longbridge"
-          ? "https://openapi.longbridge.cn"
-          : "https://fuyao.aicubes.cn"),
+      base_url: source?.base_url ?? (source?.provider_type === "longbridge" ? "https://openapi.longbridge.cn" : "https://fuyao.aicubes.cn"),
       api_key: "",
       app_key: "",
       app_secret: "",
@@ -116,21 +103,14 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
   const isOAuth = isLongbridge && authType === "oauth";
   const isPending = createMutation.isPending || updateMutation.isPending || oauthMutation.isPending;
   const mutationError = createMutation.error ?? updateMutation.error ?? oauthMutation.error;
-  const errorMessage =
-    mutationError instanceof ApiError
-      ? mutationError.message
-      : mutationError
-        ? "保存失败，请稍后重试"
-        : null;
+  const errorMessage = mutationError instanceof ApiError ? mutationError.message : mutationError ? "保存失败，请稍后重试" : null;
 
   const startOAuth = async () => {
     const valid = await form.trigger("name");
     if (!valid) return;
     try {
       const result = await oauthMutation.mutateAsync(
-        source
-          ? { source_id: source.id }
-          : { name: form.getValues("name"), base_url: form.getValues("base_url") },
+        source ? { source_id: source.id } : { name: form.getValues("name"), base_url: form.getValues("base_url") },
       );
       window.location.assign(result.authorization_url);
     } catch {
@@ -188,12 +168,11 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
         <form id="data-source-form" onSubmit={onSubmit} noValidate>
           <DialogBody className="space-y-5">
             <div className="grid grid-cols-2 gap-5">
-              <Field label="数据源名称" error={form.formState.errors.name?.message}>
+              <FormField label="数据源名称" required error={form.formState.errors.name?.message}>
                 <Input placeholder="例如：我的同花顺数据源" {...form.register("name")} />
-              </Field>
-              <Field label="数据源类型" error={form.formState.errors.provider_type?.message}>
-                <select
-                  className="h-10 w-full rounded-lg border border-input bg-card px-3.5 text-[0.95rem] text-foreground outline-none transition-all focus:border-primary/40 focus:ring-[3px] focus:ring-primary/15"
+              </FormField>
+              <FormField label="数据源类型" required error={form.formState.errors.provider_type?.message}>
+                <Select
                   {...form.register("provider_type", {
                     onChange: (event) => handleProviderChange(event.target.value),
                   })}
@@ -201,12 +180,13 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                   <option value="fuyao">同花顺</option>
                   <option value="fuyao_compatible">同花顺兼容</option>
                   <option value="longbridge">Longbridge</option>
-                </select>
-              </Field>
+                </Select>
+              </FormField>
             </div>
 
-            <Field
+            <FormField
               label="Base URL"
+              required
               error={form.formState.errors.base_url?.message}
               hint={isLongbridge ? "默认中国节点 · .cn" : undefined}
             >
@@ -214,7 +194,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                 placeholder={isLongbridge ? "https://openapi.longbridge.cn" : "https://fuyao.aicubes.cn"}
                 {...form.register("base_url")}
               />
-            </Field>
+            </FormField>
             {isLongbridge && (
               <p className="-mt-3 text-[0.78rem] leading-5 text-muted-foreground/65">
                 默认节点适用于中国大陆接入；如果账户属于 US 数据中心，可改用 Longbridge 官方对应节点。
@@ -224,12 +204,15 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
             {isLongbridge ? (
               <>
                 <div>
-                  <p className="mb-2 text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
-                    鉴权方式
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-secondary/45 p-1">
+                  <p className="mb-2 text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">鉴权方式</p>
+                  <div
+                    className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-secondary/45 p-1"
+                    role="group"
+                    aria-label="鉴权方式"
+                  >
                     <button
                       type="button"
+                      aria-pressed={authType === "api_key"}
                       className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                         authType === "api_key"
                           ? "bg-background text-foreground shadow-subtle"
@@ -241,10 +224,9 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     </button>
                     <button
                       type="button"
+                      aria-pressed={authType === "oauth"}
                       className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                        authType === "oauth"
-                          ? "bg-background text-foreground shadow-subtle"
-                          : "text-muted-foreground hover:text-foreground"
+                        authType === "oauth" ? "bg-background text-foreground shadow-subtle" : "text-muted-foreground hover:text-foreground"
                       }`}
                       onClick={() => form.setValue("auth_type", "oauth", { shouldValidate: true })}
                     >
@@ -252,33 +234,21 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     </button>
                   </div>
                   {form.formState.errors.auth_type?.message && (
-                    <span className="mt-1.5 block text-[0.8rem] text-danger">
-                      {form.formState.errors.auth_type.message}
-                    </span>
+                    <span className="mt-1.5 block text-[0.8rem] text-danger">{form.formState.errors.auth_type.message}</span>
                   )}
                 </div>
 
                 {authType === "api_key" ? (
                   <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <Field label="App Key" error={form.formState.errors.app_key?.message}>
-                        <Input
-                          type="password"
-                          autoComplete="off"
-                          placeholder="请输入 App Key"
-                          {...form.register("app_key")}
-                        />
-                      </Field>
-                      <Field label="App Secret" error={form.formState.errors.app_secret?.message}>
-                        <Input
-                          type="password"
-                          autoComplete="off"
-                          placeholder="请输入 App Secret"
-                          {...form.register("app_secret")}
-                        />
-                      </Field>
+                      <FormField label="App Key" error={form.formState.errors.app_key?.message}>
+                        <Input type="password" autoComplete="off" placeholder="请输入 App Key" {...form.register("app_key")} />
+                      </FormField>
+                      <FormField label="App Secret" error={form.formState.errors.app_secret?.message}>
+                        <Input type="password" autoComplete="off" placeholder="请输入 App Secret" {...form.register("app_secret")} />
+                      </FormField>
                     </div>
-                    <Field
+                    <FormField
                       label={isEditing ? "Access Token（可选）" : "Access Token"}
                       error={form.formState.errors.access_token?.message}
                       hint={isEditing ? `当前 ${source.credential_mask}，留空表示不修改` : undefined}
@@ -291,12 +261,9 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                           className="pl-10"
                           {...form.register("access_token")}
                         />
-                        <KeyRound
-                          className="absolute left-3.5 top-3 text-muted-foreground/60"
-                          size={15}
-                        />
+                        <KeyRound className="absolute left-3.5 top-3 text-muted-foreground/60" size={15} />
                       </div>
-                    </Field>
+                    </FormField>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-4">
@@ -315,7 +282,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                 )}
               </>
             ) : (
-              <Field
+              <FormField
                 label={isEditing ? "API Key（可选）" : "API Key"}
                 error={form.formState.errors.api_key?.message}
                 hint={isEditing ? `当前 ${source.api_key_mask}，留空表示不修改` : undefined}
@@ -328,12 +295,9 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     className="pl-10"
                     {...form.register("api_key")}
                   />
-                  <KeyRound
-                    className="absolute left-3.5 top-3 text-muted-foreground/60"
-                    size={15}
-                  />
+                  <KeyRound className="absolute left-3.5 top-3 text-muted-foreground/60" size={15} />
                 </div>
-              </Field>
+              </FormField>
             )}
 
             <div className="flex gap-3 rounded-lg border border-market-down/15 bg-market-down/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
@@ -343,62 +307,24 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                 : "浏览器刷新或再次编辑时只会看到固定掩码。完整密钥不会出现在查询响应、页面状态或日志中。"}
             </div>
 
-            {errorMessage && (
-              <div
-                role="alert"
-                className="rounded-lg border-l-4 border-market-up bg-market-up/6 px-4 py-3 text-[0.9rem] text-market-up"
-              >
-                {errorMessage}
-              </div>
-            )}
+            {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
           </DialogBody>
         </form>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             取消
           </Button>
-          <Button
+          <LoadingButton
             type={isOAuth ? "button" : "submit"}
             form={isOAuth ? undefined : "data-source-form"}
             onClick={isOAuth ? () => void startOAuth() : undefined}
-            disabled={isPending}
+            loading={isPending}
           >
-            {isPending && <LoaderCircle className="animate-spin" size={15} />}
             {isOAuth ? "开始 OAuth 授权" : isEditing ? "保存修改" : "保存数据源"}
-          </Button>
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Field({
-  label,
-  error,
-  hint,
-  children,
-}: {
-  label: string;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 flex items-center justify-between text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
-        {label}
-        {hint && (
-          <span className="font-normal tracking-normal text-muted-foreground/60">{hint}</span>
-        )}
-      </span>
-      {children}
-      {error && <span className="mt-1.5 block text-[0.8rem] text-danger">{error}</span>}
-    </label>
   );
 }

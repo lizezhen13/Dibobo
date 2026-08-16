@@ -8,13 +8,9 @@ import { OverviewPanel, PanelState } from "./overview-panel";
 import type { OverviewIndices } from "./types";
 
 function latestQuoteTime(data: OverviewIndices | undefined) {
-  const timestamps = data?.indices
-    .map((item) => item.quoted_at)
-    .filter((value): value is string => Boolean(value));
+  const timestamps = data?.indices.map((item) => item.quoted_at).filter((value): value is string => Boolean(value));
   if (!timestamps?.length) return null;
-  return timestamps.reduce((latest, current) =>
-    new Date(current).getTime() > new Date(latest).getTime() ? current : latest,
-  );
+  return timestamps.reduce((latest, current) => (new Date(current).getTime() > new Date(latest).getTime() ? current : latest));
 }
 
 export function IndicesPanel({

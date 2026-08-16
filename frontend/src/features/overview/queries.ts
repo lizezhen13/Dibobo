@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { apiFetch } from "../../lib/api";
-import { liveQueryOptions } from "../../lib/query-lifecycle";
-import type {
-  OverviewHotStocks,
-  OverviewIndices,
-  OverviewIndustries,
-  OverviewMarketBreadth,
-} from "./types";
+import { apiFetchSchema } from "../../lib/api-schema";
+import { liveQueryOptions, pollingJitter } from "../../lib/query-lifecycle";
+import { queryKeys } from "../../lib/query-keys";
+import type { OverviewHotStocks, OverviewIndices, OverviewIndustries, OverviewMarketBreadth } from "./types";
+import type { ZodType } from "zod";
 
-export const overviewQueryKey = ["overview"] as const;
+export const overviewQueryKey = queryKeys.overview.all;
 
 const initialDelay = {
   indices: 0,
@@ -27,24 +24,16 @@ interface PollingModule {
 }
 
 function useStaggeredEnabled(delayMs: number, active: boolean) {
-  const [enabled, setEnabled] = useState(active && delayMs === 0);
+  const [delayElapsed, setDelayElapsed] = useState(delayMs === 0);
 
   useEffect(() => {
-    if (!active) {
-      setEnabled(false);
-      return;
-    }
-    if (delayMs === 0) {
-      setEnabled(true);
-      return;
-    }
+    if (!active || delayMs === 0 || delayElapsed) return;
 
-    setEnabled(false);
-    const timer = window.setTimeout(() => setEnabled(true), delayMs);
+    const timer = window.setTimeout(() => setDelayElapsed(true), delayMs);
     return () => window.clearTimeout(timer);
-  }, [active, delayMs]);
+  }, [active, delayElapsed, delayMs]);
 
-  return enabled;
+  return active && (delayMs === 0 || delayElapsed);
 }
 
 function useOverviewModule<T extends PollingModule>(
@@ -52,40 +41,35 @@ function useOverviewModule<T extends PollingModule>(
   path: string,
   delayMs: number,
   active: boolean,
+  schemaLoader: () => Promise<ZodType<T>>,
 ) {
   const enabled = useStaggeredEnabled(delayMs, active);
-  const jitter = useRef(1 + Math.random() * 0.08).current;
+  const jitter = pollingJitter(slug);
 
   return useQuery({
     ...liveQueryOptions,
-    queryKey: [...overviewQueryKey, slug],
-    queryFn: ({ signal }) => apiFetch<T>(path, { signal }),
+    queryKey: queryKeys.overview.module(slug),
+    queryFn: async ({ signal }) => apiFetchSchema(path, await schemaLoader(), { signal }),
     enabled: active && enabled,
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data?.polling_enabled
-        ? Math.round(data.refresh_seconds * 1000 * jitter)
-        : false;
+      return data?.polling_enabled ? Math.round(data.refresh_seconds * 1000 * jitter) : false;
     },
   });
 }
 
 export function useOverviewQuery(active = true) {
-  return useOverviewModule<OverviewIndices>(
-    "indices",
-    "/api/overview/indices",
-    initialDelay.indices,
-    active,
-  );
+  return useOverviewModule<OverviewIndices>("indices", "/api/overview/indices", initialDelay.indices, active, async () => {
+    const { overviewIndicesSchema } = await import("./schemas");
+    return overviewIndicesSchema;
+  });
 }
 
 export function useHotStocksQuery(active = true) {
-  return useOverviewModule<OverviewHotStocks>(
-    "hot-stocks",
-    "/api/overview/hot-stocks",
-    initialDelay.hotStocks,
-    active,
-  );
+  return useOverviewModule<OverviewHotStocks>("hot-stocks", "/api/overview/hot-stocks", initialDelay.hotStocks, active, async () => {
+    const { overviewHotStocksSchema } = await import("./schemas");
+    return overviewHotStocksSchema;
+  });
 }
 
 export function useMarketBreadthQuery(active = true) {
@@ -94,14 +78,16 @@ export function useMarketBreadthQuery(active = true) {
     "/api/overview/market-breadth",
     initialDelay.marketBreadth,
     active,
+    async () => {
+      const { overviewMarketBreadthSchema } = await import("./schemas");
+      return overviewMarketBreadthSchema;
+    },
   );
 }
 
 export function useIndustriesQuery(active = true) {
-  return useOverviewModule<OverviewIndustries>(
-    "industries",
-    "/api/overview/industries",
-    initialDelay.industries,
-    active,
-  );
+  return useOverviewModule<OverviewIndustries>("industries", "/api/overview/industries", initialDelay.industries, active, async () => {
+    const { overviewIndustriesSchema } = await import("./schemas");
+    return overviewIndustriesSchema;
+  });
 }

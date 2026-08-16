@@ -45,9 +45,7 @@ import {
   useTestDataSourceMutation,
 } from "./queries";
 
-const DataSourceDialog = lazy(() =>
-  import("./data-source-dialog").then(({ DataSourceDialog: Dialog }) => ({ default: Dialog })),
-);
+const DataSourceDialog = lazy(() => import("./data-source-dialog").then(({ DataSourceDialog: Dialog }) => ({ default: Dialog })));
 
 type Notice = { tone: "success" | "error" | "warning"; message: string } | null;
 
@@ -78,18 +76,12 @@ export function DataSourceSettings() {
   const deleteMutation = useDeleteDataSourceMutation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
-  const [notice, setNotice] = useState<Notice>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [notice, setNotice] = useState<Notice>(() => getOAuthNotice(searchParams));
 
   useEffect(() => {
     const oauthStatus = searchParams.get("oauth");
     if (!oauthStatus) return;
-    const oauthMessage = searchParams.get("message");
-    if (oauthStatus === "success") {
-      setNotice({ tone: "success", message: "Longbridge OAuth 授权成功，请测试连接以识别接口能力" });
-    } else if (oauthStatus === "failed") {
-      setNotice({ tone: "error", message: oauthMessage ?? "Longbridge OAuth 授权失败，请重试" });
-    }
     const cleaned = new URLSearchParams(searchParams);
     cleaned.delete("oauth");
     cleaned.delete("message");
@@ -113,9 +105,7 @@ export function DataSourceSettings() {
       setNotice({
         tone: result.status === "success" ? "success" : "error",
         message:
-          result.status === "success"
-            ? `${source.name} 连接成功，耗时 ${result.latency_ms} ms`
-            : `${source.name}：${result.message}`,
+          result.status === "success" ? `${source.name} 连接成功，耗时 ${result.latency_ms} ms` : `${source.name}：${result.message}`,
       });
     } catch (error) {
       setNotice({ tone: "error", message: getErrorMessage(error, "连接测试失败") });
@@ -217,9 +207,7 @@ export function DataSourceSettings() {
       )}
 
       <Suspense fallback={null}>
-        {dialogOpen && (
-          <DataSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} source={editingSource} />
-        )}
+        {dialogOpen && <DataSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} source={editingSource} />}
       </Suspense>
     </div>
   );
@@ -256,8 +244,7 @@ function DataSourceCard({
     <Card
       className={cn(
         "relative overflow-hidden",
-        source.is_active &&
-          "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(0,0,0,.4)]",
+        source.is_active && "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(0,0,0,.4)]",
       )}
     >
       <div className="absolute right-5 top-1 font-display text-[4.5rem] leading-none text-foreground/[0.025]">
@@ -278,20 +265,12 @@ function DataSourceCard({
                   </Badge>
                 )}
                 {isLongbridge && <Badge variant="warning">独立测试源</Badge>}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-auto h-7 gap-1 px-2 text-[0.75rem]"
-                  onClick={onTest}
-                  disabled={testing}
-                >
+                <Button variant="outline" size="sm" className="ml-auto h-7 gap-1 px-2 text-[0.75rem]" onClick={onTest} disabled={testing}>
                   {testing ? <LoaderCircle className="animate-spin" size={12} /> : <Activity size={12} />}
                   测试连接
                 </Button>
               </div>
-              <p className="mt-2 truncate font-mono text-[0.7rem] text-muted-foreground/60">
-                {source.base_url}
-              </p>
+              <p className="mt-2 truncate font-mono text-[0.7rem] text-muted-foreground/60">{source.base_url}</p>
             </div>
           </div>
 
@@ -310,9 +289,7 @@ function DataSourceCard({
               </p>
             </div>
             <div>
-              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
-                能力识别
-              </p>
+              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">能力识别</p>
               {capabilities.length ? (
                 <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-muted-foreground">
                   {capabilities.slice(0, 5).map(([key, state]) => (
@@ -327,9 +304,7 @@ function DataSourceCard({
                       {capabilityLabels[key] ?? key}
                     </span>
                   ))}
-                  {capabilities.length > 5 && (
-                    <span className="text-muted-foreground/60">+{capabilities.length - 5}</span>
-                  )}
+                  {capabilities.length > 5 && <span className="text-muted-foreground/60">+{capabilities.length - 5}</span>}
                 </div>
               ) : (
                 <p className="mt-1.5 text-[0.8rem] text-muted-foreground/60">测试连接后识别</p>
@@ -356,12 +331,7 @@ function DataSourceCard({
                   {activating ? <LoaderCircle className="animate-spin" size={13} /> : <Power size={13} />}
                   {source.is_active ? "已启用" : "启用"}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onDeactivate}
-                  disabled={!source.is_active || deactivating}
-                >
+                <Button variant="outline" size="sm" onClick={onDeactivate} disabled={!source.is_active || deactivating}>
                   {deactivating ? <LoaderCircle className="animate-spin" size={13} /> : <PowerOff size={13} />}
                   停用
                 </Button>
@@ -386,9 +356,7 @@ function TestStatus({ source }: { source: DataSource }) {
           <CircleOff size={14} /> 尚未测试
         </p>
         <p className="mt-2 text-[0.75rem] leading-5 text-muted-foreground/60">
-          {source.provider_type === "longbridge"
-            ? "授权后可验证地址、鉴权与代表接口。"
-            : "启用前需要验证地址、鉴权与代表接口。"}
+          {source.provider_type === "longbridge" ? "授权后可验证地址、鉴权与代表接口。" : "启用前需要验证地址、鉴权与代表接口。"}
         </p>
       </div>
     );
@@ -396,44 +364,24 @@ function TestStatus({ source }: { source: DataSource }) {
   const success = source.last_test_status === "success";
   return (
     <div className="min-h-[72px]">
-      <p
-        className={cn(
-          "flex items-center gap-2 text-[0.8rem] font-semibold",
-          success ? "text-market-down" : "text-danger",
-        )}
-      >
+      <p className={cn("flex items-center gap-2 text-[0.8rem] font-semibold", success ? "text-market-down" : "text-danger")}>
         {success ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
         {success ? "连接成功" : "最近测试失败"}
         {source.last_test_latency_ms !== null && (
-          <span className="font-mono font-normal text-muted-foreground/60">
-            {source.last_test_latency_ms} ms
-          </span>
+          <span className="font-mono font-normal text-muted-foreground/60">{source.last_test_latency_ms} ms</span>
         )}
       </p>
       {!success && source.last_test_message && (
-        <p
-          className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60"
-          title={source.last_test_message}
-        >
+        <p className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60" title={source.last_test_message}>
           {source.last_test_message}
         </p>
       )}
-      <p className="mt-2 font-mono text-[0.7rem] text-muted-foreground/60">
-        {formatDateTime(source.last_test_at)}
-      </p>
+      <p className="mt-2 font-mono text-[0.7rem] text-muted-foreground/60">{formatDateTime(source.last_test_at)}</p>
     </div>
   );
 }
 
-function DeleteSourceDialog({
-  source,
-  deleting,
-  onConfirm,
-}: {
-  source: DataSource;
-  deleting: boolean;
-  onConfirm: () => void;
-}) {
+function DeleteSourceDialog({ source, deleting, onConfirm }: { source: DataSource; deleting: boolean; onConfirm: () => void }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -460,13 +408,7 @@ function DeleteSourceDialog({
   );
 }
 
-function NoticeBar({
-  notice,
-  onClose,
-}: {
-  notice: NonNullable<Notice>;
-  onClose: () => void;
-}) {
+function NoticeBar({ notice, onClose }: { notice: NonNullable<Notice>; onClose: () => void }) {
   const Icon = notice.tone === "success" ? Check : notice.tone === "warning" ? AlertTriangle : X;
   return (
     <div
@@ -493,4 +435,15 @@ function NoticeBar({
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function getOAuthNotice(searchParams: URLSearchParams): Notice {
+  const oauthStatus = searchParams.get("oauth");
+  if (oauthStatus === "success") {
+    return { tone: "success", message: "Longbridge OAuth 授权成功，请测试连接以识别接口能力" };
+  }
+  if (oauthStatus === "failed") {
+    return { tone: "error", message: searchParams.get("message") ?? "Longbridge OAuth 授权失败，请重试" };
+  }
+  return null;
 }

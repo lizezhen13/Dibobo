@@ -36,6 +36,8 @@ from app.portfolios.schemas import (
     PortfolioItem,
     PortfolioListResponse,
     PortfolioOrderPayload,
+    PortfolioSummaryItem,
+    PortfolioSummaryListResponse,
     PortfolioUpdate,
 )
 from app.portfolios.service import (
@@ -87,6 +89,23 @@ async def patch_portfolio_order(
     user: User = Depends(get_current_user),
 ) -> PortfolioListResponse:
     return await reorder_portfolios(db, user, payload)
+
+
+@router.get("/portfolios/summaries", response_model=PortfolioSummaryListResponse)
+async def get_portfolio_summaries(
+    portfolio_ids: Annotated[list[uuid.UUID], Query(alias="id", max_length=100)],
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache),
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> PortfolioSummaryListResponse:
+    unique_ids = list(dict.fromkeys(portfolio_ids))
+    items: list[PortfolioSummaryItem] = []
+    for portfolio_id in unique_ids:
+        await get_owned_portfolio(db, user, portfolio_id)
+        summary = await get_holding_summary(db, cache, user, settings, portfolio_id=portfolio_id)
+        items.append(PortfolioSummaryItem(portfolio_id=portfolio_id, summary=summary))
+    return PortfolioSummaryListResponse(items=items)
 
 
 @router.get("/portfolios/{portfolio_id}", response_model=PortfolioItem)

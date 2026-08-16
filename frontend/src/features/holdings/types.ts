@@ -1,6 +1,8 @@
+import type { AssetType, DataSourceSummary, MarketStatus } from "../../domain/market";
+
+export type { AssetType, DataSourceSummary, MarketStatus } from "../../domain/market";
+
 export type HoldingStatus = "open" | "closed";
-export type AssetType = "a_share" | "fund_etf";
-export type MarketStatus = "交易中" | "午间休市" | "已收盘" | "休市" | "未知";
 
 export interface HoldingsFilters {
   keyword: string;
@@ -22,12 +24,6 @@ export interface Portfolio {
 
 export interface PortfolioList {
   items: Portfolio[];
-}
-
-export interface DataSourceSummary {
-  state: "ready" | "not_configured" | "authentication_failed" | "rate_limited" | "unavailable";
-  name: string | null;
-  message: string | null;
 }
 
 export interface Instrument {
@@ -98,6 +94,15 @@ export interface HoldingSummary {
   polling_enabled: boolean;
   refresh_seconds: number;
   stale: boolean;
+}
+
+export interface PortfolioSummaryItem {
+  portfolio_id: string;
+  summary: HoldingSummary;
+}
+
+export interface PortfolioSummaryList {
+  items: PortfolioSummaryItem[];
 }
 
 export interface HoldingCreatePayload {

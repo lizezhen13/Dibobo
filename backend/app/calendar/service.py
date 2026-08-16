@@ -71,6 +71,61 @@ _MARKET_TIMEZONES = {
     "CN": CALENDAR_TIMEZONE,
 }
 
+_UNIT_KEYS = (
+    "unit",
+    "units",
+    "unit_name",
+    "unit_label",
+    "measure_unit",
+    "measurement_unit",
+    "单位",
+    "计量单位",
+)
+_UNIT_NORMALIZATIONS = {
+    "percent": "%",
+    "percentage": "%",
+    "pct": "%",
+    "％": "%",
+    "百分比": "%",
+    "百分率": "%",
+}
+_UNIT_VALUE_SUFFIXES = (
+    "美元/盎司",
+    "美元/桶",
+    "美元/股",
+    "港元/股",
+    "人民币/股",
+    "新加坡元",
+    "瑞士法郎",
+    "人民币",
+    "港元",
+    "美元",
+    "欧元",
+    "英镑",
+    "日元",
+    "韩元",
+    "澳元",
+    "加元",
+    "US$",
+    "HK$",
+    "USD",
+    "HKD",
+    "CNY",
+    "EUR",
+    "GBP",
+    "JPY",
+    "KRW",
+    "AUD",
+    "CAD",
+    "百分点",
+    "指数",
+    "‰",
+    "%",
+    "点",
+    "元",
+    "$",
+)
+
 
 def validate_markets(category: CalendarCategory, markets: list[str]) -> list[str]:
     normalized = list(dict.fromkeys(market.upper() for market in markets if market.strip()))
@@ -93,6 +148,60 @@ def _value_text(value: object) -> str | None:
     if isinstance(value, (str, int, float)):
         return _text(str(value))
     return None
+
+
+def _key_text(value: object) -> str | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    return raw.casefold().replace("-", "_").replace(" ", "_")
+
+
+def _unit_text(value: object) -> str | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    return _UNIT_NORMALIZATIONS.get(raw.casefold(), raw.replace("％", "%"))
+
+
+def _infer_unit_from_values(mapping: dict[str, str]) -> str | None:
+    for key in (
+        "actual",
+        "actual_value",
+        "forecast",
+        "forecast_value",
+        "previous",
+        "previous_value",
+    ):
+        value = mapping.get(key)
+        if not value:
+            continue
+        normalized = value.strip().replace("％", "%")
+        for suffix in _UNIT_VALUE_SUFFIXES:
+            if normalized.endswith(suffix) and normalized[: -len(suffix)].strip():
+                return _unit_text(suffix)
+    return None
+
+
+def _strip_unit_from_value(value: str | None, unit: str | None) -> str | None:
+    raw = _text(value)
+    normalized_unit = _unit_text(unit)
+    if not raw or not normalized_unit:
+        return raw
+    normalized_value = raw.replace("％", "%")
+    candidates = sorted(
+        {normalized_unit, *_UNIT_VALUE_SUFFIXES}, key=len, reverse=True
+    )
+    for candidate in candidates:
+        if normalized_value.endswith(candidate):
+            stripped = normalized_value[: -len(candidate)].strip()
+            if stripped:
+                return stripped
+        if normalized_value.startswith(candidate):
+            stripped = normalized_value[len(candidate) :].strip()
+            if stripped:
+                return stripped
+    return raw
 
 
 def _parse_date(value: object) -> date | None:
@@ -147,8 +256,9 @@ def _kv_map(value: object) -> dict[str, str]:
             nested = _kv_map(raw) if isinstance(raw, dict) else {}
             result.update(nested)
             text = _value_text(raw)
-            if text is not None:
-                result[str(key).strip().lower()] = text
+            normalized_key = _key_text(key)
+            if text is not None and normalized_key:
+                result[normalized_key] = text
         return result
     if not isinstance(value, list):
         return {}
@@ -156,17 +266,20 @@ def _kv_map(value: object) -> dict[str, str]:
     for item in value:
         if not isinstance(item, dict):
             continue
-        key = _text(item.get("key") or item.get("name") or item.get("label"))
+        key = _key_text(item.get("key") or item.get("name") or item.get("label"))
         raw = item.get("value")
-        if raw is None:
-            raw = item.get("val") or item.get("text")
         text = _value_text(raw)
-        value_type = _text(item.get("type") or item.get("value_type"))
+        if text is None:
+            for fallback_key in ("value_raw", "val", "text"):
+                text = _value_text(item.get(fallback_key))
+                if text is not None:
+                    break
+        value_type = _key_text(item.get("type") or item.get("value_type") or item.get("valueType"))
         if text:
             if key:
-                result[key.lower()] = text
+                result[key] = text
             if value_type:
-                result.setdefault(value_type.lower(), text)
+                result.setdefault(value_type, text)
     return result
 
 
@@ -306,6 +419,45 @@ def _normalize_event(
     symbol = raw_symbol.upper() if raw_symbol else None
     importance = _importance(info.get("star"))
     details = _details(category, info, kv)
+    actual_value = _first(
+        kv,
+        "actual",
+        "actual_value",
+        "actual_eps",
+        "actual_revenue",
+        "result",
+        "实际",
+        "实际值",
+    )
+    forecast_value = _first(
+        kv,
+        "forecast",
+        "forecast_value",
+        "estimate",
+        "estimate_eps",
+        "estimate_revenue",
+        "预期",
+        "预测值",
+    )
+    previous_value = _first(kv, "previous", "previous_value", "前值")
+    revised_value = _first(kv, "revised", "revised_value", "修正值")
+    unit = _unit_text(
+        _text(info.get("unit"))
+        or _text(info.get("unit_name"))
+        or _text(info.get("unit_label"))
+        or _first(kv, *_UNIT_KEYS)
+        or _infer_unit_from_values(
+            {
+                "actual": actual_value or "",
+                "forecast": forecast_value or "",
+                "previous": previous_value or "",
+            }
+        )
+    )
+    actual_value = _strip_unit_from_value(actual_value, unit)
+    forecast_value = _strip_unit_from_value(forecast_value, unit)
+    previous_value = _strip_unit_from_value(previous_value, unit)
+    revised_value = _strip_unit_from_value(revised_value, unit)
     raw_country = _text(info.get("country_name")) or _text(info.get("country"))
     return CalendarEvent(
         id=str(uuid.uuid5(uuid.NAMESPACE_URL, canonical_key)),
@@ -325,27 +477,11 @@ def _normalize_event(
         or _first(kv, "market_time", "financial_market_time"),
         importance=importance,
         period=period,
-        actual_value=_first(
-            kv,
-            "actual",
-            "actual_value",
-            "actual_eps",
-            "actual_revenue",
-            "result",
-            "实际值",
-        ),
-        forecast_value=_first(
-            kv,
-            "forecast",
-            "forecast_value",
-            "estimate",
-            "estimate_eps",
-            "estimate_revenue",
-            "预测值",
-        ),
-        previous_value=_first(kv, "previous", "previous_value", "前值"),
-        revised_value=_first(kv, "revised", "revised_value", "修正值"),
-        unit=_first(kv, "unit", "单位"),
+        actual_value=actual_value,
+        forecast_value=forecast_value,
+        previous_value=previous_value,
+        revised_value=revised_value,
+        unit=unit,
         currency=_text(info.get("currency")) or _first(kv, "currency", "币种"),
         content=_text(info.get("content")),
         scope_tags=_scope_tags(tags),

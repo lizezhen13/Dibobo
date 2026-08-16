@@ -3,15 +3,10 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
+import { FormField, InlineAlert, LoadingButton } from "../../components/patterns";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { ApiError } from "../../lib/api";
 import { useInstrumentSearchQuery } from "../holdings/queries";
 import type { Instrument } from "../holdings/types";
@@ -29,15 +24,6 @@ export function WatchlistAddDialog({ open, onOpenChange }: WatchlistAddDialogPro
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument | null>(null);
   const [note, setNote] = useState("");
   const search = useInstrumentSearchQuery(debouncedQuery);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    setDebouncedQuery("");
-    setSelectedInstrument(null);
-    setNote("");
-    createMutation.reset();
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -60,32 +46,24 @@ export function WatchlistAddDialog({ open, onOpenChange }: WatchlistAddDialogPro
   };
 
   const errorMessage =
-    createMutation.error instanceof ApiError
-      ? createMutation.error.message
-      : createMutation.error
-        ? "添加失败，请稍后重试"
-        : null;
+    createMutation.error instanceof ApiError ? createMutation.error.message : createMutation.error ? "添加失败，请稍后重试" : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(640px,calc(100vw-48px))]">
+      <DialogContent size="lg">
         <DialogHeader className="flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
             <Star size={18} />
           </div>
           <div className="min-w-0 pt-0.5">
             <DialogTitle>添加自选</DialogTitle>
-            <DialogDescription>
-              搜索 A 股或 ETF，选择明确的标的后加入你的观察列表。
-            </DialogDescription>
+            <DialogDescription>搜索 A 股或 ETF，选择明确的标的后加入你的观察列表。</DialogDescription>
           </div>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-6">
           <label className="relative block">
-            <span className="mb-2 block text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
-              股票 / ETF
-            </span>
+            <span className="mb-2 block text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">股票 / ETF</span>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70" size={16} />
               <Input
@@ -143,7 +121,9 @@ export function WatchlistAddDialog({ open, onOpenChange }: WatchlistAddDialogPro
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[0.92rem] font-semibold text-foreground">{item.name}</span>
-                      <span className="mt-0.5 block font-mono text-[0.7rem] tracking-[0.04em] text-muted-foreground/65">{item.thscode}</span>
+                      <span className="mt-0.5 block font-mono text-[0.7rem] tracking-[0.04em] text-muted-foreground/65">
+                        {item.thscode}
+                      </span>
                     </span>
                     <Badge>{item.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
                   </button>
@@ -155,38 +135,37 @@ export function WatchlistAddDialog({ open, onOpenChange }: WatchlistAddDialogPro
           {selectedInstrument && (
             <div className="flex items-center gap-2.5 rounded-xl border border-success/20 bg-success/8 px-4 py-3 text-[0.85rem] text-success">
               <Check size={15} />
-              <span>已选择 {selectedInstrument.ticker} · {selectedInstrument.name}</span>
+              <span>
+                已选择 {selectedInstrument.ticker} · {selectedInstrument.name}
+              </span>
             </div>
           )}
 
-          <label className="block">
-            <span className="mb-2 flex items-center justify-between text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">
-              备注
-              <span className="font-mono text-[0.7rem] font-normal tracking-normal text-muted-foreground/60">{note.length}/1000</span>
-            </span>
-            <textarea
+          <FormField label="备注" hint={`${note.length}/1000`}>
+            <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value.slice(0, 1000))}
-              className="min-h-24 w-full resize-y rounded-lg border border-input bg-card px-3.5 py-3 text-[0.95rem] leading-7 text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-[3px] focus:ring-primary/15"
+              className="min-h-24"
               placeholder="记录你的观察重点（可选）"
             />
-          </label>
+          </FormField>
 
-          {errorMessage && (
-            <div role="alert" className="rounded-lg border-l-4 border-market-up bg-market-up/6 px-4 py-3 text-[0.9rem] text-danger">
-              {errorMessage}
-            </div>
-          )}
+          {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="ghost" className="!text-[12px]" onClick={() => onOpenChange(false)} disabled={createMutation.isPending}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="!text-[12px]"
+            onClick={() => onOpenChange(false)}
+            disabled={createMutation.isPending}
+          >
             取消
           </Button>
-          <Button type="button" className="!text-[12px]" onClick={() => void submit()} disabled={!selectedInstrument || createMutation.isPending}>
-            {createMutation.isPending && <LoaderCircle className="animate-spin" size={15} />}
+          <LoadingButton type="button" onClick={() => void submit()} loading={createMutation.isPending} disabled={!selectedInstrument}>
             添加到自选
-          </Button>
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -92,12 +92,7 @@ export function useAutoCarousel<T extends HTMLElement>({
         return;
       }
 
-      if (
-        frameId !== undefined ||
-        !canCarousel ||
-        pauseReasons.size > 0 ||
-        document.hidden
-      ) {
+      if (frameId !== undefined || !canCarousel || pauseReasons.size > 0 || document.hidden) {
         return;
       }
 
@@ -151,10 +146,7 @@ export function useAutoCarousel<T extends HTMLElement>({
 
       event.preventDefault();
       pause("wheel");
-      const nextOffset = Math.min(
-        loopDistance,
-        Math.max(0, offset + normalizeWheelDelta(event)),
-      );
+      const nextOffset = Math.min(loopDistance, Math.max(0, offset + normalizeWheelDelta(event)));
       offset = nextOffset;
       atEnd = offset >= loopDistance;
       if (!atEnd) clearResetTimer();
@@ -170,9 +162,7 @@ export function useAutoCarousel<T extends HTMLElement>({
     const measure = () => {
       if (!track) return;
 
-      const firstItem = itemSelector
-        ? track.querySelector<HTMLElement>(itemSelector)
-        : (track.firstElementChild as HTMLElement | null);
+      const firstItem = itemSelector ? track.querySelector<HTMLElement>(itemSelector) : (track.firstElementChild as HTMLElement | null);
       const trackRect = track.getBoundingClientRect();
 
       if (!firstItem) {

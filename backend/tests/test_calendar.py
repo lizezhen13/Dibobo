@@ -204,6 +204,71 @@ def test_normalization_parses_longbridge_unix_datetime_and_extended_fields() -> 
     assert event.unit == "指数"
 
 
+def test_normalization_reads_and_normalizes_longbridge_calendar_unit() -> None:
+    event = _normalize_event(
+        CalendarCategory.MACRO,
+        {
+            "id": "macro-unit-1",
+            "market": "US",
+            "event_type": "CPI",
+            "date": "2026-08-18",
+            "data_kv": [
+                {"key": "", "value": "3.1", "value_type": "actual"},
+                {"key": "", "value": "percent", "value_type": "unit"},
+            ],
+        },
+        set(),
+        datetime(2026, 8, 15, 8, tzinfo=UTC),
+    )
+
+    assert event is not None
+    assert event.actual_value == "3.1"
+    assert event.unit == "%"
+
+
+def test_normalization_infers_percent_unit_from_formatted_calendar_value() -> None:
+    event = _normalize_event(
+        CalendarCategory.MACRO,
+        {
+            "id": "macro-unit-2",
+            "market": "US",
+            "event_type": "CPI",
+            "date": "2026-08-18",
+            "data_kv": [{"key": "实际", "value": "3.1%", "value_type": "actual"}],
+        },
+        set(),
+        datetime(2026, 8, 15, 8, tzinfo=UTC),
+    )
+
+    assert event is not None
+    assert event.unit == "%"
+
+
+def test_normalization_separates_currency_unit_from_formatted_calendar_values() -> None:
+    event = _normalize_event(
+        CalendarCategory.MACRO,
+        {
+            "id": "macro-unit-3",
+            "market": "US",
+            "event_type": "GDP",
+            "date": "2026-08-18",
+            "data_kv": [
+                {"key": "实际", "value": "447.8 美元"},
+                {"key": "预期", "value": "-- 美元"},
+                {"key": "前值", "value": "445.9 美元"},
+            ],
+        },
+        set(),
+        datetime(2026, 8, 15, 8, tzinfo=UTC),
+    )
+
+    assert event is not None
+    assert event.unit == "美元"
+    assert event.actual_value == "447.8"
+    assert event.forecast_value == "--"
+    assert event.previous_value == "445.9"
+
+
 def test_normalization_treats_market_closures_as_date_events() -> None:
     event = _normalize_event(
         CalendarCategory.CLOSED,

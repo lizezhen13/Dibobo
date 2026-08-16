@@ -2,21 +2,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { sessionQueryKey } from "../auth/queries";
 import { apiFetch } from "../../lib/api";
+import { apiFetchSchema } from "../../lib/api-schema";
 import { overviewQueryKey } from "../overview/queries";
-import type {
-  ConnectionTestResult,
-  DataSource,
-  DataSourcePayload,
-  OAuthStartPayload,
-  OAuthStartResult,
-} from "./types";
+import { queryKeys } from "../../lib/query-keys";
+import type { ConnectionTestResult, DataSource, DataSourcePayload, OAuthStartPayload, OAuthStartResult } from "./types";
 
-export const dataSourcesQueryKey = ["settings", "data-sources"] as const;
+export const dataSourcesQueryKey = queryKeys.settings.dataSources;
 
 export function useDataSourcesQuery() {
   return useQuery({
     queryKey: dataSourcesQueryKey,
-    queryFn: () => apiFetch<DataSource[]>("/api/settings/data-sources"),
+    queryFn: async ({ signal }) => {
+      const { dataSourcesSchema } = await import("./schemas");
+      return apiFetchSchema("/api/settings/data-sources", dataSourcesSchema, { signal });
+    },
   });
 }
 
@@ -73,8 +72,7 @@ export function useTestDataSourceMutation() {
 export function useActivateDataSourceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<DataSource>(`/api/settings/data-sources/${id}/activate`, { method: "POST" }),
+    mutationFn: (id: string) => apiFetch<DataSource>(`/api/settings/data-sources/${id}/activate`, { method: "POST" }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
@@ -87,8 +85,7 @@ export function useActivateDataSourceMutation() {
 export function useDeactivateDataSourceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<DataSource>(`/api/settings/data-sources/${id}/deactivate`, { method: "POST" }),
+    mutationFn: (id: string) => apiFetch<DataSource>(`/api/settings/data-sources/${id}/deactivate`, { method: "POST" }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
@@ -101,8 +98,7 @@ export function useDeactivateDataSourceMutation() {
 export function useDeleteDataSourceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<{ message: string }>(`/api/settings/data-sources/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => apiFetch<{ message: string }>(`/api/settings/data-sources/${id}`, { method: "DELETE" }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
@@ -115,11 +111,7 @@ export function useDeleteDataSourceMutation() {
 export function useChangePasswordMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: {
-      current_password: string;
-      new_password: string;
-      confirm_password: string;
-    }) =>
+    mutationFn: (payload: { current_password: string; new_password: string; confirm_password: string }) =>
       apiFetch<{ message: string }>("/api/auth/change-password", {
         method: "POST",
         body: JSON.stringify(payload),

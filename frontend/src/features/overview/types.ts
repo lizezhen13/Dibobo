@@ -1,11 +1,5 @@
-export type MarketStatus = "交易中" | "午间休市" | "已收盘" | "休市" | "未知";
-
-export type DataSourceState =
-  | "ready"
-  | "not_configured"
-  | "authentication_failed"
-  | "rate_limited"
-  | "unavailable";
+export type { DataSourceState, MarketStatus } from "../../domain/market";
+import type { DataSourceState, MarketStatus } from "../../domain/market";
 
 export interface IndexCardData {
   name: string;

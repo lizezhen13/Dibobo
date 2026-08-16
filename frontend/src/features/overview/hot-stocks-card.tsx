@@ -26,32 +26,18 @@ const trendIcon = {
 
 const HotStockRow = memo(function HotStockRow({ item }: { item: HotStockItem }) {
   const TrendIcon = trendIcon[item.rank_trend];
-  const trendTone =
-    item.rank_trend === "up"
-      ? "text-market-up"
-      : item.rank_trend === "down"
-        ? "text-market-down"
-        : "text-muted-foreground";
+  const trendTone = item.rank_trend === "up" ? "text-market-up" : item.rank_trend === "down" ? "text-market-down" : "text-muted-foreground";
 
   return (
-    <div
-      className="grid min-h-11 grid-cols-[32px_minmax(0,1fr)_72px_52px] items-center gap-2 px-4 transition-colors hover:bg-row-hover"
-    >
-      <span
-        className={cn(
-          "font-mono text-[13px] tracking-normal text-muted-foreground",
-          item.rank <= 3 && "font-semibold text-primary",
-        )}
-      >
+    <div className="grid min-h-11 grid-cols-[32px_minmax(0,1fr)_72px_52px] items-center gap-2 px-4 transition-colors hover:bg-row-hover">
+      <span className={cn("font-mono text-[13px] tracking-normal text-muted-foreground", item.rank <= 3 && "font-semibold text-primary")}>
         {String(item.rank).padStart(2, "0")}
       </span>
       <div className="min-w-0">
         <p className="truncate text-[13px] font-medium text-foreground/90">{item.name}</p>
         <p className="font-mono text-[10px] tracking-normal text-muted-foreground/45">{item.ticker}</p>
       </div>
-      <span className="truncate text-right font-mono text-[13px] tracking-normal text-foreground/80">
-        {formatHeat(item.heat)}
-      </span>
+      <span className="truncate text-right font-mono text-[13px] tracking-normal text-foreground/80">{formatHeat(item.heat)}</span>
       <span className={cn("flex items-center justify-end gap-1 font-mono text-[11px] tracking-normal", trendTone)}>
         <TrendIcon size={11} />
         {item.rank_change === null ? "-" : Math.abs(item.rank_change)}
@@ -60,11 +46,7 @@ const HotStockRow = memo(function HotStockRow({ item }: { item: HotStockItem }) 
   );
 });
 
-export function HotStocksCard({
-  query,
-}: {
-  query: UseQueryResult<OverviewHotStocks, Error>;
-}) {
+export function HotStocksCard({ query }: { query: UseQueryResult<OverviewHotStocks, Error> }) {
   const data = query.data;
   const items = data?.items.slice(0, 30) ?? [];
 

@@ -1,10 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { PageContainer } from "../../components/patterns";
 import { AccountSettings } from "./account-settings";
 import { DataSourceSettings } from "./data-source-settings";
 
 export function SettingsPage() {
   return (
-    <section className="mx-auto max-w-[1100px] animate-fade-in-up">
+    <PageContainer size="compact">
+      <h1 className="sr-only">系统设置</h1>
       <Tabs defaultValue="account" className="w-full">
         <TabsList className="mb-8">
           <TabsTrigger value="account">账号设置</TabsTrigger>
@@ -19,6 +21,6 @@ export function SettingsPage() {
           <DataSourceSettings />
         </TabsContent>
       </Tabs>
-    </section>
+    </PageContainer>
   );
 }

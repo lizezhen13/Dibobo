@@ -38,4 +38,3 @@ export function GuestGuard() {
   if (session.data) return <Navigate to="/overview" replace />;
   return <Outlet />;
 }
-

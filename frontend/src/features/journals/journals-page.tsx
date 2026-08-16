@@ -1,20 +1,6 @@
-import {
-  AlertTriangle,
-  BookOpenText,
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Edit3,
-  Filter,
-  NotebookPen,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  Trash2,
-} from "lucide-react";
-import { useState } from "react";
+import { BookOpenText, CalendarDays, ChevronDown, ChevronUp, Edit3, Filter, NotebookPen, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   AlertDialog,
@@ -27,6 +13,7 @@ import {
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
+import { EmptyState, ErrorState, PageContainer, PageHeader, Pagination } from "../../components/patterns";
 import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { formatDateTime } from "../../lib/formatters";
@@ -40,13 +27,21 @@ interface AppliedFilters {
   dateTo: string;
 }
 
-const emptyFilters: AppliedFilters = { dateFrom: "", dateTo: "" };
-
 export function JournalsPage() {
-  const [dateFromInput, setDateFromInput] = useState("");
-  const [dateToInput, setDateToInput] = useState("");
-  const [filters, setFilters] = useState<AppliedFilters>(emptyFilters);
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsString = searchParams.toString();
+  const appliedState = useMemo(() => {
+    const params = new URLSearchParams(searchParamsString);
+    const parsedPage = Number(params.get("page"));
+    return {
+      filters: {
+        dateFrom: params.get("date_from") ?? "",
+        dateTo: params.get("date_to") ?? "",
+      },
+      page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+    };
+  }, [searchParamsString]);
+  const { filters, page } = appliedState;
   const [filterError, setFilterError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
@@ -61,29 +56,38 @@ export function JournalsPage() {
     setDialogOpen(true);
   };
 
-  const applyFilters = () => {
+  const applyFilters = (dateFromInput: string, dateToInput: string) => {
     if (dateFromInput && dateToInput && dateFromInput > dateToInput) {
       setFilterError("开始日期不能晚于结束日期");
       return;
     }
     setFilterError(null);
-    setFilters({ dateFrom: dateFromInput, dateTo: dateToInput });
-    setPage(1);
+    const next = new URLSearchParams(searchParamsString);
+    if (dateFromInput) next.set("date_from", dateFromInput);
+    else next.delete("date_from");
+    if (dateToInput) next.set("date_to", dateToInput);
+    else next.delete("date_to");
+    next.delete("page");
+    setSearchParams(next, { replace: true });
   };
 
   const clearFilters = () => {
-    setDateFromInput("");
-    setDateToInput("");
-    setFilters(emptyFilters);
     setFilterError(null);
-    setPage(1);
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
+  const goToPage = (nextPage: number) => {
+    const next = new URLSearchParams(searchParamsString);
+    if (nextPage <= 1) next.delete("page");
+    else next.set("page", String(nextPage));
+    setSearchParams(next, { replace: true });
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
-      if ((query.data?.items.length ?? 0) === 1 && page > 1) setPage((value) => value - 1);
+      if ((query.data?.items.length ?? 0) === 1 && page > 1) goToPage(page - 1);
       setExpandedIds((current) => {
         const next = new Set(current);
         next.delete(deleteTarget.id);
@@ -105,84 +109,28 @@ export function JournalsPage() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-[1280px] animate-enter">
-      <div className="mb-8 flex items-end justify-between gap-8">
-        <div>
-          <p className="eyebrow text-primary/90">INVESTMENT NOTES / 投资日记</p>
-          <h1 className="mt-2 font-display text-4xl tracking-tight text-foreground">投资日记</h1>
-          <p className="mt-2.5 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
-            记录你每一次买入的逻辑，卖出的理由，每一笔交易背后，都是一次决策的印记。
-          </p>
-        </div>
-        <Button onClick={() => openEditor(null)}>
-          <Plus size={15} /> 新建日记
-        </Button>
-      </div>
+    <PageContainer size="default">
+      <PageHeader
+        eyebrow="INVESTMENT NOTES / 投资日记"
+        title="投资日记"
+        description="记录你每一次买入的逻辑，卖出的理由，每一笔交易背后，都是一次决策的印记。"
+        actions={
+          <Button onClick={() => openEditor(null)}>
+            <Plus size={15} /> 新建日记
+          </Button>
+        }
+      />
 
       <div className="mb-7 overflow-hidden rounded-xl border border-border bg-card shadow-raised">
-        <div className="grid grid-cols-[auto_1fr_1fr_auto] items-end gap-4 px-5 py-5">
-          <div className="flex h-10 items-center gap-2 pr-2 text-[0.78rem] font-semibold tracking-[0.08em] text-muted-foreground">
-            <CalendarDays size={16} className="text-primary/80" /> 日期范围
-          </div>
-          <label className="relative block">
-            <div className="relative">
-              <CalendarDays
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80"
-              />
-              <span
-                className={cn(
-                  "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-[0.9rem] text-muted-foreground/45",
-                  dateFromInput && "hidden",
-                )}
-              >
-                请选择开始日期
-              </span>
-              <Input
-                type="date"
-                value={dateFromInput}
-                className={cn("date-input w-full cursor-pointer pl-9", !dateFromInput && "date-input-empty")}
-                onChange={(event) => {
-                  setDateFromInput(event.target.value);
-                  setFilterError(null);
-                }}
-              />
-            </div>
-          </label>
-          <label className="relative block">
-            <div className="relative">
-              <CalendarDays
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80"
-              />
-              <span
-                className={cn(
-                  "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-[0.9rem] text-muted-foreground/45",
-                  dateToInput && "hidden",
-                )}
-              >
-                请选择结束日期
-              </span>
-              <Input
-                type="date"
-                value={dateToInput}
-                className={cn("date-input w-full cursor-pointer pl-9", !dateToInput && "date-input-empty")}
-                onChange={(event) => {
-                  setDateToInput(event.target.value);
-                  setFilterError(null);
-                }}
-              />
-            </div>
-          </label>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={clearFilters} disabled={!dateFromInput && !dateToInput && !isFiltered}>
-              <RotateCcw size={14} /> 清除
-            </Button>
-            <Button onClick={applyFilters}>
-              <Filter size={14} /> 筛选
-            </Button>
-          </div>
-        </div>
+        <JournalDateFilterControls
+          key={`${filters.dateFrom}\u0000${filters.dateTo}`}
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          isFiltered={isFiltered}
+          onApply={applyFilters}
+          onClear={clearFilters}
+          onInputChange={() => setFilterError(null)}
+        />
         <div className="flex h-9 items-center justify-between border-t border-line bg-card-deep/35 px-5 font-mono text-[0.68rem] tracking-[0.08em] text-muted-foreground/60">
           <span>{filterError ?? (isFiltered ? formatRange(filters) : "ALL DATES / 全部历史")}</span>
           <span>{query.data ? `${query.data.total} NOTES` : "— NOTES"}</span>
@@ -192,9 +140,34 @@ export function JournalsPage() {
       {query.isPending ? (
         <JournalListSkeleton />
       ) : query.isError ? (
-        <LoadError onRetry={() => void query.refetch()} />
+        <ErrorState
+          title="投资日记加载失败"
+          description="请检查本地服务状态后重试。"
+          retryLabel="重新加载"
+          onRetry={() => void query.refetch()}
+          className="min-h-[360px]"
+        />
       ) : query.data.items.length === 0 ? (
-        <EmptyState filtered={isFiltered} onCreate={() => openEditor(null)} onClear={clearFilters} />
+        <EmptyState
+          icon={isFiltered ? CalendarDays : BookOpenText}
+          title={isFiltered ? "该日期范围内没有投资日记" : "还没有留下任何投资日记"}
+          description={
+            isFiltered ? "换一个日期范围，或者回到全部历史记录。" : "第一篇不需要完美。记下今天最重要的判断，以及什么事实会证明它是错的。"
+          }
+          action={
+            <>
+              {isFiltered && (
+                <Button variant="outline" onClick={clearFilters}>
+                  <RotateCcw size={14} /> 查看全部
+                </Button>
+              )}
+              <Button onClick={() => openEditor(null)}>
+                <NotebookPen size={14} /> 写一篇日记
+              </Button>
+            </>
+          }
+          className="min-h-[390px]"
+        />
       ) : (
         <div className={cn("relative", query.isPlaceholderData && "opacity-55 transition-opacity")}>
           <div className="space-y-5">
@@ -215,28 +188,17 @@ export function JournalsPage() {
         </div>
       )}
 
-      {query.data && query.data.total_pages > 1 && (
-        <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
-          <p className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground/60">
-            PAGE {query.data.page.toString().padStart(2, "0")} / {query.data.total_pages.toString().padStart(2, "0")}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1 || query.isFetching} onClick={() => setPage((value) => value - 1)}>
-              <ChevronLeft size={14} /> 上一页
-            </Button>
-            <span className="min-w-20 text-center text-[0.85rem] text-muted-foreground">
-              第 {query.data.page} 页
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= query.data.total_pages || query.isFetching}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              下一页 <ChevronRight size={14} />
-            </Button>
-          </div>
-        </div>
+      {query.data && (
+        <Pagination
+          page={query.data.page}
+          totalPages={query.data.total_pages}
+          pageStart={(query.data.page - 1) * query.data.page_size + 1}
+          pageEnd={Math.min(query.data.page * query.data.page_size, query.data.total)}
+          totalItems={query.data.total}
+          isLoading={query.isFetching}
+          onPageChange={goToPage}
+          className="mt-7"
+        />
       )}
 
       <JournalDialog open={dialogOpen} onOpenChange={setDialogOpen} journal={editingJournal} />
@@ -245,9 +207,7 @@ export function JournalsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>永久删除“{deleteTarget?.title}”？</AlertDialogTitle>
-            <AlertDialogDescription>
-              这篇日记及其正文会被立即删除，且没有回收站或版本历史。该操作无法撤销。
-            </AlertDialogDescription>
+            <AlertDialogDescription>这篇日记及其正文会被立即删除，且没有回收站或版本历史。该操作无法撤销。</AlertDialogDescription>
           </AlertDialogHeader>
           {deleteMutation.error && (
             <div role="alert" className="mt-4 border-l-2 border-market-up bg-danger/10 px-4 py-3 text-sm text-market-up">
@@ -268,7 +228,86 @@ export function JournalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </PageContainer>
+  );
+}
+
+function JournalDateFilterControls({
+  dateFrom,
+  dateTo,
+  isFiltered,
+  onApply,
+  onClear,
+  onInputChange,
+}: {
+  dateFrom: string;
+  dateTo: string;
+  isFiltered: boolean;
+  onApply: (dateFrom: string, dateTo: string) => void;
+  onClear: () => void;
+  onInputChange: () => void;
+}) {
+  const [dateFromInput, setDateFromInput] = useState(dateFrom);
+  const [dateToInput, setDateToInput] = useState(dateTo);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 px-5 py-5 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end">
+      <div className="flex h-10 items-center gap-2 pr-2 text-label font-semibold tracking-[0.08em] text-muted-foreground">
+        <CalendarDays size={16} className="text-primary/80" /> 日期范围
+      </div>
+      <label className="relative block">
+        <div className="relative">
+          <CalendarDays size={16} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80" />
+          <span
+            className={cn(
+              "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-body-sm text-muted-foreground/45",
+              dateFromInput && "hidden",
+            )}
+          >
+            请选择开始日期
+          </span>
+          <Input
+            type="date"
+            value={dateFromInput}
+            className={cn("date-input w-full cursor-pointer pl-9", !dateFromInput && "date-input-empty")}
+            onChange={(event) => {
+              setDateFromInput(event.target.value);
+              onInputChange();
+            }}
+          />
+        </div>
+      </label>
+      <label className="relative block">
+        <div className="relative">
+          <CalendarDays size={16} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80" />
+          <span
+            className={cn(
+              "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-body-sm text-muted-foreground/45",
+              dateToInput && "hidden",
+            )}
+          >
+            请选择结束日期
+          </span>
+          <Input
+            type="date"
+            value={dateToInput}
+            className={cn("date-input w-full cursor-pointer pl-9", !dateToInput && "date-input-empty")}
+            onChange={(event) => {
+              setDateToInput(event.target.value);
+              onInputChange();
+            }}
+          />
+        </div>
+      </label>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onClear} disabled={!dateFromInput && !dateToInput && !isFiltered}>
+          <RotateCcw size={14} /> 清除
+        </Button>
+        <Button onClick={() => onApply(dateFromInput, dateToInput)}>
+          <Filter size={14} /> 筛选
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -407,65 +446,9 @@ function JournalListSkeleton() {
   );
 }
 
-function EmptyState({
-  filtered,
-  onCreate,
-  onClear,
-}: {
-  filtered: boolean;
-  onCreate: () => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className="grid min-h-[390px] place-items-center rounded-xl border border-dashed border-border bg-card/35 px-6 text-center">
-      <div>
-        <span className="mx-auto grid size-14 place-items-center rounded-full border border-primary/20 bg-primary/6 text-primary/80">
-          {filtered ? <CalendarDays size={23} /> : <BookOpenText size={23} />}
-        </span>
-        <p className="mt-5 eyebrow text-primary/70">{filtered ? "NO NOTES IN RANGE" : "YOUR FIRST NOTE"}</p>
-        <h2 className="mt-2 font-display text-2xl tracking-tight text-foreground">
-          {filtered ? "该日期范围内没有投资日记" : "还没有留下任何投资日记"}
-        </h2>
-        <p className="mx-auto mt-2 max-w-lg text-[0.9rem] leading-7 text-muted-foreground">
-          {filtered
-            ? "换一个日期范围，或者回到全部历史记录。"
-            : "第一篇不需要完美。记下今天最重要的判断，以及什么事实会证明它是错的。"}
-        </p>
-        <div className="mt-6 flex justify-center gap-3">
-          {filtered && (
-            <Button variant="outline" onClick={onClear}>
-              <RotateCcw size={14} /> 查看全部
-            </Button>
-          )}
-          <Button onClick={onCreate}>
-            <NotebookPen size={14} /> 写一篇日记
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LoadError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="grid min-h-[360px] place-items-center rounded-xl border border-border bg-card text-center shadow-raised">
-      <div>
-        <AlertTriangle className="mx-auto text-market-up" size={24} />
-        <h2 className="mt-4 font-display text-2xl tracking-tight text-foreground">投资日记加载失败</h2>
-        <p className="mt-2 text-[0.9rem] text-muted-foreground">请检查本地服务状态后重试。</p>
-        <Button className="mt-5" variant="outline" onClick={onRetry}>
-          <RefreshCw size={14} /> 重新加载
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function getDateParts(value: string) {
   const [year, month, day] = value.split("-");
-  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short" })
-    .format(new Date(`${value}T00:00:00+08:00`))
-    .toUpperCase();
+  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(`${value}T00:00:00+08:00`)).toUpperCase();
   return { year, month: monthLabel || month, day };
 }
 

@@ -1,4 +1,7 @@
-export type WatchlistAssetType = "a_share" | "fund_etf";
+import type { AssetType, DataSourceSummary, MarketStatus } from "../../domain/market";
+
+export type WatchlistAssetType = AssetType;
+export type { DataSourceSummary, MarketStatus } from "../../domain/market";
 
 export interface WatchlistFilters {
   keyword: string;
@@ -33,14 +36,6 @@ export interface WatchlistItem {
   turnover_rate: number | null;
   quoted_at: string | null;
 }
-
-export interface DataSourceSummary {
-  state: "ready" | "not_configured" | "authentication_failed" | "rate_limited" | "unavailable";
-  name: string | null;
-  message: string | null;
-}
-
-export type MarketStatus = "交易中" | "午间休市" | "已收盘" | "休市" | "未知";
 
 export interface WatchlistResponse {
   items: WatchlistItem[];

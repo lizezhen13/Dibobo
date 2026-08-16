@@ -1,22 +1,12 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
-import type {
-  CalendarEventsResponse,
-  CalendarFiltersResponse,
-  CalendarQueryParams,
-} from "./types";
+import { apiFetchSchema } from "../../lib/api-schema";
+import { queryKeys } from "../../lib/query-keys";
+import type { CalendarEventsResponse, CalendarQueryParams } from "./types";
 
 export function calendarQueryKey(params: CalendarQueryParams) {
-  return [
-    "calendar-events-v3",
-    params.category,
-    params.from,
-    params.to,
-    params.markets.join(","),
-    params.scope,
-    params.importance.join(","),
-  ] as const;
+  return queryKeys.calendar.events(params);
 }
 
 function toSearchParams(params: CalendarQueryParams) {
@@ -34,8 +24,10 @@ function toSearchParams(params: CalendarQueryParams) {
 export function useCalendarEventsQuery(params: CalendarQueryParams) {
   return useQuery({
     queryKey: calendarQueryKey(params),
-    queryFn: ({ signal }) =>
-      apiFetch<CalendarEventsResponse>(`/api/calendar/events?${toSearchParams(params)}`, { signal }),
+    queryFn: async ({ signal }) => {
+      const { calendarEventsSchema } = await import("./schemas");
+      return apiFetchSchema(`/api/calendar/events?${toSearchParams(params)}`, calendarEventsSchema, { signal });
+    },
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
@@ -43,12 +35,11 @@ export function useCalendarEventsQuery(params: CalendarQueryParams) {
 
 export function useCalendarFiltersQuery(category: CalendarQueryParams["category"]) {
   return useQuery({
-    queryKey: ["calendar-filters", category],
-    queryFn: ({ signal }) =>
-      apiFetch<CalendarFiltersResponse>(
-        `/api/calendar/filters?category=${encodeURIComponent(category)}`,
-        { signal },
-      ),
+    queryKey: queryKeys.calendar.filters(category),
+    queryFn: async ({ signal }) => {
+      const { calendarFiltersSchema } = await import("./schemas");
+      return apiFetchSchema(`/api/calendar/filters?category=${encodeURIComponent(category)}`, calendarFiltersSchema, { signal });
+    },
     staleTime: 5 * 60_000,
   });
 }

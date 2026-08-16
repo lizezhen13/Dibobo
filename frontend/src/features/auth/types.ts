@@ -7,4 +7,3 @@ export interface Session {
   user: User;
   expires_at: string;
 }
-

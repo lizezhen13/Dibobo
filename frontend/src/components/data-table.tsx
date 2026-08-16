@@ -1,16 +1,17 @@
-import {
-  flexRender,
-  getCoreRowModel,
-  type ColumnDef,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, type ColumnDef, type RowData, useReactTable } from "@tanstack/react-table";
 import { useState, type DragEvent, type ReactNode } from "react";
 
 import { cn } from "../lib/utils";
 
 declare module "@tanstack/react-table" {
-  interface ColumnMeta<TData extends unknown, TValue> {
+  // TanStack requires these generic parameters for declaration merging even though
+  // this metadata extension does not read them directly.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
     align?: "left" | "center" | "right";
+    density?: "compact" | "default";
+    sticky?: "left" | "right";
+    sortDirection?: "ascending" | "descending" | "none";
     cellClassName?: string;
     headerClassName?: string;
   }
@@ -25,6 +26,8 @@ interface DataTableProps<TData> {
   className?: string;
   stickyHeader?: boolean;
   centered?: boolean;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
   pagination?: ReactNode;
   rowReorder?: {
     enabled: boolean;
@@ -41,11 +44,14 @@ export function DataTable<TData>({
   className,
   stickyHeader = false,
   centered = false,
+  ariaLabel,
+  ariaLabelledBy,
   pagination,
   rowReorder,
 }: DataTableProps<TData>) {
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null);
   const [dragOverRowId, setDragOverRowId] = useState<string | null>(null);
+  const [reorderAnnouncement, setReorderAnnouncement] = useState("");
 
   const rowReorderEnabled = rowReorder?.enabled ?? false;
   const hasPagination = pagination !== undefined && pagination !== null;
@@ -91,6 +97,21 @@ export function DataTable<TData>({
     getCoreRowModel: getCoreRowModel(),
     getRowId,
   });
+  const rows = table.getRowModel().rows;
+
+  function handleKeyboardReorder(rowId: string, rowIndex: number, direction: -1 | 1) {
+    if (!rowReorderEnabled) return;
+    const targetRow = rows[rowIndex + direction];
+    if (!targetRow) {
+      setReorderAnnouncement(direction < 0 ? "已经是第一行" : "已经是最后一行");
+      return;
+    }
+    setReorderAnnouncement(`正在将第 ${rowIndex + 1} 行移动到第 ${rowIndex + direction + 1} 行`);
+    void Promise.resolve(rowReorder?.onReorder(rowId, targetRow.id)).then(
+      () => setReorderAnnouncement(`已移动到第 ${rowIndex + direction + 1} 行`),
+      () => setReorderAnnouncement("排序失败，请稍后重试"),
+    );
+  }
 
   return (
     <div
@@ -103,16 +124,12 @@ export function DataTable<TData>({
         className,
       )}
     >
-      <div
-        className={cn(
-          stickyHeader
-            ? hasPagination
-              ? "min-h-0 flex-1 overflow-auto"
-              : "overflow-visible"
-            : "overflow-x-auto",
-        )}
-      >
-        <table className={cn("w-full min-w-max border-collapse text-left text-[13px]", stickyHeader && "border-separate border-spacing-0")}>
+      <div className={cn(stickyHeader ? (hasPagination ? "min-h-0 flex-1 overflow-auto" : "overflow-visible") : "overflow-x-auto")}>
+        <table
+          className={cn("w-full min-w-max border-collapse text-left text-table", stickyHeader && "border-separate border-spacing-0")}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+        >
           <thead className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary")}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -121,18 +138,20 @@ export function DataTable<TData>({
                   return (
                     <th
                       key={header.id}
+                      aria-sort={meta?.sortDirection}
                       className={cn(
-                        "h-11 whitespace-nowrap px-5 py-3 align-middle !text-[13px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
-                        stickyHeader && "!sticky !top-0 !z-20 !bg-secondary",
+                        meta?.density === "compact" ? "h-10 px-4 py-2" : "h-11 px-5 py-3",
+                        "whitespace-nowrap align-middle text-table font-bold uppercase tracking-[0.14em] text-muted-foreground",
+                        stickyHeader && "sticky top-0 z-20 bg-secondary",
+                        meta?.sticky === "left" && "sticky left-0 z-30 bg-secondary",
+                        meta?.sticky === "right" && "sticky right-0 z-30 bg-secondary",
                         meta?.align === "right" && "text-right",
                         meta?.align === "center" && "text-center",
                         meta?.headerClassName,
-                        centered && "!text-center",
+                        centered && "text-center",
                       )}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   );
                 })}
@@ -153,7 +172,7 @@ export function DataTable<TData>({
                     ))}
                   </tr>
                 ))
-              : table.getRowModel().rows.map((row, index) => (
+              : rows.map((row, index) => (
                   <tr
                     key={row.id}
                     draggable={rowReorderEnabled}
@@ -161,6 +180,17 @@ export function DataTable<TData>({
                     onDragOver={(event) => handleDragOver(event, row.id)}
                     onDrop={(event) => handleDrop(event, row.id)}
                     onDragEnd={handleDragEnd}
+                    tabIndex={rowReorderEnabled ? 0 : undefined}
+                    aria-roledescription={rowReorderEnabled ? "可排序行" : undefined}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        handleKeyboardReorder(row.id, index, -1);
+                      } else if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        handleKeyboardReorder(row.id, index, 1);
+                      }
+                    }}
                     className={cn(
                       "group transition-colors duration-150 hover:bg-row-hover",
                       index % 2 === 1 && "bg-row-stripe",
@@ -175,11 +205,14 @@ export function DataTable<TData>({
                         <td
                           key={cell.id}
                           className={cn(
-                            "h-[4.25rem] whitespace-nowrap px-5 align-middle !text-[13px] text-foreground/85",
+                            meta?.density === "compact" ? "h-12 px-4" : "h-[4.25rem] px-5",
+                            "whitespace-nowrap align-middle text-table text-foreground/85",
+                            meta?.sticky === "left" && "sticky left-0 z-10 bg-card group-hover:bg-secondary",
+                            meta?.sticky === "right" && "sticky right-0 z-10 bg-card group-hover:bg-secondary",
                             meta?.align === "right" && "text-right font-mono tabular-nums",
                             meta?.align === "center" && "text-center",
                             meta?.cellClassName,
-                            centered && "!text-center",
+                            centered && "text-center",
                           )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -191,6 +224,11 @@ export function DataTable<TData>({
           </tbody>
         </table>
       </div>
+      {rowReorderEnabled ? (
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {reorderAnnouncement}
+        </div>
+      ) : null}
       {!isLoading && data.length === 0 && <div className="border-t border-border/60">{empty}</div>}
       {pagination}
     </div>

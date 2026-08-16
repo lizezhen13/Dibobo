@@ -1,14 +1,6 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import {
-  memo,
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { RefCallback, UIEvent } from "react";
 
 import { formatMoney, formatPercent, formatPoint, movementClass } from "../../lib/formatters";
@@ -26,15 +18,10 @@ interface IndustryRowProps {
 
 const IndustryRow = memo(function IndustryRow({ item, measureRef }: IndustryRowProps) {
   return (
-    <tr
-      ref={measureRef}
-      className="h-11 transition-colors hover:bg-row-hover"
-    >
+    <tr ref={measureRef} className="h-11 transition-colors hover:bg-row-hover">
       <td className="px-4 py-2">
         <p className="truncate text-[13px] font-medium text-foreground/88">{item.name}</p>
-        <p className="truncate font-mono text-[10px] tracking-normal text-muted-foreground/40">
-          {item.thscode}
-        </p>
+        <p className="truncate font-mono text-[10px] tracking-normal text-muted-foreground/40">{item.thscode}</p>
       </td>
       <td className="truncate px-2 py-2 text-right font-mono text-xs tracking-normal text-foreground/78">
         {formatPoint(item.latest, { group: false })}
@@ -67,9 +54,7 @@ function useVirtualIndustryRows(itemCount: number, resetKey: string) {
 
     const measuredHeight = node.getBoundingClientRect().height;
     if (measuredHeight > 0) {
-      setRowHeight((current) =>
-        Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current,
-      );
+      setRowHeight((current) => (Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current));
     }
   }, []);
 
@@ -84,8 +69,7 @@ function useVirtualIndustryRows(itemCount: number, resetKey: string) {
 
     syncViewport();
 
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncViewport);
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncViewport);
     resizeObserver?.observe(viewport);
 
     return () => {
@@ -100,14 +84,8 @@ function useVirtualIndustryRows(itemCount: number, resetKey: string) {
     setScrollTop(0);
   }, [itemCount, resetKey]);
 
-  const firstIndex = Math.max(
-    0,
-    Math.floor(scrollTop / rowHeight) - INDUSTRY_OVERSCAN,
-  );
-  const visibleCount = Math.max(
-    1,
-    Math.ceil(viewportHeight / rowHeight) + INDUSTRY_OVERSCAN * 2,
-  );
+  const firstIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - INDUSTRY_OVERSCAN);
+  const visibleCount = Math.max(1, Math.ceil(viewportHeight / rowHeight) + INDUSTRY_OVERSCAN * 2);
   const lastIndex = Math.min(itemCount, firstIndex + visibleCount);
 
   useEffect(() => {
@@ -117,9 +95,7 @@ function useVirtualIndustryRows(itemCount: number, resetKey: string) {
     const resizeObserver = new ResizeObserver(() => {
       const measuredHeight = row.getBoundingClientRect().height;
       if (measuredHeight > 0) {
-        setRowHeight((current) =>
-          Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current,
-        );
+        setRowHeight((current) => (Math.abs(current - measuredHeight) > 0.5 ? measuredHeight : current));
       }
     });
     resizeObserver.observe(row);
@@ -138,30 +114,19 @@ function useVirtualIndustryRows(itemCount: number, resetKey: string) {
   };
 }
 
-export function IndustryDetailCard({
-  query,
-}: {
-  query: UseQueryResult<OverviewIndustries, Error>;
-}) {
+export function IndustryDetailCard({ query }: { query: UseQueryResult<OverviewIndustries, Error> }) {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim().toLowerCase());
   const data = query.data;
   const filtered = useMemo(() => {
     if (!data) return [];
     if (!deferredSearch) return data.items;
-    return data.items.filter((item) =>
-      `${item.name} ${item.thscode}`.toLowerCase().includes(deferredSearch),
-    );
+    return data.items.filter((item) => `${item.name} ${item.thscode}`.toLowerCase().includes(deferredSearch));
   }, [data, deferredSearch]);
-  const {
-    firstIndex,
-    handleScroll,
-    lastIndex,
-    measureRow,
-    rowHeight,
-    totalHeight,
-    viewportRef,
-  } = useVirtualIndustryRows(filtered.length, deferredSearch);
+  const { firstIndex, handleScroll, lastIndex, measureRow, rowHeight, totalHeight, viewportRef } = useVirtualIndustryRows(
+    filtered.length,
+    deferredSearch,
+  );
 
   return (
     <OverviewPanel
@@ -186,10 +151,7 @@ export function IndustryDetailCard({
         <div className="flex h-full min-h-0 flex-col">
           <div className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-2.5">
             <label className="relative min-w-0 flex-1">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/55"
-                size={13}
-              />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/55" size={13} />
               <input
                 type="search"
                 value={search}
@@ -211,15 +173,9 @@ export function IndustryDetailCard({
               <span className="px-4 py-2.5 text-right">成交额</span>
             </div>
           </div>
-          <div
-            ref={viewportRef}
-            onScroll={handleScroll}
-            className="overview-list-viewport min-h-0 flex-1"
-          >
+          <div ref={viewportRef} onScroll={handleScroll} className="overview-list-viewport min-h-0 flex-1">
             {filtered.length === 0 ? (
-              <div className="grid min-h-40 place-items-center text-[13px] text-muted-foreground">
-                未找到匹配行业
-              </div>
+              <div className="grid min-h-40 place-items-center text-[13px] text-muted-foreground">未找到匹配行业</div>
             ) : (
               <div className="relative w-full" style={{ height: totalHeight }}>
                 <table
@@ -244,11 +200,7 @@ export function IndustryDetailCard({
                     {filtered.slice(firstIndex, lastIndex).map((item, index) => {
                       const absoluteIndex = firstIndex + index;
                       return (
-                        <IndustryRow
-                          key={item.thscode}
-                          item={item}
-                          measureRef={absoluteIndex === firstIndex ? measureRow : undefined}
-                        />
+                        <IndustryRow key={item.thscode} item={item} measureRef={absoluteIndex === firstIndex ? measureRow : undefined} />
                       );
                     })}
                   </tbody>

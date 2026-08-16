@@ -1,46 +1,69 @@
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "../../components/ui/button";
+import { PageContainer } from "../../components/patterns";
 
 const STOCKPAGE_ORIGIN = "https://stockpage.10jqka.com.cn";
 
 export function StockDetailPage() {
   const { ticker: routeTicker } = useParams<{ ticker: string }>();
   const ticker = normalizeTicker(routeTicker);
-  const stockPageUrl = ticker
-    ? `${STOCKPAGE_ORIGIN}/${encodeURIComponent(ticker)}`
-    : null;
+  const [frameError, setFrameError] = useState(false);
+  const stockPageUrl = ticker ? `${STOCKPAGE_ORIGIN}/${encodeURIComponent(ticker)}` : null;
 
   if (!stockPageUrl) {
     return <InvalidTickerState />;
   }
 
   return (
-    <div className="-mx-8 -my-8 flex h-[calc(100vh-68px)] min-h-0 flex-col overflow-hidden bg-background xl:-mx-10 xl:-my-10">
+    <PageContainer edgeToEdge className="flex h-[calc(100vh-68px)] min-h-0 flex-col overflow-hidden bg-background">
+      <h1 className="sr-only">{ticker} 股票详情</h1>
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
         <div className="hidden items-center gap-2 text-[0.7rem] text-muted-foreground/65 sm:flex">
           <span className="size-1.5 rounded-full bg-market-up" />
           <span className="font-mono tracking-[0.14em]">INLINE DETAIL · {ticker}</span>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/watchlist">返回</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm">
+            <a href={stockPageUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={14} /> 新窗口打开
+            </a>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/watchlist">返回</Link>
+          </Button>
+        </div>
       </div>
+      {frameError ? (
+        <div
+          className="flex items-center justify-between gap-4 border-b border-warning/20 bg-warning/[0.08] px-5 py-3 text-sm"
+          role="alert"
+        >
+          <span className="flex items-center gap-2 text-warning">
+            <TriangleAlert size={15} /> 第三方详情无法嵌入当前页面，请改用新窗口打开。
+          </span>
+          <a className="shrink-0 text-primary underline-offset-4 hover:underline" href={stockPageUrl} target="_blank" rel="noreferrer">
+            打开详情
+          </a>
+        </div>
+      ) : null}
       <iframe
         src={stockPageUrl}
         title={`${ticker} 股票详情`}
         loading="eager"
         referrerPolicy="strict-origin-when-cross-origin"
+        onError={() => setFrameError(true)}
         className="block min-h-0 w-full flex-1 border-0 bg-white"
       />
-    </div>
+    </PageContainer>
   );
 }
 
 function InvalidTickerState() {
   return (
-    <div className="mx-auto max-w-[1700px] animate-enter">
+    <PageContainer size="wide">
       <div className="rounded-xl border border-border bg-card px-6 py-16 text-center shadow-raised">
         <span className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/20 bg-primary/8 text-primary">
           <FileText size={23} />
@@ -57,7 +80,7 @@ function InvalidTickerState() {
           </Link>
         </Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

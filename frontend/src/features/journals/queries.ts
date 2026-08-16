@@ -1,15 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
-import type {
-  Journal,
-  JournalFilters,
-  JournalList,
-  JournalPayload,
-  JournalUpdatePayload,
-} from "./types";
+import { apiFetchSchema } from "../../lib/api-schema";
+import { queryKeys } from "../../lib/query-keys";
+import type { Journal, JournalFilters, JournalPayload, JournalUpdatePayload } from "./types";
 
-export const journalsQueryKey = (filters: JournalFilters) => ["journals", filters] as const;
+export const journalsQueryKey = (filters: JournalFilters) => queryKeys.journals.list(filters);
 
 export function useJournalsQuery(filters: JournalFilters) {
   const params = new URLSearchParams({ page: String(filters.page), page_size: "20" });
@@ -18,7 +14,10 @@ export function useJournalsQuery(filters: JournalFilters) {
 
   return useQuery({
     queryKey: journalsQueryKey(filters),
-    queryFn: () => apiFetch<JournalList>(`/api/journals?${params.toString()}`),
+    queryFn: async ({ signal }) => {
+      const { journalListSchema } = await import("./schemas");
+      return apiFetchSchema(`/api/journals?${params.toString()}`, journalListSchema, { signal });
+    },
     placeholderData: keepPreviousData,
     retry: 1,
   });
@@ -26,7 +25,7 @@ export function useJournalsQuery(filters: JournalFilters) {
 
 function useInvalidateJournals() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ["journals"] });
+  return () => queryClient.invalidateQueries({ queryKey: queryKeys.journals.all });
 }
 
 export function useCreateJournalMutation() {
@@ -56,8 +55,7 @@ export function useUpdateJournalMutation() {
 export function useDeleteJournalMutation() {
   const invalidate = useInvalidateJournals();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<{ message: string }>(`/api/journals/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => apiFetch<{ message: string }>(`/api/journals/${id}`, { method: "DELETE" }),
     onSuccess: invalidate,
   });
 }

@@ -4,7 +4,9 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+import { ErrorBoundary } from "./components/error-boundary";
 import { sessionQueryKey } from "./features/auth/queries";
+import { clearUserScopedQueryCache } from "./lib/query-cache";
 import { LiveQueryVisibilityManager } from "./lib/query-lifecycle";
 import "./styles.css";
 
@@ -18,6 +20,7 @@ const queryClient = new QueryClient({
 });
 
 window.addEventListener("dibobo:unauthorized", () => {
+  clearUserScopedQueryCache(queryClient);
   queryClient.setQueryData(sessionQueryKey, null);
 });
 
@@ -26,7 +29,9 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <LiveQueryVisibilityManager />
       <BrowserRouter>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

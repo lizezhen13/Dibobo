@@ -1,0 +1,44 @@
+@layer components {
+  .watchlist-table-card {
+    min-height: 0;
+  }
+
+  .watchlist-table-scroll {
+    scrollbar-gutter: stable;
+    min-height: 0;
+  }
+
+  .watchlist-table .watchlist-sticky-left,
+  .watchlist-table .watchlist-sticky-right {
+    background: var(--card);
+    background-clip: padding-box;
+  }
+
+  .watchlist-table thead .watchlist-sticky-left,
+  .watchlist-table thead .watchlist-sticky-right {
+    background: var(--secondary);
+  }
+
+  .watchlist-table thead {
+    background: var(--secondary);
+    background-clip: padding-box;
+  }
+
+  .watchlist-table .watchlist-sticky-instrument {
+    box-shadow: 7px 0 12px -10px rgba(0, 0, 0, 0.85);
+  }
+
+  .watchlist-table .watchlist-sticky-right {
+    box-shadow: -7px 0 12px -10px rgba(0, 0, 0, 0.85);
+  }
+
+  .watchlist-table tbody tr:hover .watchlist-sticky-left,
+  .watchlist-table tbody tr:hover .watchlist-sticky-right {
+    background: var(--secondary);
+  }
+
+  .watchlist-table tbody tr.watchlist-row--selected .watchlist-sticky-left,
+  .watchlist-table tbody tr.watchlist-row--selected .watchlist-sticky-right {
+    background: rgba(239, 97, 42, 0.055);
+  }
+}

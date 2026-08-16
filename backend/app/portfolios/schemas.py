@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.holdings.schemas import HoldingSummaryResponse
+
 
 def _normalize_name(value: str) -> str:
     normalized = value.strip()
@@ -77,3 +79,12 @@ class PortfolioItem(BaseModel):
 
 class PortfolioListResponse(BaseModel):
     items: list[PortfolioItem]
+
+
+class PortfolioSummaryItem(BaseModel):
+    portfolio_id: uuid.UUID
+    summary: HoldingSummaryResponse
+
+
+class PortfolioSummaryListResponse(BaseModel):
+    items: list[PortfolioSummaryItem]

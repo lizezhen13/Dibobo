@@ -1,4 +1,5 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 import * as React from "react";
 
@@ -8,23 +9,33 @@ export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
-export function DialogContent({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+const dialogContentVariants = cva(
+  "rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[dialog-out_150ms_ease-in] data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
+  {
+    variants: {
+      size: {
+        sm: "w-[min(420px,calc(100vw-32px))]",
+        md: "w-[min(560px,calc(100vw-48px))]",
+        lg: "w-[min(780px,calc(100vw-48px))]",
+        xl: "w-[min(960px,calc(100vw-48px))]",
+        "fullscreen-mobile":
+          "w-[min(780px,calc(100vw-48px))] max-md:max-h-[calc(100dvh-24px)] max-md:w-[calc(100vw-24px)] max-md:rounded-xl",
+      },
+    },
+    defaultVariants: { size: "md" },
+  },
+);
+
+export interface DialogContentProps
+  extends React.ComponentProps<typeof DialogPrimitive.Content>, VariantProps<typeof dialogContentVariants> {}
+
+export function DialogContent({ className, children, size, ...props }: DialogContentProps) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[3px] data-[state=closed]:animate-[fade-out_150ms_ease-in] data-[state=open]:animate-[fade-in_180ms_ease-out]" />
       {/* 使用 flex 容器居中弹窗，避免 transform 与动画 keyframes 冲突导致左上角闪现 */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-        <DialogPrimitive.Content
-          className={cn(
-            "w-[min(560px,calc(100vw-48px))] rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[dialog-out_150ms_ease-in] data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
-            className,
-          )}
-          {...props}
-        >
+        <DialogPrimitive.Content className={cn(dialogContentVariants({ size }), className)} {...props}>
           {children}
           <DialogPrimitive.Close className="absolute right-4 top-4 grid size-9 place-items-center rounded-lg text-muted-foreground/80 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <X size={18} />

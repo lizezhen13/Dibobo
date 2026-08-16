@@ -1,14 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "../../lib/api";
-import type { Session } from "./types";
+import { apiFetchSchema } from "../../lib/api-schema";
+import { clearUserScopedQueryCache } from "../../lib/query-cache";
+import { queryKeys } from "../../lib/query-keys";
 
-export const sessionQueryKey = ["auth", "session"] as const;
+export const sessionQueryKey = queryKeys.auth.session;
 
 export function useSessionQuery() {
   return useQuery({
     queryKey: sessionQueryKey,
-    queryFn: () => apiFetch<Session>("/api/auth/me"),
+    queryFn: async ({ signal }) => {
+      const { sessionSchema } = await import("./schemas");
+      return apiFetchSchema("/api/auth/me", sessionSchema, { signal });
+    },
     retry: false,
     staleTime: 60_000,
   });
@@ -17,12 +22,17 @@ export function useSessionQuery() {
 export function useLoginMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { username: string; password: string }) =>
-      apiFetch<Session>("/api/auth/login", {
+    mutationFn: async (payload: { username: string; password: string }) => {
+      const { sessionSchema } = await import("./schemas");
+      return apiFetchSchema("/api/auth/login", sessionSchema, {
         method: "POST",
         body: JSON.stringify(payload),
-      }),
-    onSuccess: (session) => queryClient.setQueryData(sessionQueryKey, session),
+      });
+    },
+    onSuccess: (session) => {
+      clearUserScopedQueryCache(queryClient);
+      queryClient.setQueryData(sessionQueryKey, session);
+    },
   });
 }
 
@@ -31,6 +41,7 @@ export function useLogoutMutation() {
   return useMutation({
     mutationFn: () => apiFetch<{ message: string }>("/api/auth/logout", { method: "POST" }),
     onSuccess: () => {
+      clearUserScopedQueryCache(queryClient);
       queryClient.setQueryData(sessionQueryKey, null);
     },
   });
