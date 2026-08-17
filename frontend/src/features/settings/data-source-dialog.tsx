@@ -274,7 +274,8 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                       <div>
                         <p className="font-semibold text-foreground">浏览器授权</p>
                         <p className="mt-1 text-[0.82rem] leading-6 text-muted-foreground">
-                          将打开 Longbridge 官方授权页。授权完成后会自动回到本页，并可在这里测试行情、基本面、市场、市场温度、资讯和财经日历。
+                          将打开 Longbridge
+                          官方授权页。授权完成后会自动回到本页，并可在这里测试行情、基本面、市场、市场温度、资讯和财经日历。
                         </p>
                       </div>
                     </div>

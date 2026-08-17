@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRound, LogOut } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -84,7 +84,6 @@ export function AccountSettings() {
               重置
             </Button>
             <LoadingButton type="submit" loading={mutation.isPending}>
-              {!mutation.isPending && <LogOut size={15} aria-hidden="true" />}
               确定
             </LoadingButton>
           </div>

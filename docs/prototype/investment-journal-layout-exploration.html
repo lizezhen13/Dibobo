@@ -1,0 +1,2092 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>投资日记 · 页面布局探索</title>
+    <meta name="description" content="Dibobo 投资日记页面的四种布局方向探索" />
+    <style>
+      /*
+       * Junior pass · 设计假设
+       * - 这是给 Dibobo 当前深色工作台做信息架构探索，不改变现有视觉 token。
+       * - 保留现有的日期范围筛选、新建日记、编辑/删除与分页语义；四个方案只改变内容的组织方式。
+       * - 所有正文、数字都是静态 mock data，仅用于判断层级、密度和阅读路径。
+       * - 四个方向从“最接近当前实现”逐步走向“更偏阅读 / 检索 / 高密度索引”。
+       */
+
+      :root {
+        --bg: #111317;
+        --bg-deep: #0b0d12;
+        --surface: #1c2026;
+        --surface-2: #23262c;
+        --surface-3: #17191d;
+        --ink: #f2ece4;
+        --ink-soft: #d9cfc1;
+        --muted: #9b9084;
+        --muted-dim: #6f6860;
+        --line: #2c313a;
+        --line-soft: #1f2227;
+        --orange: #ef612a;
+        --orange-hover: #f07a4b;
+        --red: #f2543b;
+        --green: #22c55e;
+        --blue: #74a8d8;
+        --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+        --sans: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+        --shadow-card: 0 10px 25px rgba(0, 0, 0, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        background: var(--bg);
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font-family: var(--sans);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body,
+      button,
+      input {
+        font: inherit;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        text-wrap: balance;
+      }
+
+      p {
+        text-wrap: pretty;
+      }
+
+      .page-shell {
+        width: min(1480px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .prototype-shell {
+        min-height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
+        gap: 56px;
+        align-items: end;
+        padding: 70px 0 46px;
+      }
+
+      .eyebrow,
+      .board-index,
+      .mini-label,
+      .mock-kicker,
+      .mono,
+      .mock-window-bar,
+      .mock-sidebar-label,
+      .mock-nav-number,
+      .data-label,
+      .caption {
+        font-family: var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--orange);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .eyebrow::before {
+        width: 28px;
+        height: 1px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .hero h1 {
+        max-width: 830px;
+        margin: 19px 0 16px;
+        color: var(--ink);
+        font-size: clamp(42px, 6vw, 84px);
+        font-weight: 700;
+        line-height: 0.98;
+        letter-spacing: -0.08em;
+      }
+
+      .hero h1 span {
+        color: var(--orange);
+      }
+
+      .hero-copy {
+        max-width: 670px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.85;
+      }
+
+      .token-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 25px;
+      }
+
+      .token {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px 6px 7px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        background: var(--surface-3);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.03em;
+      }
+
+      .token i {
+        width: 12px;
+        height: 12px;
+        display: block;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: var(--orange);
+      }
+
+      .token:nth-child(2) i {
+        background: var(--surface);
+      }
+
+      .token:nth-child(3) i {
+        background: var(--muted);
+      }
+
+      .token:nth-child(4) i {
+        background: var(--line);
+      }
+
+      .decision-panel {
+        position: relative;
+        padding: 22px 24px 24px;
+        border: 1px solid var(--line);
+        background: var(--surface-3);
+        box-shadow: var(--shadow);
+      }
+
+      .decision-panel::before {
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        width: 58px;
+        height: 3px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .decision-caption {
+        display: block;
+        margin-bottom: 13px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .decision-value {
+        display: block;
+        min-height: 31px;
+        color: var(--ink);
+        font-size: 23px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .decision-meta {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .reset-button {
+        margin-top: 19px;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        color: var(--ink-soft);
+        background: transparent;
+        font-size: 12px;
+        transition: 180ms ease;
+      }
+
+      .reset-button:hover {
+        border-color: var(--orange);
+        color: var(--ink);
+      }
+
+      .layout-nav {
+        position: sticky;
+        z-index: 10;
+        top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        background: rgba(17, 19, 23, 0.94);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .layout-nav a {
+        display: flex;
+        min-height: 74px;
+        flex-direction: column;
+        gap: 4px;
+        justify-content: center;
+        padding: 12px 15px;
+        border: 1px solid transparent;
+        color: var(--muted);
+        transition: 180ms ease;
+      }
+
+      .layout-nav a:hover,
+      .layout-nav a.active {
+        border-color: rgba(239, 97, 42, 0.52);
+        color: var(--ink);
+        background: rgba(239, 97, 42, 0.08);
+      }
+
+      .layout-nav strong {
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .layout-nav span {
+        font-size: 13px;
+      }
+
+      .layout-nav small {
+        color: var(--muted-dim);
+        font-size: 11px;
+      }
+
+      .exploration-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 35px 0 22px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .exploration-note span:last-child {
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .layout-board {
+        scroll-margin-top: 112px;
+        padding: 32px 0 70px;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .board-meta {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 28px;
+        padding-bottom: 22px;
+      }
+
+      .board-meta-left {
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+      }
+
+      .board-index {
+        min-width: 72px;
+        padding-top: 4px;
+        color: var(--orange);
+        font-size: 11px;
+      }
+
+      .board-meta h2 {
+        color: var(--ink);
+        font-size: 23px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+      }
+
+      .board-meta p {
+        max-width: 690px;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .choose-layout {
+        display: inline-flex;
+        min-width: 126px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 13px;
+        border: 1px solid var(--line);
+        color: var(--ink-soft);
+        background: transparent;
+        font-size: 12px;
+        transition: 180ms ease;
+      }
+
+      .choose-layout::after {
+        content: "↗";
+        color: var(--orange);
+        font-size: 14px;
+      }
+
+      .choose-layout:hover,
+      .choose-layout.selected {
+        border-color: var(--orange);
+        color: var(--ink);
+        background: var(--orange);
+      }
+
+      .choose-layout.selected::after {
+        color: var(--bg-deep);
+        content: "✓";
+      }
+
+      .mock-window {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--bg-deep);
+        box-shadow: var(--shadow);
+      }
+
+      .mock-window-bar {
+        display: flex;
+        height: 34px;
+        align-items: center;
+        gap: 7px;
+        padding: 0 13px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted-dim);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+      }
+
+      .window-dot {
+        width: 7px;
+        height: 7px;
+        display: block;
+        background: var(--line);
+      }
+
+      .window-dot:first-child {
+        background: var(--orange);
+      }
+
+      .window-dot:nth-child(2) {
+        margin-left: 2px;
+      }
+
+      .mock-window-bar span:last-child {
+        margin-left: 8px;
+      }
+
+      .mock-shell {
+        display: grid;
+        grid-template-columns: 194px minmax(0, 1fr);
+        min-height: 660px;
+      }
+
+      .mock-sidebar {
+        display: flex;
+        flex-direction: column;
+        padding: 23px 14px 18px;
+        border-right: 1px solid var(--line-soft);
+        background: var(--bg-deep);
+      }
+
+      .mock-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 8px;
+      }
+
+      .mock-brand-mark {
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        color: var(--bg-deep);
+        background: var(--orange);
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .mock-brand-title {
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        line-height: 1;
+      }
+
+      .mock-brand-sub {
+        margin-top: 4px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 7px;
+        letter-spacing: 0.14em;
+      }
+
+      .mock-sidebar-label {
+        margin: 33px 10px 9px;
+        color: var(--muted-dim);
+        font-size: 8px;
+      }
+
+      .mock-nav {
+        display: grid;
+        gap: 3px;
+      }
+
+      .mock-nav-item {
+        display: flex;
+        min-height: 34px;
+        align-items: center;
+        gap: 9px;
+        padding: 0 10px;
+        color: var(--muted);
+        font-size: 11px;
+        transition: 180ms ease;
+      }
+
+      .mock-nav-item:hover,
+      .mock-nav-item.active {
+        color: var(--orange);
+        background: rgba(239, 97, 42, 0.1);
+      }
+
+      .nav-bullet {
+        width: 13px;
+        height: 13px;
+        display: block;
+        border: 1px solid currentColor;
+        opacity: 0.6;
+      }
+
+      .mock-nav-item.active .nav-bullet {
+        border-width: 3px;
+        opacity: 1;
+      }
+
+      .mock-nav-number {
+        margin-left: auto;
+        color: var(--muted-dim);
+        font-size: 8px;
+      }
+
+      .mock-sidebar-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: auto;
+        padding: 14px 10px 3px;
+        border-top: 1px solid var(--line-soft);
+        color: var(--green);
+        font-size: 10px;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        display: block;
+        background: var(--green);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.55);
+      }
+
+      .mock-main {
+        min-width: 0;
+        background: var(--bg);
+      }
+
+      .mock-topbar {
+        display: flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 0 27px;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .mock-topbar strong {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
+
+      .mock-topbar .user {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .user-mark {
+        width: 23px;
+        height: 23px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .mock-content {
+        padding: 32px 33px 36px;
+      }
+
+      .mock-page-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .mock-kicker {
+        color: var(--orange);
+        font-size: 8px;
+        font-weight: 600;
+      }
+
+      .mock-page-head h3 {
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 29px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+      }
+
+      .mock-description {
+        max-width: 460px;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .mock-button {
+        display: inline-flex;
+        min-height: 35px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        color: var(--ink-soft);
+        background: transparent;
+        font-size: 10px;
+        transition: 180ms ease;
+      }
+
+      .mock-button:hover {
+        border-color: var(--orange);
+        color: var(--ink);
+      }
+
+      .mock-button.primary {
+        border-color: var(--orange);
+        color: var(--bg-deep);
+        background: var(--orange);
+        font-weight: 600;
+      }
+
+      .mock-button.primary:hover {
+        border-color: var(--orange-hover);
+        background: var(--orange-hover);
+      }
+
+      .filter-strip {
+        display: grid;
+        grid-template-columns: auto minmax(150px, 1fr) minmax(150px, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .filter-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 7px 0 1px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .filter-glyph {
+        width: 14px;
+        height: 14px;
+        display: inline-grid;
+        place-items: center;
+        border: 1px solid var(--orange);
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .date-field {
+        display: flex;
+        min-height: 34px;
+        align-items: center;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        background: var(--surface-3);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .filter-actions {
+        display: flex;
+        gap: 7px;
+        justify-content: flex-end;
+      }
+
+      .filter-actions .mock-button {
+        min-height: 34px;
+        padding: 0 11px;
+      }
+
+      .result-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 31px;
+        padding: 0 10px;
+        border: 1px solid var(--line-soft);
+        border-top: 0;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+      }
+
+      .result-bar strong {
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .timeline-list {
+        display: grid;
+        gap: 15px;
+        margin-top: 22px;
+      }
+
+      .timeline-item {
+        display: grid;
+        grid-template-columns: 86px minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .timeline-date {
+        position: relative;
+        display: flex;
+        min-height: 114px;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 16px;
+        text-align: center;
+      }
+
+      .timeline-date::after {
+        position: absolute;
+        top: 0;
+        right: -9px;
+        bottom: -15px;
+        width: 1px;
+        content: "";
+        background: var(--line);
+      }
+
+      .timeline-item:last-child .timeline-date::after {
+        bottom: 50%;
+      }
+
+      .timeline-date::before {
+        position: absolute;
+        z-index: 1;
+        top: 23px;
+        right: -13px;
+        width: 8px;
+        height: 8px;
+        content: "";
+        border: 2px solid var(--bg);
+        background: var(--orange);
+      }
+
+      .timeline-date strong {
+        display: block;
+        color: var(--ink);
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.08em;
+      }
+
+      .timeline-date span {
+        display: block;
+        margin-top: 6px;
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.09em;
+      }
+
+      .timeline-card {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+      }
+
+      .timeline-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 15px 17px 13px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .timeline-card-title {
+        min-width: 0;
+      }
+
+      .timeline-card-meta {
+        margin-bottom: 6px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+      }
+
+      .timeline-card-meta strong {
+        color: var(--orange);
+        font-weight: 500;
+      }
+
+      .timeline-card h4 {
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+      }
+
+      .card-tools {
+        display: flex;
+        gap: 5px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .tool-box {
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+      }
+
+      .timeline-card-body {
+        min-height: 92px;
+        padding: 14px 17px 15px;
+        background: repeating-linear-gradient(to bottom, transparent 0, transparent 25px, rgba(44, 49, 58, 0.42) 26px);
+      }
+
+      .timeline-card-body p {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 2.15;
+      }
+
+      .timeline-card-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 31px;
+        padding: 0 17px;
+        border-top: 1px solid var(--line-soft);
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+      }
+
+      .timeline-card-foot strong {
+        color: var(--orange);
+        font-weight: 500;
+      }
+
+      .split-layout {
+        display: grid;
+        grid-template-columns: 255px minmax(0, 1fr);
+        gap: 17px;
+        margin-top: 22px;
+      }
+
+      .entry-index {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface-3);
+      }
+
+      .entry-index-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+      }
+
+      .entry-index-head strong {
+        color: var(--orange);
+        font-weight: 500;
+      }
+
+      .entry-index-item {
+        position: relative;
+        display: block;
+        width: 100%;
+        padding: 14px;
+        border: 0;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted);
+        background: transparent;
+        text-align: left;
+        transition: 180ms ease;
+      }
+
+      .entry-index-item:hover,
+      .entry-index-item.selected {
+        color: var(--ink);
+        background: rgba(239, 97, 42, 0.08);
+      }
+
+      .entry-index-item.selected::before {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 3px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .entry-index-date {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+
+      .entry-index-item strong {
+        display: block;
+        color: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+
+      .entry-index-item small {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .reading-pane {
+        min-width: 0;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+      }
+
+      .reading-pane-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        min-height: 42px;
+        padding: 0 19px;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+      }
+
+      .reading-pane-top strong {
+        color: var(--orange);
+        font-weight: 500;
+      }
+
+      .reading-pane-body {
+        padding: 27px 30px 30px;
+      }
+
+      .reading-pane-body .entry-index-date {
+        font-size: 9px;
+      }
+
+      .reading-pane h4 {
+        margin-top: 10px;
+        color: var(--ink);
+        font-size: clamp(24px, 3vw, 33px);
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.06em;
+      }
+
+      .reading-pane-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        margin-top: 11px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+
+      .reading-rule {
+        height: 1px;
+        margin: 25px 0 21px;
+        background: var(--line);
+      }
+
+      .reading-pane-copy {
+        max-width: 650px;
+        color: var(--ink-soft);
+        font-size: 13px;
+        line-height: 2.15;
+      }
+
+      .reading-pane-copy p + p {
+        margin-top: 15px;
+      }
+
+      .reading-callout {
+        display: grid;
+        grid-template-columns: 3px minmax(0, 1fr);
+        gap: 13px;
+        margin: 25px 0 2px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.8;
+      }
+
+      .reading-callout::before {
+        content: "";
+        background: var(--orange);
+      }
+
+      .reading-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 30px;
+        padding-top: 15px;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .reading-footer span {
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+      }
+
+      .calendar-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(230px, 0.6fr);
+        gap: 17px;
+        margin-top: 22px;
+      }
+
+      .calendar-panel,
+      .day-panel {
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .calendar-panel-head,
+      .day-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        min-height: 49px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .calendar-panel-head h4,
+      .day-panel-head h4 {
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .calendar-panel-head span,
+      .day-panel-head span {
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+
+      .month-nav {
+        display: inline-flex;
+        gap: 5px;
+      }
+
+      .month-nav button {
+        width: 23px;
+        height: 23px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        background: transparent;
+        font-size: 12px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 1px;
+        padding: 14px;
+        background: var(--line-soft);
+      }
+
+      .calendar-grid > * {
+        min-height: 47px;
+        padding: 7px;
+        background: var(--surface);
+      }
+
+      .weekday {
+        min-height: 25px !important;
+        padding: 0 7px !important;
+        color: var(--muted-dim) !important;
+        background: var(--surface-3) !important;
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+        text-align: center;
+      }
+
+      .calendar-day {
+        position: relative;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .calendar-day.muted-day {
+        color: var(--muted-dim);
+        opacity: 0.45;
+      }
+
+      .calendar-day.has-entry {
+        color: var(--ink);
+      }
+
+      .calendar-day.selected-day {
+        outline: 1px solid var(--orange);
+        outline-offset: -1px;
+        color: var(--ink);
+        background: rgba(239, 97, 42, 0.11);
+      }
+
+      .calendar-day.today-day::after {
+        position: absolute;
+        right: 7px;
+        bottom: 7px;
+        width: 5px;
+        height: 5px;
+        content: "";
+        background: var(--orange);
+      }
+
+      .entry-count {
+        position: absolute;
+        right: 7px;
+        bottom: 7px;
+        display: inline-flex;
+        min-width: 13px;
+        height: 13px;
+        align-items: center;
+        justify-content: center;
+        color: var(--bg-deep);
+        background: var(--orange);
+        font-size: 7px;
+      }
+
+      .day-panel {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .day-panel-body {
+        display: grid;
+        gap: 13px;
+        padding: 16px;
+      }
+
+      .day-entry {
+        padding-bottom: 13px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .day-entry:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+      }
+
+      .day-entry-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 6px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .day-entry-meta strong {
+        color: var(--orange);
+        font-weight: 500;
+      }
+
+      .day-entry h4 {
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+
+      .day-entry p {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.75;
+      }
+
+      .calendar-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        margin-top: auto;
+        padding: 13px 16px;
+        border-top: 1px solid var(--line-soft);
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+      }
+
+      .archive-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 0.42fr);
+        gap: 26px;
+        align-items: end;
+        margin-top: 24px;
+        padding: 23px 24px 24px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .archive-intro h4 {
+        color: var(--ink);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.05em;
+      }
+
+      .archive-intro p {
+        max-width: 560px;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.8;
+      }
+
+      .archive-count {
+        display: flex;
+        align-items: end;
+        justify-content: flex-end;
+        gap: 11px;
+        color: var(--muted);
+        text-align: right;
+      }
+
+      .archive-count strong {
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 42px;
+        font-weight: 400;
+        line-height: 0.9;
+      }
+
+      .archive-count span {
+        max-width: 85px;
+        padding-bottom: 2px;
+        font-family: var(--mono);
+        font-size: 8px;
+        line-height: 1.5;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .archive-list {
+        margin-top: 17px;
+        border-top: 1px solid var(--line);
+      }
+
+      .archive-head,
+      .archive-row {
+        display: grid;
+        grid-template-columns: 118px minmax(190px, 1.2fr) minmax(220px, 1.7fr) 85px;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .archive-head {
+        min-height: 34px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.07em;
+      }
+
+      .archive-row {
+        min-height: 78px;
+        padding: 12px;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted);
+        transition: 180ms ease;
+      }
+
+      .archive-row:hover,
+      .archive-row.selected {
+        color: var(--ink);
+        background: rgba(239, 97, 42, 0.06);
+      }
+
+      .archive-date {
+        color: var(--orange);
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+      }
+
+      .archive-title strong {
+        display: block;
+        color: var(--ink-soft);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+
+      .archive-title small {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+
+      .archive-excerpt {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.7;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .archive-length {
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        text-align: right;
+      }
+
+      .archive-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        margin-top: 13px;
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+
+      .footer-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 12px 0 42px;
+        border-top: 1px solid var(--line-soft);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .footer-note strong {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
+
+      .footer-note span {
+        color: var(--muted-dim);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .toast {
+        position: fixed;
+        z-index: 20;
+        right: 24px;
+        bottom: 24px;
+        max-width: min(360px, calc(100vw - 48px));
+        padding: 12px 15px;
+        border: 1px solid var(--orange);
+        color: var(--ink);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+        font-size: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition: 180ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 1040px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+
+        .decision-panel {
+          max-width: 540px;
+        }
+
+        .calendar-summary {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .mock-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .mock-sidebar {
+          display: none;
+        }
+
+        .split-layout {
+          grid-template-columns: 220px minmax(0, 1fr);
+        }
+
+        .archive-head,
+        .archive-row {
+          grid-template-columns: 95px minmax(160px, 1fr) 95px;
+        }
+
+        .archive-excerpt {
+          display: none;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .page-shell {
+          width: min(100% - 28px, 1480px);
+        }
+
+        .hero {
+          padding: 45px 0 30px;
+        }
+
+        .hero h1 {
+          font-size: clamp(39px, 14vw, 66px);
+        }
+
+        .layout-nav {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .layout-nav a {
+          min-height: 64px;
+        }
+
+        .exploration-note,
+        .footer-note {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .board-meta,
+        .board-meta-left,
+        .mock-page-head {
+          flex-direction: column;
+        }
+
+        .board-meta {
+          gap: 17px;
+        }
+
+        .board-meta-left {
+          gap: 9px;
+        }
+
+        .choose-layout {
+          width: 100%;
+        }
+
+        .mock-topbar {
+          padding: 0 16px;
+        }
+
+        .mock-content {
+          padding: 24px 15px 28px;
+        }
+
+        .mock-page-head {
+          align-items: stretch;
+          gap: 17px;
+        }
+
+        .mock-page-head .mock-button {
+          width: 100%;
+        }
+
+        .filter-strip {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .filter-label,
+        .filter-actions {
+          grid-column: 1 / -1;
+        }
+
+        .filter-actions {
+          justify-content: stretch;
+        }
+
+        .filter-actions .mock-button {
+          flex: 1;
+        }
+
+        .timeline-item {
+          grid-template-columns: 50px minmax(0, 1fr);
+          gap: 12px;
+        }
+
+        .timeline-date strong {
+          font-size: 20px;
+        }
+
+        .timeline-date::after {
+          right: -7px;
+        }
+
+        .timeline-date::before {
+          right: -11px;
+        }
+
+        .timeline-card-head {
+          flex-direction: column;
+        }
+
+        .card-tools {
+          align-self: flex-end;
+        }
+
+        .split-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .entry-index {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .entry-index-head {
+          grid-column: 1 / -1;
+        }
+
+        .entry-index-item:nth-of-type(n + 5) {
+          display: none;
+        }
+
+        .reading-pane-body {
+          padding: 24px 19px;
+        }
+
+        .archive-intro {
+          grid-template-columns: 1fr;
+          gap: 19px;
+        }
+
+        .archive-count {
+          justify-content: flex-start;
+          text-align: left;
+        }
+
+        .archive-head,
+        .archive-row {
+          grid-template-columns: 82px minmax(0, 1fr);
+          gap: 9px;
+        }
+
+        .archive-head span:last-child,
+        .archive-length {
+          display: none;
+        }
+
+        .archive-head {
+          font-size: 7px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-shell">
+      <header class="hero page-shell">
+        <div>
+          <p class="eyebrow">JOURNAL LAYOUT STUDY / INVESTMENT NOTES</p>
+          <h1>投资日记，<span>四种阅读方式。</span></h1>
+          <p class="hero-copy">
+            基于当前 Dibobo 深色工作台和已有的“日期范围筛选 + 纯文本日记”能力，探索四种页面骨架。先选信息组织方式，再进入正式页面的组件和交互细化。
+          </p>
+          <div class="token-row" aria-label="当前视觉 token">
+            <span class="token"><i></i> ORANGE / #EF612A</span>
+            <span class="token"><i></i> DARK WORKSPACE</span>
+            <span class="token"><i></i> MONO DATA LABEL</span>
+            <span class="token"><i></i> HARD EDGE / LOW CHROME</span>
+          </div>
+        </div>
+
+        <aside class="decision-panel" aria-live="polite">
+          <span class="decision-caption">DESIGN REVIEW / CURRENT PICK</span>
+          <strong class="decision-value" id="selection">尚未选择布局</strong>
+          <span class="decision-meta" id="selection-meta">点击任意方案中的“选择此方向”</span>
+          <button class="reset-button" id="reset-selection" type="button">清除选择</button>
+        </aside>
+      </header>
+
+      <main class="page-shell">
+        <nav class="layout-nav" aria-label="四种布局快速跳转">
+          <a class="active" href="#layout-a"><strong>01 / A</strong><span>Timeline Ledger</span><small>时间线档案 · 最接近当前页</small></a>
+          <a href="#layout-b"><strong>02 / B</strong><span>Reading Desk</span><small>双栏阅读 · 先找再读</small></a>
+          <a href="#layout-c"><strong>03 / C</strong><span>Calendar Index</span><small>日历索引 · 日期优先</small></a>
+          <a href="#layout-d"><strong>04 / D</strong><span>Archive Shelf</span><small>档案货架 · 高密度扫描</small></a>
+        </nav>
+
+        <div class="exploration-note">
+          <span>向下滚动查看四个完整页面缩略原型；每个方案都保留同一套导航、筛选和写日记入口。</span>
+          <span>STATIC MOCK DATA · 2026.08.17</span>
+        </div>
+
+        <section class="layout-board board-a" id="layout-a">
+          <div class="board-meta">
+            <div class="board-meta-left">
+              <div class="board-index">01 / A</div>
+              <div>
+                <h2>Timeline Ledger · 时间线档案</h2>
+                <p>最接近当前实现的稳妥方案。保留左侧日期轨道，把“按时间回看”继续作为第一阅读路径，迁移成本最低。</p>
+              </div>
+            </div>
+            <button class="choose-layout" type="button" data-layout="01 · Timeline Ledger">选择此方向</button>
+          </div>
+
+          <div class="mock-window">
+            <div class="mock-window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span>journals / timeline ledger</span></div>
+            <div class="mock-shell">
+              <aside class="mock-sidebar">
+                <div class="mock-brand"><span class="mock-brand-mark">D</span><div><div class="mock-brand-title">DIBOBO</div><div class="mock-brand-sub">PRIVATE WORKBENCH</div></div></div>
+                <div class="mock-sidebar-label">WORKSPACE</div>
+                <nav class="mock-nav">
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>总览面板<span class="mock-nav-number">01</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>财经资讯<span class="mock-nav-number">02</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>投资组合<span class="mock-nav-number">04</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>复盘分析<span class="mock-nav-number">05</span></a>
+                  <a class="mock-nav-item active" href="#"><span class="nav-bullet"></span>投资日记<span class="mock-nav-number">08</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>系统设置<span class="mock-nav-number">09</span></a>
+                </nav>
+                <div class="mock-sidebar-status"><span class="status-dot"></span>已接入数据源</div>
+              </aside>
+
+              <main class="mock-main">
+                <div class="mock-topbar"><span>Dibobo <b>›</b> <strong>投资日记</strong></span><span class="user"><span class="user-mark">LZ</span> Li Z.</span></div>
+                <div class="mock-content">
+                  <div class="mock-page-head">
+                    <div><div class="mock-kicker">INVESTMENT NOTES / 投资日记</div><h3>投资日记</h3><p class="mock-description">记录你每一次买入的逻辑，卖出的理由，每一笔交易背后，都是一次决策的印记。</p></div>
+                    <button class="mock-button primary" type="button" data-demo-action="new">＋ 新建日记</button>
+                  </div>
+
+                  <div class="filter-strip">
+                    <div class="filter-label"><span class="filter-glyph">⌗</span>日期范围</div>
+                    <div class="date-field">2026-07-01</div>
+                    <div class="date-field">2026-08-17</div>
+                    <div class="filter-actions"><button class="mock-button" type="button" data-demo-action="clear">清除</button><button class="mock-button primary" type="button" data-demo-action="filter">筛选</button></div>
+                  </div>
+                  <div class="result-bar"><span>ALL DATES / 全部历史</span><strong>18 NOTES</strong></div>
+
+                  <div class="timeline-list">
+                    <article class="timeline-item">
+                      <div class="timeline-date"><div><strong>17</strong><span>AUG / 2026</span></div></div>
+                      <div class="timeline-card">
+                        <div class="timeline-card-head"><div class="timeline-card-title"><div class="timeline-card-meta"><strong>NOTE 018</strong> · 09:42 · 已修改</div><h4>下跌并没有改变最初的买入理由</h4></div><div class="card-tools"><span class="tool-box">↗</span><span class="tool-box">×</span></div></div>
+                        <div class="timeline-card-body"><p>今天市场继续回撤，但组合里的核心资产没有出现新的基本面变化。需要记录的不是涨跌，而是原来的判断是否仍然成立，以及什么事实会证明它是错的。</p></div>
+                        <div class="timeline-card-foot"><span>286 CHARACTERS · EDITED 10:18</span><strong>展开全文 ↓</strong></div>
+                      </div>
+                    </article>
+                    <article class="timeline-item">
+                      <div class="timeline-date"><div><strong>14</strong><span>AUG / 2026</span></div></div>
+                      <div class="timeline-card">
+                        <div class="timeline-card-head"><div class="timeline-card-title"><div class="timeline-card-meta"><strong>NOTE 017</strong> · 18:06</div><h4>把仓位留给更确定的机会</h4></div><div class="card-tools"><span class="tool-box">↗</span><span class="tool-box">×</span></div></div>
+                        <div class="timeline-card-body"><p>现金不是没有观点，而是给下一次高胜率决策保留选择权。今天没有新增仓位，继续观察盈利预期和估值之间的变化。</p></div>
+                        <div class="timeline-card-foot"><span>214 CHARACTERS</span><strong>展开全文 ↓</strong></div>
+                      </div>
+                    </article>
+                    <article class="timeline-item">
+                      <div class="timeline-date"><div><strong>11</strong><span>AUG / 2026</span></div></div>
+                      <div class="timeline-card">
+                        <div class="timeline-card-head"><div class="timeline-card-title"><div class="timeline-card-meta"><strong>NOTE 016</strong> · 21:13</div><h4>红利因子仍在，但不追逐每根 K 线</h4></div><div class="card-tools"><span class="tool-box">↗</span><span class="tool-box">×</span></div></div>
+                        <div class="timeline-card-body"><p>今天的上涨更像是情绪修复，不足以改变长期策略。把观察写下来，等下一次复盘时再看当时的证据是否足够。</p></div>
+                        <div class="timeline-card-foot"><span>198 CHARACTERS</span><strong>展开全文 ↓</strong></div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </section>
+
+        <section class="layout-board board-b" id="layout-b">
+          <div class="board-meta">
+            <div class="board-meta-left">
+              <div class="board-index">02 / B</div>
+              <div>
+                <h2>Reading Desk · 双栏阅读</h2>
+                <p>把“找记录”和“读正文”拆开。左侧固定索引，右侧保留完整阅读空间，更适合长正文和频繁复盘。</p>
+              </div>
+            </div>
+            <button class="choose-layout" type="button" data-layout="02 · Reading Desk">选择此方向</button>
+          </div>
+
+          <div class="mock-window">
+            <div class="mock-window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span>journals / reading desk</span></div>
+            <div class="mock-shell">
+              <aside class="mock-sidebar">
+                <div class="mock-brand"><span class="mock-brand-mark">D</span><div><div class="mock-brand-title">DIBOBO</div><div class="mock-brand-sub">PRIVATE WORKBENCH</div></div></div>
+                <div class="mock-sidebar-label">WORKSPACE</div>
+                <nav class="mock-nav">
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>总览面板<span class="mock-nav-number">01</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>财经资讯<span class="mock-nav-number">02</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>投资组合<span class="mock-nav-number">04</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>复盘分析<span class="mock-nav-number">05</span></a>
+                  <a class="mock-nav-item active" href="#"><span class="nav-bullet"></span>投资日记<span class="mock-nav-number">08</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>系统设置<span class="mock-nav-number">09</span></a>
+                </nav>
+                <div class="mock-sidebar-status"><span class="status-dot"></span>已接入数据源</div>
+              </aside>
+
+              <main class="mock-main">
+                <div class="mock-topbar"><span>Dibobo <b>›</b> <strong>投资日记</strong></span><span class="user"><span class="user-mark">LZ</span> Li Z.</span></div>
+                <div class="mock-content">
+                  <div class="mock-page-head">
+                    <div><div class="mock-kicker">READING WORKSPACE / 记录阅读台</div><h3>投资日记</h3><p class="mock-description">先定位一篇，再把注意力交给当时的判断、证据与风险。</p></div>
+                    <button class="mock-button primary" type="button" data-demo-action="new">＋ 新建日记</button>
+                  </div>
+
+                  <div class="filter-strip">
+                    <div class="filter-label"><span class="filter-glyph">⌗</span>日期范围</div>
+                    <div class="date-field">2026-07-01</div>
+                    <div class="date-field">2026-08-17</div>
+                    <div class="filter-actions"><button class="mock-button" type="button" data-demo-action="clear">清除</button><button class="mock-button primary" type="button" data-demo-action="filter">筛选</button></div>
+                  </div>
+                  <div class="result-bar"><span>18 NOTES / SELECTED 018</span><strong>阅读模式</strong></div>
+
+                  <div class="split-layout">
+                    <aside class="entry-index">
+                      <div class="entry-index-head"><span>RECENT NOTES</span><strong>18</strong></div>
+                      <button class="entry-index-item selected" type="button"><span class="entry-index-date">2026.08.17 · 09:42</span><strong>下跌并没有改变最初的买入理由</strong><small>286 CHARACTERS · EDITED</small></button>
+                      <button class="entry-index-item" type="button"><span class="entry-index-date">2026.08.14 · 18:06</span><strong>把仓位留给更确定的机会</strong><small>214 CHARACTERS</small></button>
+                      <button class="entry-index-item" type="button"><span class="entry-index-date">2026.08.11 · 21:13</span><strong>红利因子仍在，但不追逐每根 K 线</strong><small>198 CHARACTERS</small></button>
+                      <button class="entry-index-item" type="button"><span class="entry-index-date">2026.08.05 · 20:24</span><strong>先记录假设，再记录结果</strong><small>337 CHARACTERS</small></button>
+                    </aside>
+
+                    <article class="reading-pane">
+                      <div class="reading-pane-top"><span>NOTE 018 / FULL TEXT</span><strong>已修改</strong></div>
+                      <div class="reading-pane-body">
+                        <span class="entry-index-date">2026.08.17 · MONDAY · 09:42</span>
+                        <h4>下跌并没有改变最初的买入理由</h4>
+                        <div class="reading-pane-meta"><span>CREATED 2026.08.17 09:42</span><span>EDITED 2026.08.17 10:18</span><span>286 CHARACTERS</span></div>
+                        <div class="reading-rule"></div>
+                        <div class="reading-pane-copy">
+                          <p>今天市场继续回撤，但组合里的核心资产没有出现新的基本面变化。需要记录的不是涨跌，而是原来的判断是否仍然成立，以及什么事实会证明它是错的。</p>
+                          <p>如果只因为短期价格波动就改变策略，实际上是在用情绪替代证据。下一步仍然是等待盈利预期和估值的共同变化，而不是对每一次波动做出反应。</p>
+                        </div>
+                        <div class="reading-callout"><span>把“判断成立的条件”和“判断失效的条件”放在同一页，未来复盘时更容易区分事实与情绪。</span></div>
+                        <div class="reading-footer"><span>EDITORIAL VIEW / 01 OF 18</span><div class="card-tools"><span class="tool-box">↗</span><span class="tool-box">×</span></div></div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </section>
+
+        <section class="layout-board board-c" id="layout-c">
+          <div class="board-meta">
+            <div class="board-meta-left">
+              <div class="board-index">03 / C</div>
+              <div>
+                <h2>Calendar Index · 日历索引</h2>
+                <p>把日期从筛选器提升为主导航。适合希望快速看到“哪几天做过判断”、按月回看节奏的复盘型用户。</p>
+              </div>
+            </div>
+            <button class="choose-layout" type="button" data-layout="03 · Calendar Index">选择此方向</button>
+          </div>
+
+          <div class="mock-window">
+            <div class="mock-window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span>journals / calendar index</span></div>
+            <div class="mock-shell">
+              <aside class="mock-sidebar">
+                <div class="mock-brand"><span class="mock-brand-mark">D</span><div><div class="mock-brand-title">DIBOBO</div><div class="mock-brand-sub">PRIVATE WORKBENCH</div></div></div>
+                <div class="mock-sidebar-label">WORKSPACE</div>
+                <nav class="mock-nav">
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>总览面板<span class="mock-nav-number">01</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>财经资讯<span class="mock-nav-number">02</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>投资组合<span class="mock-nav-number">04</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>复盘分析<span class="mock-nav-number">05</span></a>
+                  <a class="mock-nav-item active" href="#"><span class="nav-bullet"></span>投资日记<span class="mock-nav-number">08</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>系统设置<span class="mock-nav-number">09</span></a>
+                </nav>
+                <div class="mock-sidebar-status"><span class="status-dot"></span>已接入数据源</div>
+              </aside>
+
+              <main class="mock-main">
+                <div class="mock-topbar"><span>Dibobo <b>›</b> <strong>投资日记</strong></span><span class="user"><span class="user-mark">LZ</span> Li Z.</span></div>
+                <div class="mock-content">
+                  <div class="mock-page-head">
+                    <div><div class="mock-kicker">DATE-FIRST ARCHIVE / 日历索引</div><h3>投资日记</h3><p class="mock-description">先看记录发生在哪一天，再进入当天的具体判断；日期范围筛选仍然保留在上方。</p></div>
+                    <button class="mock-button primary" type="button" data-demo-action="new">＋ 新建日记</button>
+                  </div>
+
+                  <div class="filter-strip">
+                    <div class="filter-label"><span class="filter-glyph">⌗</span>日期范围</div>
+                    <div class="date-field">2026-07-01</div>
+                    <div class="date-field">2026-08-17</div>
+                    <div class="filter-actions"><button class="mock-button" type="button" data-demo-action="clear">清除</button><button class="mock-button primary" type="button" data-demo-action="filter">筛选</button></div>
+                  </div>
+                  <div class="result-bar"><span>MONTH / 2026.08</span><strong>5 ACTIVE DAYS · 7 NOTES</strong></div>
+
+                  <div class="calendar-summary">
+                    <section class="calendar-panel">
+                      <div class="calendar-panel-head"><div><h4>2026 年 8 月</h4><span>记录密度视图</span></div><div class="month-nav"><button type="button">‹</button><button type="button">›</button></div></div>
+                      <div class="calendar-grid">
+                        <div class="weekday">SUN</div><div class="weekday">MON</div><div class="weekday">TUE</div><div class="weekday">WED</div><div class="weekday">THU</div><div class="weekday">FRI</div><div class="weekday">SAT</div>
+                        <div class="calendar-day muted-day">26</div><div class="calendar-day muted-day">27</div><div class="calendar-day muted-day">28</div><div class="calendar-day muted-day">29</div><div class="calendar-day muted-day">30</div><div class="calendar-day muted-day">31</div><div class="calendar-day">1</div>
+                        <div class="calendar-day">2</div><div class="calendar-day">3</div><div class="calendar-day">4</div><div class="calendar-day has-entry">5<span class="entry-count">1</span></div><div class="calendar-day">6</div><div class="calendar-day">7</div><div class="calendar-day">8</div>
+                        <div class="calendar-day">9</div><div class="calendar-day">10</div><div class="calendar-day has-entry">11<span class="entry-count">1</span></div><div class="calendar-day">12</div><div class="calendar-day">13</div><div class="calendar-day has-entry">14<span class="entry-count">2</span></div><div class="calendar-day">15</div>
+                        <div class="calendar-day">16</div><div class="calendar-day selected-day today-day has-entry">17<span class="entry-count">2</span></div><div class="calendar-day">18</div><div class="calendar-day">19</div><div class="calendar-day">20</div><div class="calendar-day">21</div><div class="calendar-day">22</div>
+                        <div class="calendar-day">23</div><div class="calendar-day">24</div><div class="calendar-day">25</div><div class="calendar-day">26</div><div class="calendar-day">27</div><div class="calendar-day">28</div><div class="calendar-day">29</div>
+                        <div class="calendar-day">30</div><div class="calendar-day">31</div><div class="calendar-day muted-day">1</div><div class="calendar-day muted-day">2</div><div class="calendar-day muted-day">3</div><div class="calendar-day muted-day">4</div><div class="calendar-day muted-day">5</div>
+                      </div>
+                      <div class="calendar-footer"><span>ORANGE MARK = HAS NOTES</span><span>‹ / › MONTH</span></div>
+                    </section>
+
+                    <aside class="day-panel">
+                      <div class="day-panel-head"><div><h4>2026.08.17</h4><span>MONDAY · TODAY</span></div><span>2 NOTES</span></div>
+                      <div class="day-panel-body">
+                        <article class="day-entry"><div class="day-entry-meta"><strong>09:42</strong><span>NOTE 018 · EDITED</span></div><h4>下跌并没有改变最初的买入理由</h4><p>原来的判断仍然成立，下一次行动等待盈利预期与估值共同变化。</p></article>
+                        <article class="day-entry"><div class="day-entry-meta"><strong>15:18</strong><span>NOTE 019</span></div><h4>把“没有动作”也写成一种动作</h4><p>保留现金与等待条件，避免用交易频率证明自己在工作。</p></article>
+                      </div>
+                      <div class="calendar-footer"><span>DAY DETAIL</span><span>查看完整正文 ↗</span></div>
+                    </aside>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </section>
+
+        <section class="layout-board board-d" id="layout-d">
+          <div class="board-meta">
+            <div class="board-meta-left">
+              <div class="board-index">04 / D</div>
+              <div>
+                <h2>Archive Shelf · 档案货架</h2>
+                <p>把正文折叠成可扫描的档案索引，单屏展示更多历史记录。适合记录数量增长后，先比较标题和摘要再进入详情。</p>
+              </div>
+            </div>
+            <button class="choose-layout" type="button" data-layout="04 · Archive Shelf">选择此方向</button>
+          </div>
+
+          <div class="mock-window">
+            <div class="mock-window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span>journals / archive shelf</span></div>
+            <div class="mock-shell">
+              <aside class="mock-sidebar">
+                <div class="mock-brand"><span class="mock-brand-mark">D</span><div><div class="mock-brand-title">DIBOBO</div><div class="mock-brand-sub">PRIVATE WORKBENCH</div></div></div>
+                <div class="mock-sidebar-label">WORKSPACE</div>
+                <nav class="mock-nav">
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>总览面板<span class="mock-nav-number">01</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>财经资讯<span class="mock-nav-number">02</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>投资组合<span class="mock-nav-number">04</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>复盘分析<span class="mock-nav-number">05</span></a>
+                  <a class="mock-nav-item active" href="#"><span class="nav-bullet"></span>投资日记<span class="mock-nav-number">08</span></a>
+                  <a class="mock-nav-item" href="#"><span class="nav-bullet"></span>系统设置<span class="mock-nav-number">09</span></a>
+                </nav>
+                <div class="mock-sidebar-status"><span class="status-dot"></span>已接入数据源</div>
+              </aside>
+
+              <main class="mock-main">
+                <div class="mock-topbar"><span>Dibobo <b>›</b> <strong>投资日记</strong></span><span class="user"><span class="user-mark">LZ</span> Li Z.</span></div>
+                <div class="mock-content">
+                  <div class="mock-page-head">
+                    <div><div class="mock-kicker">ARCHIVE INDEX / 档案索引</div><h3>投资日记</h3><p class="mock-description">不让正文把列表撑长。先扫描日期、标题、摘要，再决定要不要展开一篇记录。</p></div>
+                    <button class="mock-button primary" type="button" data-demo-action="new">＋ 新建日记</button>
+                  </div>
+
+                  <div class="filter-strip">
+                    <div class="filter-label"><span class="filter-glyph">⌗</span>日期范围</div>
+                    <div class="date-field">2026-07-01</div>
+                    <div class="date-field">2026-08-17</div>
+                    <div class="filter-actions"><button class="mock-button" type="button" data-demo-action="clear">清除</button><button class="mock-button primary" type="button" data-demo-action="filter">筛选</button></div>
+                  </div>
+                  <div class="result-bar"><span>ARCHIVE / 2026.07 — 2026.08</span><strong>18 NOTES · PAGE 1 / 2</strong></div>
+
+                  <div class="archive-intro"><div><h4>把每一次判断，留成可回看的证据。</h4><p>记录不需要当下就得出结论。这里保留发生过的日期、标题和正文切片，下一次复盘时，可以从“当时知道什么”开始。</p></div><div class="archive-count"><strong>18</strong><span>notes<br />in archive</span></div></div>
+
+                  <div class="archive-list">
+                    <div class="archive-head"><span>DATE</span><span>TITLE</span><span>EXCERPT</span><span>SIZE</span></div>
+                    <div class="archive-row selected"><div class="archive-date">2026.08.17</div><div class="archive-title"><strong>下跌并没有改变最初的买入理由</strong><small>NOTE 018 · 09:42 · EDITED</small></div><div class="archive-excerpt">今天市场继续回撤，但组合里的核心资产没有出现新的基本面变化……</div><div class="archive-length">286 C</div></div>
+                    <div class="archive-row"><div class="archive-date">2026.08.14</div><div class="archive-title"><strong>把仓位留给更确定的机会</strong><small>NOTE 017 · 18:06</small></div><div class="archive-excerpt">现金不是没有观点，而是给下一次高胜率决策保留选择权……</div><div class="archive-length">214 C</div></div>
+                    <div class="archive-row"><div class="archive-date">2026.08.11</div><div class="archive-title"><strong>红利因子仍在，但不追逐每根 K 线</strong><small>NOTE 016 · 21:13</small></div><div class="archive-excerpt">今天的上涨更像是情绪修复，不足以改变长期策略……</div><div class="archive-length">198 C</div></div>
+                    <div class="archive-row"><div class="archive-date">2026.08.05</div><div class="archive-title"><strong>先记录假设，再记录结果</strong><small>NOTE 015 · 20:24</small></div><div class="archive-excerpt">如果没有事先写下判断，事后很容易把结果误认为当时的逻辑……</div><div class="archive-length">337 C</div></div>
+                    <div class="archive-row"><div class="archive-date">2026.07.28</div><div class="archive-title"><strong>等待，是组合管理的一部分</strong><small>NOTE 014 · 19:50</small></div><div class="archive-excerpt">当没有足够证据时，保留现状也是一种明确的行动……</div><div class="archive-length">176 C</div></div>
+                  </div>
+                  <div class="archive-footer"><span>1–5 OF 18 NOTES</span><span>‹ PREV&nbsp;&nbsp;&nbsp; NEXT ›</span></div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer-note">
+          <div><strong>选择提示：</strong> A 适合保留现有习惯，B 适合长文阅读，C 适合按日期复盘，D 适合历史记录增长后的高密度扫描。</div>
+          <span>STATIC MOCK DATA · NO PRODUCT LOGIC</span>
+        </footer>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (() => {
+        const selection = document.getElementById("selection");
+        const selectionMeta = document.getElementById("selection-meta");
+        const resetButton = document.getElementById("reset-selection");
+        const choiceButtons = [...document.querySelectorAll(".choose-layout")];
+        const navLinks = [...document.querySelectorAll(".layout-nav a")];
+        const boards = [...document.querySelectorAll(".layout-board")];
+        const toast = document.getElementById("toast");
+        const storageKey = "dibobo-investment-journal-layout-choice";
+        let toastTimer;
+
+        const showToast = (message) => {
+          toast.textContent = message;
+          toast.classList.add("show");
+          window.clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+        };
+
+        const clearChoice = () => {
+          choiceButtons.forEach((button) => {
+            button.classList.remove("selected");
+            button.textContent = "选择此方向";
+          });
+          selection.textContent = "尚未选择布局";
+          selectionMeta.textContent = "点击任意方案中的“选择此方向”";
+          try {
+            window.localStorage.removeItem(storageKey);
+          } catch {
+            // file:// 页面可能禁用 localStorage，不影响原型操作。
+          }
+        };
+
+        const chooseLayout = (button, shouldScroll = false) => {
+          choiceButtons.forEach((item) => {
+            item.classList.toggle("selected", item === button);
+            item.textContent = item === button ? "已选择此方向" : "选择此方向";
+          });
+          selection.textContent = button.dataset.layout;
+          selectionMeta.textContent = "已记录选择 · 可继续比较其他方向";
+          try {
+            window.localStorage.setItem(storageKey, button.dataset.layout);
+          } catch {
+            // file:// 页面可能禁用 localStorage，不影响原型操作。
+          }
+          if (shouldScroll) button.scrollIntoView({ behavior: "smooth", block: "center" });
+        };
+
+        choiceButtons.forEach((button) => {
+          button.addEventListener("click", () => chooseLayout(button));
+        });
+
+        resetButton.addEventListener("click", () => {
+          clearChoice();
+          showToast("已清除当前选择");
+        });
+
+        document.querySelectorAll("[data-demo-action]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const action = button.dataset.demoAction;
+            const messages = {
+              new: "原型提示：新建日记入口保持不变，当前只展示布局方向。",
+              clear: "原型提示：筛选条件已清除。",
+              filter: "原型提示：这里保留现有日期范围筛选语义。",
+            };
+            showToast(messages[action] || "原型提示：这是静态布局演示。 ");
+          });
+        });
+
+        document.querySelectorAll(".entry-index-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            document.querySelectorAll(".entry-index-item").forEach((entry) => entry.classList.remove("selected"));
+            item.classList.add("selected");
+            showToast("原型提示：右侧阅读区会切换到所选日记。 ");
+          });
+        });
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              navLinks.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`));
+            });
+          },
+          { rootMargin: "-18% 0px -68% 0px", threshold: 0 },
+        );
+
+        boards.forEach((board) => observer.observe(board));
+
+        try {
+          const saved = window.localStorage.getItem(storageKey);
+          const savedButton = choiceButtons.find((button) => button.dataset.layout === saved);
+          if (savedButton) chooseLayout(savedButton);
+        } catch {
+          // file:// 页面可能禁用 localStorage，默认保持未选择状态。
+        }
+      })();
+    </script>
+  </body>
+</html>

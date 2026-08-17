@@ -11,6 +11,7 @@ interface DateRangeFieldProps {
   openedFrom?: string;
   openedTo?: string;
   onChange: (openedFrom: string, openedTo: string) => void;
+  showPopoverClear?: boolean;
 }
 
 interface DateRange {
@@ -31,7 +32,7 @@ function formatLocalDate(date?: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-export function DateRangeField({ openedFrom, openedTo, onChange }: DateRangeFieldProps) {
+export function DateRangeField({ openedFrom, openedTo, onChange, showPopoverClear = true }: DateRangeFieldProps) {
   const [open, setOpen] = useState(false);
   const draft = useMemo<DateRange>(() => ({ from: parseLocalDate(openedFrom), to: parseLocalDate(openedTo) }), [openedFrom, openedTo]);
   const [leftMonth, setLeftMonth] = useState<Date>(() => startOfMonth(parseLocalDate(openedFrom) || new Date()));
@@ -133,8 +134,8 @@ export function DateRangeField({ openedFrom, openedTo, onChange }: DateRangeFiel
           <CalendarDays className="shrink-0 text-muted-foreground" size={16} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-auto p-3">
-        <div className="flex gap-3">
+      <PopoverContent align="end" className="date-range-popover w-auto p-3">
+        <div className="date-range-calendar-pair flex gap-3">
           <div className="flex flex-col gap-1">
             <span className="px-1 text-xs font-medium text-muted-foreground">开始日期</span>
             <Calendar
@@ -164,9 +165,11 @@ export function DateRangeField({ openedFrom, openedTo, onChange }: DateRangeFiel
           <span className="text-xs text-muted-foreground">
             {draft.from && draft.to ? `共 ${formatLocalDate(draft.from)} 至 ${formatLocalDate(draft.to)}` : "请选择起止日期"}
           </span>
-          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClear}>
-            清除
-          </Button>
+          {showPopoverClear && (
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClear}>
+              清除
+            </Button>
+          )}
         </div>
       </PopoverContent>
     </Popover>

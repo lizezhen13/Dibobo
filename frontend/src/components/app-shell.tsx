@@ -44,7 +44,10 @@ export function AppShell() {
   const dataSources = useDataSourcesQuery();
   const isConnected = dataSources.data?.some((source) => source.is_active) ?? false;
   const current = useMemo(() => navigation.find((item) => location.pathname.startsWith(item.to)) ?? navigation[0], [location.pathname]);
-  const isFullBleedRoute = location.pathname === "/calendar" || location.pathname.startsWith("/watchlist/detail/");
+  const isFullBleedRoute =
+    location.pathname === "/calendar" ||
+    location.pathname.startsWith("/watchlist/detail/") ||
+    location.pathname.startsWith("/portfolios/detail/");
 
   const mobileNavOpen = mobileNavOpenAtPath === location.pathname;
   const closeMobileNav = () => setMobileNavOpenAtPath(null);
@@ -179,12 +182,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main
-          className={cn(
-            "min-h-0 min-w-0 flex-1 bg-background",
-            isFullBleedRoute ? "p-0" : "px-4 py-5 sm:px-6 sm:py-7 lg:p-8 xl:p-10",
-          )}
-        >
+        <main className={cn("min-h-0 min-w-0 flex-1 bg-background", isFullBleedRoute ? "p-0" : "px-4 py-5 sm:px-6 sm:py-7 lg:p-8 xl:p-10")}>
           <Outlet />
         </main>
       </div>

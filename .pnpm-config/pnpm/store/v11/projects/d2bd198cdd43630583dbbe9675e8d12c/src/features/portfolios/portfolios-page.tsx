@@ -167,7 +167,9 @@ export function PortfoliosPage() {
                 toggleHoldingSort={toggleHoldingSort}
                 goToHoldingPage={goToHoldingPage}
                 openHoldingEditor={openHoldingEditor}
-                onDetails={(holding) => navigate(`/watchlist/detail/${encodeURIComponent(holding.ticker)}`)}
+                onDetails={(holding) =>
+                  navigate(`/portfolios/detail/${encodeURIComponent(selectedPortfolio.id)}/${encodeURIComponent(holding.ticker)}`)
+                }
                 setDeleteHoldingTarget={setDeleteHoldingTarget}
                 reorderOpenHoldings={reorderOpenHoldings}
               />

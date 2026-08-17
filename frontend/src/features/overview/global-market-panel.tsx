@@ -180,7 +180,7 @@ function StatusPill({ item }: { item: GlobalMarketItem }) {
   if (item.market_status === "不适用") return null;
 
   return (
-    <span className={cn("flex shrink-0 items-center gap-1.5 text-[10px]", statusTone(item.market_status))}>
+    <span className={cn("flex shrink-0 items-center gap-1.5 text-[11.5px]", statusTone(item.market_status))}>
       <span className={cn("size-1.5 rounded-full bg-muted-foreground/45", item.market_status === "交易中" && "bg-success")} />
       {item.market_status}
     </span>
@@ -220,7 +220,7 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
         </p>
         <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 truncate text-[10px] text-muted-foreground/65">{yieldMode ? item.unit : (direction ?? item.unit)}</p>
-          <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[11px]", movement(changeValue))}>
+          <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[13px]", movement(changeValue))}>
             <MovementIcon value={changeValue} />
             <span>
               {yieldMode ? formatBp(item.change_bp) : `${formatSigned(item.change, item.precision)}  ${formatPercent(item.change_percent)}`}

@@ -15,6 +15,9 @@ const WatchlistPage = lazy(() => import("./features/watchlist/watchlist-page").t
 const StockDetailPage = lazy(() =>
   import("./features/watchlist/stock-detail-page").then(({ StockDetailPage: Page }) => ({ default: Page })),
 );
+const PortfolioStockDetailPage = lazy(() =>
+  import("./features/portfolios/portfolio-stock-detail-page").then(({ PortfolioStockDetailPage: Page }) => ({ default: Page })),
+);
 const RadarPage = lazy(() => import("./features/radar/radar-page").then(({ RadarPage: Page }) => ({ default: Page })));
 const ReviewPage = lazy(() => import("./features/review/review-page").then(({ ReviewPage: Page }) => ({ default: Page })));
 const SettingsPage = lazy(() => import("./features/settings/settings-page").then(({ SettingsPage: Page }) => ({ default: Page })));
@@ -38,6 +41,7 @@ export function App() {
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/watchlist/detail/:ticker" element={<StockDetailPage />} />
             <Route path="/portfolios" element={<PortfoliosPage />} />
+            <Route path="/portfolios/detail/:portfolioId/:ticker" element={<PortfolioStockDetailPage />} />
             <Route path="/holdings" element={<Navigate to="/portfolios" replace />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/radar" element={<RadarPage />} />

@@ -1,4 +1,4 @@
-import { BookOpenText, CalendarDays, ChevronDown, ChevronUp, Edit3, Filter, NotebookPen, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { BookOpenText, CalendarDays, Edit3, NotebookPen, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -14,18 +14,14 @@ import {
 } from "../../components/ui/alert-dialog";
 import { Button } from "../../components/ui/button";
 import { EmptyState, ErrorState, PageContainer, PageHeader, Pagination } from "../../components/patterns";
-import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { formatDateTime } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
+import "./journals.css";
+import { DateRangeField } from "../holdings/date-range-field";
 import { JournalDialog } from "./journal-dialog";
 import { useDeleteJournalMutation, useJournalsQuery } from "./queries";
 import type { Journal } from "./types";
-
-interface AppliedFilters {
-  dateFrom: string;
-  dateTo: string;
-}
 
 export function JournalsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,14 +38,14 @@ export function JournalsPage() {
     };
   }, [searchParamsString]);
   const { filters, page } = appliedState;
-  const [filterError, setFilterError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Journal | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null);
   const query = useJournalsQuery({ ...filters, page });
   const deleteMutation = useDeleteJournalMutation();
   const isFiltered = Boolean(filters.dateFrom || filters.dateTo);
+  const selectedJournal = query.data?.items.find((journal) => journal.id === selectedJournalId) ?? query.data?.items[0] ?? null;
 
   const openEditor = (journal: Journal | null) => {
     setEditingJournal(journal);
@@ -57,11 +53,6 @@ export function JournalsPage() {
   };
 
   const applyFilters = (dateFromInput: string, dateToInput: string) => {
-    if (dateFromInput && dateToInput && dateFromInput > dateToInput) {
-      setFilterError("开始日期不能晚于结束日期");
-      return;
-    }
-    setFilterError(null);
     const next = new URLSearchParams(searchParamsString);
     if (dateFromInput) next.set("date_from", dateFromInput);
     else next.delete("date_from");
@@ -72,7 +63,6 @@ export function JournalsPage() {
   };
 
   const clearFilters = () => {
-    setFilterError(null);
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
@@ -87,33 +77,26 @@ export function JournalsPage() {
     if (!deleteTarget) return;
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
+      if (deleteTarget.id === selectedJournalId) {
+        const items = query.data?.items ?? [];
+        const deletedIndex = items.findIndex((journal) => journal.id === deleteTarget.id);
+        const nextJournal = items[deletedIndex + 1] ?? items[deletedIndex - 1] ?? null;
+        setSelectedJournalId(nextJournal?.id ?? null);
+      }
       if ((query.data?.items.length ?? 0) === 1 && page > 1) goToPage(page - 1);
-      setExpandedIds((current) => {
-        const next = new Set(current);
-        next.delete(deleteTarget.id);
-        return next;
-      });
       setDeleteTarget(null);
     } catch {
       // Keep the confirmation open so deletion can be retried.
     }
   };
 
-  const toggleExpanded = (id: string) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   return (
-    <PageContainer size="default">
+    <PageContainer size="default" className="journals-page">
       <PageHeader
         eyebrow="INVESTMENT NOTES / 投资日记"
         title="投资日记"
         description="记录你每一次买入的逻辑，卖出的理由，每一笔交易背后，都是一次决策的印记。"
+        className="shrink-0"
         actions={
           <Button onClick={() => openEditor(null)}>
             <Plus size={15} /> 新建日记
@@ -121,70 +104,59 @@ export function JournalsPage() {
         }
       />
 
-      <div className="mb-7 overflow-hidden rounded-xl border border-border bg-card shadow-raised">
-        <JournalDateFilterControls
-          key={`${filters.dateFrom}\u0000${filters.dateTo}`}
-          dateFrom={filters.dateFrom}
-          dateTo={filters.dateTo}
-          isFiltered={isFiltered}
-          onApply={applyFilters}
-          onClear={clearFilters}
-          onInputChange={() => setFilterError(null)}
-        />
-        <div className="flex h-9 items-center justify-between border-t border-line bg-card-deep/35 px-5 font-mono text-[0.68rem] tracking-[0.08em] text-muted-foreground/60">
-          <span>{filterError ?? (isFiltered ? formatRange(filters) : "ALL DATES / 全部历史")}</span>
-          <span>{query.data ? `${query.data.total} NOTES` : "— NOTES"}</span>
-        </div>
-      </div>
-
       {query.isPending ? (
-        <JournalListSkeleton />
+        <div className="journal-workspace-shell">
+          <JournalListSkeleton />
+        </div>
       ) : query.isError ? (
-        <ErrorState
-          title="投资日记加载失败"
-          description="请检查本地服务状态后重试。"
-          retryLabel="重新加载"
-          onRetry={() => void query.refetch()}
-          className="min-h-[360px]"
-        />
+        <div className="journal-state-shell">
+          <ErrorState
+            title="投资日记加载失败"
+            description="请检查本地服务状态后重试。"
+            retryLabel="重新加载"
+            onRetry={() => void query.refetch()}
+            className="min-h-[360px]"
+          />
+        </div>
       ) : query.data.items.length === 0 ? (
-        <EmptyState
-          icon={isFiltered ? CalendarDays : BookOpenText}
-          title={isFiltered ? "该日期范围内没有投资日记" : "还没有留下任何投资日记"}
-          description={
-            isFiltered ? "换一个日期范围，或者回到全部历史记录。" : "第一篇不需要完美。记下今天最重要的判断，以及什么事实会证明它是错的。"
-          }
-          action={
-            <>
-              {isFiltered && (
-                <Button variant="outline" onClick={clearFilters}>
-                  <RotateCcw size={14} /> 查看全部
+        <div className="journal-state-shell">
+          <EmptyState
+            icon={isFiltered ? CalendarDays : BookOpenText}
+            title={isFiltered ? "该日期范围内没有投资日记" : "还没有留下任何投资日记"}
+            description={
+              isFiltered ? "换一个日期范围，或者回到全部历史记录。" : "第一篇不需要完美。记下今天最重要的判断，以及什么事实会证明它是错的。"
+            }
+            action={
+              <>
+                {isFiltered && (
+                  <Button variant="outline" onClick={clearFilters}>
+                    <RotateCcw size={14} /> 查看全部
+                  </Button>
+                )}
+                <Button onClick={() => openEditor(null)}>
+                  <NotebookPen size={14} /> 写一篇日记
                 </Button>
-              )}
-              <Button onClick={() => openEditor(null)}>
-                <NotebookPen size={14} /> 写一篇日记
-              </Button>
-            </>
-          }
-          className="min-h-[390px]"
-        />
+              </>
+            }
+            className="min-h-[390px]"
+          />
+        </div>
       ) : (
-        <div className={cn("relative", query.isPlaceholderData && "opacity-55 transition-opacity")}>
-          <div className="space-y-5">
-            {query.data.items.map((journal, index) => (
-              <JournalEntry
-                key={journal.id}
-                journal={journal}
-                ordinal={(query.data.page - 1) * query.data.page_size + index + 1}
-                isFirst={index === 0}
-                isLast={index === query.data.items.length - 1}
-                expanded={expandedIds.has(journal.id)}
-                onToggle={() => toggleExpanded(journal.id)}
-                onEdit={() => openEditor(journal)}
-                onDelete={() => setDeleteTarget(journal)}
-              />
-            ))}
-          </div>
+        <div className={cn("journal-workspace-shell relative", query.isPlaceholderData && "opacity-55 transition-opacity")}>
+          <JournalReadingWorkspace
+            journals={query.data.items}
+            selectedJournal={selectedJournal}
+            page={query.data.page}
+            pageSize={query.data.page_size}
+            dateFrom={filters.dateFrom}
+            dateTo={filters.dateTo}
+            isFiltered={isFiltered}
+            onSelect={setSelectedJournalId}
+            onEdit={openEditor}
+            onDelete={setDeleteTarget}
+            onApply={applyFilters}
+            onClear={clearFilters}
+          />
         </div>
       )}
 
@@ -197,7 +169,7 @@ export function JournalsPage() {
           totalItems={query.data.total}
           isLoading={query.isFetching}
           onPageChange={goToPage}
-          className="mt-7"
+          className="journal-pagination mt-4 shrink-0"
         />
       )}
 
@@ -238,222 +210,231 @@ function JournalDateFilterControls({
   isFiltered,
   onApply,
   onClear,
-  onInputChange,
 }: {
   dateFrom: string;
   dateTo: string;
   isFiltered: boolean;
   onApply: (dateFrom: string, dateTo: string) => void;
   onClear: () => void;
-  onInputChange: () => void;
 }) {
   const [dateFromInput, setDateFromInput] = useState(dateFrom);
   const [dateToInput, setDateToInput] = useState(dateTo);
 
   return (
-    <div className="grid grid-cols-1 gap-4 px-5 py-5 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end">
-      <div className="flex h-10 items-center gap-2 pr-2 text-label font-semibold tracking-[0.08em] text-muted-foreground">
-        <CalendarDays size={16} className="text-primary/80" /> 日期范围
-      </div>
-      <label className="relative block">
-        <div className="relative">
-          <CalendarDays size={16} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80" />
-          <span
-            className={cn(
-              "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-body-sm text-muted-foreground/45",
-              dateFromInput && "hidden",
-            )}
-          >
-            请选择开始日期
-          </span>
-          <Input
-            type="date"
-            value={dateFromInput}
-            className={cn("date-input w-full cursor-pointer pl-9", !dateFromInput && "date-input-empty")}
-            onChange={(event) => {
-              setDateFromInput(event.target.value);
-              onInputChange();
-            }}
-          />
-        </div>
-      </label>
-      <label className="relative block">
-        <div className="relative">
-          <CalendarDays size={16} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80" />
-          <span
-            className={cn(
-              "pointer-events-none absolute left-9 top-1/2 z-10 -translate-y-1/2 text-body-sm text-muted-foreground/45",
-              dateToInput && "hidden",
-            )}
-          >
-            请选择结束日期
-          </span>
-          <Input
-            type="date"
-            value={dateToInput}
-            className={cn("date-input w-full cursor-pointer pl-9", !dateToInput && "date-input-empty")}
-            onChange={(event) => {
-              setDateToInput(event.target.value);
-              onInputChange();
-            }}
-          />
-        </div>
-      </label>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onClear} disabled={!dateFromInput && !dateToInput && !isFiltered}>
-          <RotateCcw size={14} /> 清除
-        </Button>
-        <Button onClick={() => onApply(dateFromInput, dateToInput)}>
-          <Filter size={14} /> 筛选
+    <div className="journal-index-filter">
+      <div className="journal-index-filter-field">
+        <DateRangeField
+          openedFrom={dateFromInput}
+          openedTo={dateToInput}
+          showPopoverClear={false}
+          onChange={(nextDateFrom, nextDateTo) => {
+            setDateFromInput(nextDateFrom);
+            setDateToInput(nextDateTo);
+            if (nextDateFrom && nextDateTo) onApply(nextDateFrom, nextDateTo);
+            else if (!nextDateFrom && !nextDateTo && isFiltered) onClear();
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="journal-index-filter-clear"
+          onClick={onClear}
+          disabled={!dateFromInput && !dateToInput && !isFiltered}
+          aria-label="重置筛选条件"
+          title="重置筛选条件"
+        >
+          <RotateCcw size={14} />
         </Button>
       </div>
     </div>
   );
 }
 
-function JournalEntry({
-  journal,
-  ordinal,
-  isFirst,
-  isLast,
-  expanded,
-  onToggle,
+function JournalReadingWorkspace({
+  journals,
+  selectedJournal,
+  page,
+  pageSize,
+  dateFrom,
+  dateTo,
+  isFiltered,
+  onSelect,
   onEdit,
   onDelete,
+  onApply,
+  onClear,
 }: {
-  journal: Journal;
-  ordinal: number;
-  isFirst: boolean;
-  isLast: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  journals: Journal[];
+  selectedJournal: Journal | null;
+  page: number;
+  pageSize: number;
+  dateFrom: string;
+  dateTo: string;
+  isFiltered: boolean;
+  onSelect: (id: string) => void;
+  onEdit: (journal: Journal) => void;
+  onDelete: (journal: Journal) => void;
+  onApply: (dateFrom: string, dateTo: string) => void;
+  onClear: () => void;
 }) {
-  const dateParts = getDateParts(journal.journal_date);
-  const contentIsLong = journal.content.length > 240 || journal.content.split("\n").length > 4;
-  const wasEdited = new Date(journal.updated_at).getTime() - new Date(journal.created_at).getTime() > 1000;
-  const showTimeline = !(isFirst && isLast);
+  const selectedIndex = selectedJournal ? journals.findIndex((journal) => journal.id === selectedJournal.id) : -1;
+  const selectedOrdinal = selectedIndex >= 0 ? (page - 1) * pageSize + selectedIndex + 1 : 0;
 
   return (
-    <div className="relative grid grid-cols-[116px_minmax(0,1fr)] gap-5">
-      <div className="relative z-[1] flex items-center justify-center text-center">
-        {showTimeline && (
-          <div
-            className={cn(
-              "absolute left-1/2 w-px -translate-x-1/2 bg-border/60",
-              isFirst && !isLast && "top-1/2 -bottom-2.5",
-              !isFirst && !isLast && "-top-2.5 -bottom-2.5",
-              !isFirst && isLast && "-top-2.5 bottom-1/2",
-            )}
-            aria-hidden="true"
-          />
-        )}
-        <div className="relative z-10 mx-auto w-[74px] rounded-xl border border-border bg-background px-2 py-3 shadow-subtle">
-          <p className="font-display text-[1.75rem] leading-none text-foreground">{dateParts.day}</p>
-          <p className="mt-1.5 font-mono text-[0.58rem] tracking-[0.12em] text-primary/80">{dateParts.month}</p>
-          <p className="mt-0.5 font-mono text-[0.58rem] text-muted-foreground/50">{dateParts.year}</p>
+    <div className="journal-workspace">
+      <aside className="journal-index" aria-label="日记列表">
+        <div className="journal-index-header">
+          <div>
+            <p className="journal-index-kicker">RECENT NOTES</p>
+            <h2 className="journal-index-title">日记列表</h2>
+          </div>
+          <span className="journal-index-count">{journals.length.toString().padStart(2, "0")}</span>
         </div>
-      </div>
 
-      <article className="group overflow-hidden rounded-xl border border-border bg-card shadow-raised transition duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-dialog">
-        <div className="flex items-start gap-5 border-b border-line px-6 py-5">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-2 font-mono text-[0.62rem] tracking-[0.12em] text-muted-foreground/55">
-              <span className="text-primary/80">NOTE {ordinal.toString().padStart(3, "0")}</span>
-              <span>·</span>
-              <span>{formatDateTime(journal.created_at)}</span>
-              {wasEdited && <span className="rounded-full bg-secondary px-2 py-0.5 tracking-normal">已修改</span>}
+        <JournalDateFilterControls
+          key={`${dateFrom}\u0000${dateTo}`}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          isFiltered={isFiltered}
+          onApply={onApply}
+          onClear={onClear}
+        />
+
+        <div className="journal-index-list" role="listbox" aria-label="选择要阅读的日记">
+          {journals.map((journal, index) => {
+            const ordinal = (page - 1) * pageSize + index + 1;
+            const isSelected = journal.id === selectedJournal?.id;
+
+            return (
+              <button
+                key={journal.id}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={cn("journal-index-item", isSelected && "journal-index-item-selected")}
+                onClick={() => onSelect(journal.id)}
+              >
+                <span className="journal-index-meta-row">
+                  <span className="journal-index-date">{formatJournalDate(journal.journal_date)}</span>
+                  <span className="journal-index-time">{formatJournalTime(journal.created_at)}</span>
+                </span>
+                <span className="journal-index-heading">{journal.title}</span>
+                <span className="journal-index-submeta">
+                  NOTE {ordinal.toString().padStart(3, "0")} · {journal.content.length.toLocaleString("zh-CN")} CHARACTERS
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="journal-index-footer">
+          <span>{journals.length} NOTES / CURRENT</span>
+        </div>
+      </aside>
+
+      {selectedJournal ? (
+        <article className="journal-reading-pane">
+          <header className="journal-reading-toolbar">
+            <div>
+              <p className="journal-reading-kicker">NOTE {selectedOrdinal.toString().padStart(3, "0")} / FULL TEXT</p>
             </div>
-            <h2 className="font-display text-[1.5rem] tracking-tight text-foreground">{journal.title}</h2>
-          </div>
-          <div className="flex shrink-0 gap-1 opacity-60 transition group-hover:opacity-100">
-            <Button variant="ghost" size="icon" className="size-9" onClick={onEdit} aria-label={`编辑 ${journal.title}`} title="编辑">
-              <Edit3 size={15} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-danger hover:bg-danger/10 hover:text-danger"
-              onClick={onDelete}
-              aria-label={`删除 ${journal.title}`}
-              title="删除"
-            >
-              <Trash2 size={15} />
-            </Button>
-          </div>
-        </div>
+            <div className="journal-reading-actions">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9"
+                onClick={() => onEdit(selectedJournal)}
+                aria-label={`编辑 ${selectedJournal.title}`}
+                title="编辑"
+              >
+                <Edit3 size={15} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 text-danger hover:bg-danger/10 hover:text-danger"
+                onClick={() => onDelete(selectedJournal)}
+                aria-label={`删除 ${selectedJournal.title}`}
+                title="删除"
+              >
+                <Trash2 size={15} />
+              </Button>
+            </div>
+          </header>
 
-        <div
-          className="relative px-6 py-5"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, transparent 0, transparent 31px, color-mix(in oklch, var(--line) 48%, transparent) 32px)",
-          }}
-        >
-          <p
-            className={cn(
-              "whitespace-pre-wrap break-words text-[0.94rem] leading-8 text-muted-foreground",
-              !expanded && contentIsLong && "line-clamp-4",
-            )}
-          >
-            {journal.content}
-          </p>
-          {!expanded && contentIsLong && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent" />
-          )}
-        </div>
-
-        <div className="flex h-11 items-center justify-between border-t border-line bg-card-deep/25 px-6">
-          <span className="font-mono text-[0.62rem] tracking-[0.1em] text-muted-foreground/45">
-            {journal.content.length.toLocaleString("zh-CN")} CHARACTERS
-            {wasEdited && ` · EDITED ${formatDateTime(journal.updated_at)}`}
-          </span>
-          {contentIsLong && (
-            <button
-              type="button"
-              className="relative z-[1] inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-primary transition hover:text-primary-hover"
-              onClick={onToggle}
-            >
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {expanded ? "收起正文" : "展开全文"}
-            </button>
-          )}
-        </div>
-      </article>
+          <div className="journal-reading-body">
+            <p className="journal-reading-date">
+              {formatJournalDate(selectedJournal.journal_date)} · {formatJournalTime(selectedJournal.created_at)}
+            </p>
+            <h2 className="journal-reading-title">{selectedJournal.title}</h2>
+            <div className="journal-reading-rule" />
+            <p className="journal-reading-copy">{selectedJournal.content}</p>
+          </div>
+        </article>
+      ) : (
+        <div className="journal-reading-empty">选择左侧一篇日记开始阅读。</div>
+      )}
     </div>
   );
 }
 
 function JournalListSkeleton() {
   return (
-    <div className="space-y-5">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="grid grid-cols-[116px_minmax(0,1fr)] gap-5">
-          <div className="flex items-center justify-center">
-            <Skeleton className="h-[84px] w-[74px] rounded-xl" />
+    <div className="journal-workspace journal-workspace-skeleton">
+      <aside className="journal-index">
+        <div className="journal-index-header">
+          <div>
+            <Skeleton className="h-2.5 w-20" />
+            <Skeleton className="mt-3 h-5 w-24" />
           </div>
-          <div className="rounded-xl border border-border bg-card px-6 py-6 shadow-raised">
-            <Skeleton className="h-3 w-48" />
-            <Skeleton className="mt-3 h-7 w-2/5" />
-            <Skeleton className="mt-8 h-4 w-full" />
-            <Skeleton className="mt-3 h-4 w-5/6" />
-            <Skeleton className="mt-3 h-4 w-3/5" />
+          <Skeleton className="h-6 w-7" />
+        </div>
+        <div className="journal-index-filter journal-index-filter-skeleton">
+          <div className="journal-index-filter-field">
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="size-8" />
           </div>
         </div>
-      ))}
+        <div className="journal-index-list">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="journal-index-skeleton-item">
+              <Skeleton className="h-2.5 w-32" />
+              <Skeleton className="mt-3 h-4 w-4/5" />
+              <Skeleton className="mt-3 h-2.5 w-3/5" />
+            </div>
+          ))}
+        </div>
+      </aside>
+      <div className="journal-reading-pane journal-reading-pane-skeleton">
+        <div className="journal-reading-toolbar">
+          <div>
+            <Skeleton className="h-2.5 w-36" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="size-9" />
+            <Skeleton className="size-9" />
+          </div>
+        </div>
+        <div className="journal-reading-body">
+          <Skeleton className="h-2.5 w-52" />
+          <Skeleton className="mt-4 h-9 w-4/5" />
+          <div className="my-8 border-t border-line" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="mt-4 h-4 w-full" />
+          <Skeleton className="mt-4 h-4 w-11/12" />
+          <Skeleton className="mt-4 h-4 w-4/5" />
+        </div>
+      </div>
     </div>
   );
 }
 
-function getDateParts(value: string) {
-  const [year, month, day] = value.split("-");
-  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(`${value}T00:00:00+08:00`)).toUpperCase();
-  return { year, month: monthLabel || month, day };
+function formatJournalDate(value: string): string {
+  return value.replaceAll("-", ".");
 }
 
-function formatRange(filters: AppliedFilters): string {
-  if (filters.dateFrom && filters.dateTo) return `${filters.dateFrom} — ${filters.dateTo}`;
-  if (filters.dateFrom) return `FROM ${filters.dateFrom}`;
-  return `THROUGH ${filters.dateTo}`;
+function formatJournalTime(value: string): string {
+  const formatted = formatDateTime(value);
+  return formatted.split(" ").at(-1) ?? formatted;
 }

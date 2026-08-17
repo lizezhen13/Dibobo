@@ -211,22 +211,15 @@ export function EventCard({ event, onClick }: { event: CalendarEvent; onClick: (
         <span className="mt-2 flex min-h-4 flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.80rem] text-muted-foreground">
           <ScopeTags event={event} />
           <Stars importance={event.category === "closed" ? null : event.importance} />
-          {event.category === "macro" && (values.length > 0 || unit) ? (
+          {event.category === "macro" && values.length > 0 ? (
             <>
-              {values.length > 0 ? (
-                <span className="flex min-w-0 flex-wrap gap-x-2">
-                  {values.map(([label, value]) => (
-                    <span key={label}>
-                      {label} <b className="font-mono font-medium text-foreground">{valueWithoutUnit(value, unit)}</b>
-                    </span>
-                  ))}
-                </span>
-              ) : null}
-              {unit ? (
-                <span className="inline-flex items-center gap-1 text-muted-foreground/75">
-                  单位：<b className="font-mono font-medium text-foreground">{unit}</b>
-                </span>
-              ) : null}
+              <span className="flex min-w-0 flex-wrap gap-x-2">
+                {values.map(([label, value]) => (
+                  <span key={label}>
+                    {label} <b className="font-mono font-medium text-foreground">{valueWithoutUnit(value, unit)}</b>
+                  </span>
+                ))}
+              </span>
             </>
           ) : null}
           {event.category === "closed" && event.details.closure_type ? <span>{String(event.details.closure_type)}</span> : null}

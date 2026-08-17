@@ -8,7 +8,7 @@ export function SettingsPage() {
     <PageContainer size="compact">
       <h1 className="sr-only">系统设置</h1>
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="mb-8">
+        <TabsList className="mb-6">
           <TabsTrigger value="account">账号设置</TabsTrigger>
           <TabsTrigger value="data">数据源</TabsTrigger>
         </TabsList>

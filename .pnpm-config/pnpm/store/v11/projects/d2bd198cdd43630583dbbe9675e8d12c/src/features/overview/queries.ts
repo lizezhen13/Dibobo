@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetchSchema } from "../../lib/api-schema";
 import { liveQueryOptions, pollingJitter } from "../../lib/query-lifecycle";
 import { queryKeys } from "../../lib/query-keys";
-import type {
-  OverviewHotStocks,
-  OverviewIndices,
-  OverviewIndustries,
-  OverviewMarketBreadth,
-  OverviewMarketTemperature,
-} from "./types";
+import type { OverviewHotStocks, OverviewIndices, OverviewIndustries, OverviewMarketBreadth, OverviewMarketTemperature } from "./types";
 import type { ZodType } from "zod";
 
 export const overviewQueryKey = queryKeys.overview.all;

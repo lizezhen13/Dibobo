@@ -10,13 +10,7 @@ import { IndicesPanel } from "./indices-panel";
 import { IndustryDetailCard } from "./industry-detail-card";
 import { MarketBreadthCard } from "./market-breadth-card";
 import { MarketTemperatureCard } from "./market-temperature-card";
-import {
-  useHotStocksQuery,
-  useIndustriesQuery,
-  useMarketBreadthQuery,
-  useMarketTemperatureQuery,
-  useOverviewQuery,
-} from "./queries";
+import { useHotStocksQuery, useIndustriesQuery, useMarketBreadthQuery, useMarketTemperatureQuery, useOverviewQuery } from "./queries";
 import { refreshGlobalMarketGroup as requestGlobalMarketGroup, useGlobalMarketQuery } from "./global-market-queries";
 import type { GlobalMarketGroupKey } from "./global-market-types";
 

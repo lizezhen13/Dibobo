@@ -46,7 +46,11 @@ export function TemperatureBullet({ value, description }: { value: number; descr
             {tone.label}
           </span>
         </div>
-        <p className="min-w-0 flex-1 truncate text-right text-[15px] font-semibold leading-5" style={{ color: tone.accent }} title={description ?? tone.description}>
+        <p
+          className="min-w-0 flex-1 truncate text-right text-[15px] font-semibold leading-5"
+          style={{ color: tone.accent }}
+          title={description ?? tone.description}
+        >
           {description || tone.description}
         </p>
       </div>
@@ -80,10 +84,17 @@ export function TemperatureBullet({ value, description }: { value: number; descr
       </div>
 
       <div className="mt-2 flex justify-between font-mono text-[9px] text-muted-foreground/60">
-        <span>0</span><span>35</span><span>60</span><span>80</span><span>100</span>
+        <span>0</span>
+        <span>35</span>
+        <span>60</span>
+        <span>80</span>
+        <span>100</span>
       </div>
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground/70">
-        <span>低迷</span><span>平稳</span><span>偏热</span><span>过热</span>
+        <span>低迷</span>
+        <span>平稳</span>
+        <span>偏热</span>
+        <span>过热</span>
       </div>
     </div>
   );
@@ -99,11 +110,7 @@ function TemperatureMetric({ kind, label, value }: { kind: "valuation" | "sentim
   );
 }
 
-export function MarketTemperatureCard({
-  query,
-}: {
-  query: UseQueryResult<OverviewMarketTemperature, Error>;
-}) {
+export function MarketTemperatureCard({ query }: { query: UseQueryResult<OverviewMarketTemperature, Error> }) {
   const data = query.data;
 
   return (
