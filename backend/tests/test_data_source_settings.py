@@ -96,21 +96,47 @@ async def test_source_lookup_is_scoped_to_current_user(db: AsyncSession) -> None
 
 
 @pytest.mark.asyncio
-async def test_only_one_source_can_be_active_per_user(db: AsyncSession) -> None:
+async def test_sources_for_different_modules_can_be_active_together(db: AsyncSession) -> None:
     user = await make_user(db, "investor")
-    first = await create_source(db, user, create_payload("第一源"), Settings())
-    second = await create_source(db, user, create_payload("第二源", "another-key-5678"), Settings())
-    first.last_test_status = "success"
-    second.last_test_status = "success"
+    primary = await create_source(db, user, create_payload("扶摇主行情"), Settings())
+    replacement = await create_source(
+        db,
+        user,
+        create_payload("扶摇备用", "another-key-5678"),
+        Settings(),
+    )
+    longbridge = DataSource(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        name="Longbridge 日历",
+        provider_type="longbridge",
+        base_url="https://openapi.longbridge.cn",
+        api_key_ciphertext="ciphertext",
+        api_key_last4="1234",
+        last_test_status="success",
+        capabilities={"financial_calendar": "supported"},
+    )
+    db.add(longbridge)
+    primary.last_test_status = "success"
+    replacement.last_test_status = "success"
     await db.commit()
 
-    await activate_source(db, user, first.id)
-    await activate_source(db, user, second.id)
-    await db.refresh(first)
-    await db.refresh(second)
+    await activate_source(db, user, primary.id)
+    await activate_source(db, user, longbridge.id)
+    await db.refresh(primary)
+    await db.refresh(longbridge)
 
-    assert not first.is_active
-    assert second.is_active
+    assert primary.is_active
+    assert longbridge.is_active
+
+    await activate_source(db, user, replacement.id)
+    await db.refresh(primary)
+    await db.refresh(replacement)
+    await db.refresh(longbridge)
+
+    assert not primary.is_active
+    assert replacement.is_active
+    assert longbridge.is_active
 
 
 @pytest.mark.asyncio

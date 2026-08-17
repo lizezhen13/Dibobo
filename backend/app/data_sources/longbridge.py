@@ -6,7 +6,7 @@ import json
 import secrets
 import time
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlencode
 
@@ -19,6 +19,7 @@ LONGBRIDGE_CAPABILITIES: dict[str, Literal["supported", "unsupported", "partial"
     "quote_realtime": "partial",
     "fundamental": "supported",
     "market": "supported",
+    "market_temperature": "supported",
     "content": "supported",
     "financial_calendar": "supported",
 }
@@ -27,6 +28,7 @@ _CAPABILITY_GROUPS = {
     "quote": ("quote", "quote_realtime"),
     "fundamental": ("fundamental",),
     "market": ("market",),
+    "market_temperature": ("market_temperature",),
     "content": ("content",),
     "financial_calendar": ("financial_calendar",),
 }
@@ -44,6 +46,15 @@ class LongbridgeProbeResult:
     status: Literal["success", "failed"]
     capabilities: dict[str, Literal["supported", "unsupported", "partial"]]
     message: str
+
+
+@dataclass(frozen=True)
+class LongbridgeMarketTemperature:
+    temperature: int
+    description: str
+    valuation: int
+    sentiment: int
+    updated_at: datetime
 
 
 @dataclass(frozen=True)
@@ -272,6 +283,11 @@ class LongbridgeHttpClient:
                 {"symbol": "700.HK"},
             ),
             ("market", "/v1/quote/market-status", None),
+            (
+                "market_temperature",
+                "/v1/quote/market_temperature",
+                {"market": "CN"},
+            ),
             ("content", "/v1/content/AAPL.US/news", None),
             (
                 "financial_calendar",
@@ -320,8 +336,65 @@ class LongbridgeHttpClient:
         if errors:
             message = "连接成功，部分代表接口需要按账户权限或市场范围进一步验证"
         else:
-            message = "连接成功，行情、基本面、市场、资讯与财经日历接口均返回正常"
+            message = "连接成功，行情、基本面、市场、市场温度、资讯与财经日历接口均返回正常"
         return LongbridgeProbeResult(status="success", capabilities=capabilities, message=message)
+
+
+def _longbridge_integer(value: object, field: str) -> int:
+    if isinstance(value, bool):
+        raise LongbridgeError(f"Longbridge 市场温度返回的 {field} 无效", code=5003)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+    raise LongbridgeError(f"Longbridge 市场温度返回的 {field} 无效", code=5003)
+
+
+def _longbridge_timestamp(value: object) -> datetime:
+    if isinstance(value, bool):
+        raise LongbridgeError("Longbridge 市场温度返回的更新时间无效", code=5003)
+    try:
+        timestamp = float(value) if isinstance(value, (int, float, str)) else None
+    except (TypeError, ValueError):
+        timestamp = None
+    if timestamp is None:
+        raise LongbridgeError("Longbridge 市场温度返回的更新时间无效", code=5003)
+    try:
+        return datetime.fromtimestamp(timestamp, tz=UTC)
+    except (OverflowError, OSError, ValueError) as exc:
+        raise LongbridgeError("Longbridge 市场温度返回的更新时间无效", code=5003) from exc
+
+
+class LongbridgeMarketTemperatureAdapter:
+    """Normalize Longbridge's current market-temperature snapshot."""
+
+    def __init__(self, client: LongbridgeHttpClient) -> None:
+        self._client = client
+
+    async def get_current_market_temperature(
+        self, market: str = "CN"
+    ) -> LongbridgeMarketTemperature:
+        payload = await self._client.get_json(
+            "/v1/quote/market_temperature",
+            params={"market": market.upper()},
+        )
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise LongbridgeError("Longbridge 未返回有效的市场温度数据", code=5003)
+
+        description = data.get("description")
+        return LongbridgeMarketTemperature(
+            temperature=_longbridge_integer(data.get("temperature"), "温度"),
+            description=description if isinstance(description, str) else "",
+            valuation=_longbridge_integer(data.get("valuation"), "估值指数"),
+            sentiment=_longbridge_integer(data.get("sentiment"), "情绪指数"),
+            updated_at=_longbridge_timestamp(data.get("updated_at")),
+        )
 
 
 CalendarCategory = Literal["macro", "earnings", "dividend", "split", "closed"]

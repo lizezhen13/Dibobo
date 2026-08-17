@@ -1,0 +1,6 @@
+.cache/
+.codex-build-check*/
+.pnpm-store/
+coverage/
+dist/
+node_modules/

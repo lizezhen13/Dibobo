@@ -3,7 +3,7 @@ import logging
 import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
@@ -25,6 +25,11 @@ from app.data_sources.domain import (
     TradingCalendar,
 )
 from app.data_sources.fuyao import FuyaoAdapter
+from app.data_sources.longbridge import (
+    LongbridgeError,
+    LongbridgeHttpClient,
+    LongbridgeMarketTemperatureAdapter,
+)
 from app.overview.schemas import (
     DataSourceSummary,
     DistributionBin,
@@ -33,10 +38,18 @@ from app.overview.schemas import (
     IndustryIndexItem,
     IndustrySnapshot,
     MarketBreadthSnapshot,
+    MarketTemperatureSnapshot,
     OverviewHotStocksResponse,
     OverviewIndicesResponse,
     OverviewIndustriesResponse,
     OverviewMarketBreadthResponse,
+    OverviewMarketTemperatureResponse,
+)
+from app.settings.service import (
+    _as_utc,
+    _decode_credentials,
+    _refresh_longbridge_source_token,
+    _source_auth_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,6 +63,7 @@ FIXED_INDICES = (
 
 HOT_STOCK_REFRESH_SECONDS = 31
 MARKET_BREADTH_REFRESH_SECONDS = 47
+MARKET_TEMPERATURE_REFRESH_SECONDS = 60
 INDUSTRY_REFRESH_SECONDS = 83
 INDUSTRY_CATALOG_CACHE_SECONDS = 12 * 60 * 60
 INDUSTRY_QUOTE_BATCH_SIZE = 80
@@ -204,7 +218,11 @@ async def _load_module[TModule: BaseModel](
     fetcher: Callable[[FuyaoAdapter, DataSource], Awaitable[TModule]],
 ) -> ModuleLoad[TModule]:
     source = await db.scalar(
-        select(DataSource).where(DataSource.user_id == user.id, DataSource.is_active.is_(True))
+        select(DataSource).where(
+            DataSource.user_id == user.id,
+            DataSource.is_active.is_(True),
+            DataSource.provider_type.in_(("fuyao", "fuyao_compatible")),
+        )
     )
     if source is None:
         return ModuleLoad(
@@ -316,7 +334,11 @@ async def get_overview_indices(
     settings: Settings,
 ) -> OverviewIndicesResponse:
     source = await db.scalar(
-        select(DataSource).where(DataSource.user_id == user.id, DataSource.is_active.is_(True))
+        select(DataSource).where(
+            DataSource.user_id == user.id,
+            DataSource.is_active.is_(True),
+            DataSource.provider_type.in_(("fuyao", "fuyao_compatible")),
+        )
     )
     if source is None:
         return OverviewIndicesResponse(
@@ -632,4 +654,107 @@ async def get_overview_market_breadth(
         strong_down_count=snapshot.strong_down_count,
         turnover=snapshot.turnover,
         bins=snapshot.bins,
+    )
+
+
+async def get_overview_market_temperature(
+    db: AsyncSession,
+    cache: Redis,
+    user: User,
+    settings: Settings,
+) -> OverviewMarketTemperatureResponse:
+    refresh_seconds = MARKET_TEMPERATURE_REFRESH_SECONDS
+
+    def empty_response(data_source: DataSourceSummary) -> OverviewMarketTemperatureResponse:
+        return OverviewMarketTemperatureResponse(
+            data_source=data_source,
+            market_status="未知",
+            polling_enabled=False,
+            refresh_seconds=refresh_seconds,
+        )
+
+    source = await db.scalar(
+        select(DataSource).where(
+            DataSource.user_id == user.id,
+            DataSource.provider_type == "longbridge",
+            DataSource.is_active.is_(True),
+        )
+    )
+    if source is None:
+        return empty_response(
+            DataSourceSummary(
+                state="not_configured",
+                message="请先配置并启用 Longbridge 数据源",
+            )
+        )
+
+    async def fetch() -> MarketTemperatureSnapshot:
+        cipher = ApiKeyCipher(settings.api_key_encryption_key.get_secret_value())
+        credentials = _decode_credentials(cipher, source.api_key_ciphertext)
+        auth_type = _source_auth_type(source)
+        if auth_type == "oauth":
+            access_token = credentials.get("access_token")
+            if not isinstance(access_token, str) or not access_token:
+                raise LongbridgeError("Longbridge 尚未完成 OAuth 授权，请先授权", code=2001)
+            expires_at = _as_utc(source.oauth_expires_at)
+            if expires_at is not None and expires_at <= datetime.now(UTC) + timedelta(seconds=60):
+                credentials = await _refresh_longbridge_source_token(
+                    source, credentials, cipher, settings
+                )
+                await db.commit()
+
+        async with LongbridgeHttpClient(
+            source.base_url,
+            auth_type,  # type: ignore[arg-type]
+            credentials,
+            settings.upstream_timeout_seconds,
+        ) as client:
+            result = await LongbridgeMarketTemperatureAdapter(
+                client
+            ).get_current_market_temperature("CN")
+        return MarketTemperatureSnapshot(
+            updated_at=result.updated_at,
+            temperature=result.temperature,
+            description=result.description,
+            valuation=result.valuation,
+            sentiment=result.sentiment,
+        )
+
+    async def fetch_for_cache() -> MarketTemperatureSnapshot:
+        try:
+            return await fetch()
+        except LongbridgeError as exc:
+            raise DataSourceError(exc.code, exc.user_message) from exc
+
+    try:
+        snapshot, stale = await _get_cached_model(
+            cache,
+            f"overview:{source.id}:market-temperature",
+            f"overview:last-success:{source.id}:market-temperature",
+            refresh_seconds,
+            MarketTemperatureSnapshot,
+            fetch_for_cache,
+        )
+    except DataSourceError as exc:
+        logger.warning(
+            "Longbridge market temperature request failed",
+            extra={
+                "user_id": str(user.id),
+                "data_source_id": str(source.id),
+                "code": exc.code,
+            },
+        )
+        return empty_response(_source_error_summary(source, exc))
+
+    return OverviewMarketTemperatureResponse(
+        data_source=DataSourceSummary(state="ready", name=source.name),
+        market_status="未知",
+        polling_enabled=True,
+        refresh_seconds=refresh_seconds,
+        stale=stale,
+        updated_at=snapshot.updated_at,
+        temperature=snapshot.temperature,
+        description=snapshot.description,
+        valuation=snapshot.valuation,
+        sentiment=snapshot.sentiment,
     )

@@ -1,0 +1,121 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { sessionQueryKey } from "../auth/queries";
+import { apiFetch } from "../../lib/api";
+import { apiFetchSchema } from "../../lib/api-schema";
+import { overviewQueryKey } from "../overview/queries";
+import { queryKeys } from "../../lib/query-keys";
+import type { ConnectionTestResult, DataSource, DataSourcePayload, OAuthStartPayload, OAuthStartResult } from "./types";
+
+export const dataSourcesQueryKey = queryKeys.settings.dataSources;
+
+export function useDataSourcesQuery() {
+  return useQuery({
+    queryKey: dataSourcesQueryKey,
+    queryFn: async ({ signal }) => {
+      const { dataSourcesSchema } = await import("./schemas");
+      return apiFetchSchema("/api/settings/data-sources", dataSourcesSchema, { signal });
+    },
+  });
+}
+
+export function useCreateDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DataSourcePayload) =>
+      apiFetch<DataSource>("/api/settings/data-sources", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+  });
+}
+
+export function useStartLongbridgeOAuthMutation() {
+  return useMutation({
+    mutationFn: (payload: OAuthStartPayload) =>
+      apiFetch<OAuthStartResult>("/api/settings/data-sources/oauth/start", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  });
+}
+
+export function useUpdateDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: DataSourcePayload }) =>
+      apiFetch<DataSource>(`/api/settings/data-sources/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: overviewQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useTestDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<ConnectionTestResult>(`/api/settings/data-sources/${id}/test`, {
+        method: "POST",
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+  });
+}
+
+export function useActivateDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<DataSource>(`/api/settings/data-sources/${id}/activate`, { method: "POST" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: overviewQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useDeactivateDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<DataSource>(`/api/settings/data-sources/${id}/deactivate`, { method: "POST" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: overviewQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useDeleteDataSourceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<{ message: string }>(`/api/settings/data-sources/${id}`, { method: "DELETE" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dataSourcesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: overviewQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useChangePasswordMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { current_password: string; new_password: string; confirm_password: string }) =>
+      apiFetch<{ message: string }>("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => queryClient.setQueryData(sessionQueryKey, null),
+  });
+}

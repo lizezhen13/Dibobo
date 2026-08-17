@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -705,21 +705,32 @@ async def activate_source(
     source_id: uuid.UUID,
 ) -> DataSource:
     source = await get_owned_source(db, user, source_id)
-    if source.provider_type == "longbridge":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Longbridge 当前仅用于独立测试，不参与现有业务数据源切换",
-        )
     if source.last_test_status != "success":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="请先通过连接测试，再启用该数据源",
         )
-    await db.execute(
-        update(DataSource)
-        .where(DataSource.user_id == user.id, DataSource.id != source.id)
-        .values(is_active=False)
-    )
+    # Data sources are enabled per module: Longbridge serves the calendar,
+    # while Fuyao remains the primary source for quotes and holdings. Keep
+    # sources from different module families enabled at the same time, but
+    # retain one active source inside each module family.
+    if source.provider_type == "longbridge":
+        module_provider_types = ("longbridge",)
+    elif source.provider_type in {"fuyao", "fuyao_compatible"}:
+        module_provider_types = ("fuyao", "fuyao_compatible")
+    else:
+        module_provider_types = (source.provider_type,)
+    module_sources = (
+        await db.scalars(
+            select(DataSource).where(
+                DataSource.user_id == user.id,
+                DataSource.id != source.id,
+                DataSource.provider_type.in_(module_provider_types),
+            )
+        )
+    ).all()
+    for module_source in module_sources:
+        module_source.is_active = False
     source.is_active = True
     await db.commit()
     await db.refresh(source)

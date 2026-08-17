@@ -91,13 +91,6 @@ class DataSource(TimestampMixin, Base):
     __tablename__ = "data_sources"
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_data_sources_user_name"),
-        Index(
-            "uq_data_sources_one_active_per_user",
-            "user_id",
-            unique=True,
-            postgresql_where=text("is_active"),
-            sqlite_where=text("is_active = 1"),
-        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

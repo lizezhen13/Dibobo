@@ -1,0 +1,1608 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f9fc" />
+    <title>Dibobo · 明亮主题原型</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --background: #f7f9fc;
+        --foreground: #263241;
+        --card: #ffffff;
+        --card-deep: #edf2f7;
+        --secondary: #eef3f8;
+        --muted: #667586;
+        --dim: #98a6b6;
+        --border: #dbe4ed;
+        --line: #e9eef4;
+        --input: #c6d3df;
+        --primary: #ee6b32;
+        --primary-hover: #d65320;
+        --primary-soft: rgba(238, 107, 50, 0.11);
+        --primary-softer: rgba(238, 107, 50, 0.045);
+        --primary-border: rgba(238, 107, 50, 0.34);
+        --shell-bg: #eef3f8;
+        --shell-border: #d8e1eb;
+        --shell-fg: #263241;
+        --up: #d95745;
+        --down: #2f996b;
+        --flat: #83909f;
+        --success-bg: rgba(47, 153, 107, 0.09);
+        --success-border: rgba(47, 153, 107, 0.19);
+        --surface-highlight: rgba(255, 255, 255, 0.82);
+        --shadow-subtle: 0 1px 2px rgba(43, 67, 94, 0.04), 0 10px 30px -18px rgba(43, 67, 94, 0.28);
+        --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 30px -14px rgba(43, 67, 94, 0.3);
+        --font-sans: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --font-mono: "IBM Plex Mono", "Noto Sans SC", "SF Mono", "Cascadia Code", "Consolas", monospace;
+      }
+
+      :root[data-theme="dark"] {
+        --background: #111317;
+        --foreground: #f2ece4;
+        --card: #1c2026;
+        --card-deep: #0b0d12;
+        --secondary: #23262c;
+        --muted: #9b9084;
+        --dim: #746a60;
+        --border: #2c313a;
+        --line: #1f2227;
+        --input: #303540;
+        --primary: #ef612a;
+        --primary-hover: #f07a4b;
+        --primary-soft: rgba(239, 97, 42, 0.14);
+        --primary-softer: rgba(239, 97, 42, 0.06);
+        --primary-border: rgba(239, 97, 42, 0.4);
+        --shell-bg: #0b0d12;
+        --shell-border: #161922;
+        --shell-fg: #f2ece4;
+        --up: #f2543b;
+        --down: #22c55e;
+        --flat: #a8a29e;
+        --success-bg: rgba(100, 181, 134, 0.1);
+        --success-border: rgba(100, 181, 134, 0.2);
+        --surface-highlight: rgba(255, 255, 255, 0.04);
+        --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+        --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.28);
+        --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        background: var(--background);
+        color-scheme: light;
+        scroll-behavior: smooth;
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+      }
+
+      body {
+        min-width: 320px;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 15px;
+        line-height: 1.6;
+        letter-spacing: -0.005em;
+        -webkit-font-smoothing: antialiased;
+        transition: background 220ms ease, color 220ms ease;
+      }
+
+      button,
+      a {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      /* ---------- 侧边栏：完全保留现有 260px 驾驶舱结构 ---------- */
+      .sidebar {
+        position: sticky;
+        top: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--shell-bg);
+        border-right: 1px solid var(--shell-border);
+        color: var(--shell-fg);
+        transition: background 220ms ease, border-color 220ms ease, color 220ms ease;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 88px;
+        padding: 0 28px;
+        border-bottom: 1px solid var(--shell-border);
+      }
+
+      .brand-mark {
+        display: grid;
+        flex: none;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fffaf3;
+        font-family: var(--font-mono);
+        font-size: 1rem;
+        font-weight: 600;
+        box-shadow: var(--shadow-subtle);
+      }
+
+      .brand-title {
+        font-size: 1.35rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        line-height: 1.15;
+      }
+
+      .brand-sub,
+      .nav-group-title,
+      .nav-number,
+      .status-label,
+      .eyebrow,
+      .card-code,
+      .metric-label,
+      .panel-code,
+      .panel-meta,
+      .status-line,
+      .page-foot {
+        font-family: var(--font-mono);
+      }
+
+      .brand-sub {
+        margin-top: 2px;
+        color: color-mix(in srgb, var(--shell-fg) 45%, transparent);
+        font-size: 0.6rem;
+        letter-spacing: 0.18em;
+      }
+
+      .nav {
+        flex: 1;
+        padding: 24px 12px;
+      }
+
+      .nav-group-title {
+        margin: 0 0 12px 16px;
+        color: color-mix(in srgb, var(--shell-fg) 40%, transparent);
+        font-size: 0.6rem;
+        letter-spacing: 0.18em;
+      }
+
+      .nav-list {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 42px;
+        padding: 0 16px;
+        border-radius: 8px;
+        color: color-mix(in srgb, var(--shell-fg) 62%, transparent);
+        font-size: 0.88rem;
+        letter-spacing: 0.02em;
+        text-decoration: none;
+        transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+      }
+
+      .nav-item:hover {
+        background: color-mix(in srgb, var(--shell-fg) 6%, transparent);
+        color: color-mix(in srgb, var(--shell-fg) 92%, transparent);
+        transform: translateX(2px);
+      }
+
+      .nav-item.active {
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .nav-item.active::before {
+        position: absolute;
+        top: 10px;
+        bottom: 10px;
+        left: 0;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: var(--primary);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 28%, transparent);
+        content: "";
+      }
+
+      .nav-item svg {
+        flex: none;
+        width: 17px;
+        height: 17px;
+        stroke-width: 1.6;
+      }
+
+      .nav-number {
+        margin-left: auto;
+        color: color-mix(in srgb, var(--shell-fg) 30%, transparent);
+        font-size: 0.6rem;
+      }
+
+      .nav-item.active .nav-number {
+        color: var(--primary);
+        opacity: 0.65;
+      }
+
+      .sidebar-foot {
+        display: grid;
+        gap: 8px;
+        padding: 18px 28px 22px;
+        border-top: 1px solid var(--shell-border);
+      }
+
+      .connection-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: var(--down);
+        font-size: 0.78rem;
+      }
+
+      .connection-dot,
+      .live-dot,
+      .market-dot {
+        display: inline-block;
+        flex: none;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--down);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--down) 12%, transparent);
+      }
+
+      /* ---------- 主区域：68px 顶栏 + 40px 页面留白 ---------- */
+      .main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 68px;
+        padding: 0 32px;
+        background: color-mix(in srgb, var(--card) 84%, transparent);
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 1px 0 var(--surface-highlight);
+      }
+
+      .breadcrumb,
+      .topbar-actions,
+      .user,
+      .market-state,
+      .theme-toggle,
+      .btn-ghost,
+      .btn-outline,
+      .panel-toolbar,
+      .panel-status,
+      .tabs,
+      .badge,
+      .card-change,
+      .metric-row,
+      .section-heading,
+      .bar-legend,
+      .industry-row {
+        display: flex;
+        align-items: center;
+      }
+
+      .breadcrumb {
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .breadcrumb .root,
+      .market-state,
+      .user,
+      .btn-ghost,
+      .theme-toggle {
+        color: var(--muted);
+      }
+
+      .breadcrumb .sep {
+        color: var(--dim);
+      }
+
+      .breadcrumb strong,
+      .user strong {
+        color: var(--foreground);
+        font-weight: 600;
+      }
+
+      .topbar-actions {
+        gap: 16px;
+        font-size: 0.8rem;
+      }
+
+      .market-state {
+        gap: 8px;
+        padding-right: 16px;
+        border-right: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.02em;
+      }
+
+      .market-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-softer);
+      }
+
+      .user {
+        gap: 8px;
+        white-space: nowrap;
+      }
+
+      .theme-toggle,
+      .btn-ghost,
+      .btn-outline,
+      .refresh-button {
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+      }
+
+      .theme-toggle,
+      .btn-ghost {
+        gap: 7px;
+        padding: 7px 10px;
+        border-radius: 8px;
+        background: transparent;
+        font-size: 0.78rem;
+      }
+
+      .theme-toggle:hover,
+      .btn-ghost:hover {
+        background: var(--secondary);
+        color: var(--foreground);
+      }
+
+      .theme-toggle svg,
+      .btn-ghost svg,
+      .btn-outline svg,
+      .refresh-button svg {
+        width: 15px;
+        height: 15px;
+      }
+
+      .theme-toggle .sun-icon {
+        display: block;
+      }
+
+      .theme-toggle .moon-icon {
+        display: none;
+      }
+
+      [data-theme="dark"] .theme-toggle .sun-icon {
+        display: none;
+      }
+
+      [data-theme="dark"] .theme-toggle .moon-icon {
+        display: block;
+      }
+
+      .content {
+        flex: 1;
+        padding: 44px 48px 48px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1500px;
+        margin: 0 auto;
+      }
+
+      .page-header {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 32px;
+        margin-bottom: 30px;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 8px;
+        color: var(--primary);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 24px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--primary);
+        box-shadow: 8px 0 0 -0.5px color-mix(in srgb, var(--primary) 35%, transparent);
+        content: "";
+      }
+
+      .page-title {
+        color: var(--foreground);
+        font-size: clamp(2rem, 3.2vw, 2.65rem);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        line-height: 1.16;
+      }
+
+      .page-desc {
+        max-width: 42rem;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .btn-outline {
+        gap: 7px;
+        height: 34px;
+        padding: 0 14px;
+        border-color: var(--input);
+        border-radius: 8px;
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+      }
+
+      .btn-outline:hover {
+        border-color: var(--primary-border);
+        background: var(--secondary);
+        color: var(--primary);
+        transform: translateY(-1px);
+      }
+
+      .tabs {
+        gap: 4px;
+        width: fit-content;
+        margin-bottom: 16px;
+        padding: 4px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--secondary);
+      }
+
+      .tab {
+        height: 32px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+
+      .tab:hover {
+        color: var(--foreground);
+      }
+
+      .tab.active {
+        background: var(--card);
+        color: var(--foreground);
+        box-shadow: var(--shadow-subtle);
+      }
+
+      .tab-panel[hidden] {
+        display: none;
+      }
+
+      /* ---------- 现有总览中的指数面板 ---------- */
+      .panel {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--card);
+        box-shadow: var(--shadow-subtle), inset 0 1px 0 var(--surface-highlight);
+        transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+      }
+
+      .panel:hover {
+        box-shadow: var(--shadow-raised);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 54px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
+
+      .section-heading {
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .section-heading::before {
+        width: 6px;
+        height: 6px;
+        flex: none;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-softer);
+        content: "";
+      }
+
+      .section-heading h2 {
+        overflow: hidden;
+        color: var(--foreground);
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .panel-code,
+      .panel-meta {
+        color: var(--muted);
+        font-size: 0.66rem;
+        letter-spacing: 0.05em;
+        opacity: 0.72;
+      }
+
+      .panel-toolbar {
+        gap: 14px;
+        flex: none;
+      }
+
+      .panel-status {
+        gap: 7px;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+      }
+
+      .panel-status .market-dot {
+        background: var(--down);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--down) 12%, transparent);
+      }
+
+      .refresh-button {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 7px;
+        background: transparent;
+        border-color: var(--primary-border);
+        color: var(--primary);
+      }
+
+      .refresh-button:hover {
+        background: var(--secondary);
+        color: var(--primary);
+      }
+
+      .refresh-button.is-refreshing svg {
+        animation: spin 700ms linear infinite;
+      }
+
+      .index-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .index-card {
+        position: relative;
+        min-width: 0;
+        min-height: 204px;
+        padding: 18px 18px 16px;
+        background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 94%, var(--secondary)));
+        border-right: 1px solid var(--border);
+        box-shadow: inset 0 1px 0 var(--surface-highlight);
+        transition: background 160ms ease, transform 160ms ease;
+      }
+
+      .index-card:last-child {
+        border-right: 0;
+      }
+
+      .index-card:hover {
+        z-index: 1;
+        background: var(--primary-softer);
+      }
+
+      .index-card::after {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 2px;
+        height: 0;
+        background: var(--primary);
+        content: "";
+        transition: height 180ms ease;
+      }
+
+      .index-card::before {
+        position: absolute;
+        top: 0;
+        left: 18px;
+        width: 34px;
+        height: 2px;
+        border-radius: 0 0 2px 2px;
+        background: var(--primary);
+        content: "";
+        opacity: 0.18;
+        transition: width 180ms ease, opacity 180ms ease;
+      }
+
+      .index-card:hover::before {
+        width: 52px;
+        opacity: 1;
+      }
+
+      .index-card:hover::after {
+        height: 100%;
+      }
+
+      .ordinal {
+        position: absolute;
+        top: -18px;
+        right: -4px;
+        color: color-mix(in srgb, var(--foreground) 5%, transparent);
+        font-size: 6rem;
+        font-weight: 600;
+        letter-spacing: -0.08em;
+        line-height: 1;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .index-card:hover .ordinal {
+        color: var(--primary-softer);
+      }
+
+      .card-head {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .card-name {
+        color: var(--foreground);
+        font-size: 1.02rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .card-code {
+        margin-top: 4px;
+        color: var(--dim);
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+      }
+
+      .badge {
+        position: relative;
+        z-index: 1;
+        gap: 6px;
+        flex: none;
+        padding: 3px 8px;
+        border: 1px solid var(--success-border);
+        border-radius: 999px;
+        background: var(--success-bg);
+        color: var(--down);
+        font-size: 0.65rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .badge.neutral {
+        border-color: var(--border);
+        background: var(--secondary);
+        color: var(--muted);
+      }
+
+      .badge svg {
+        width: 8px;
+        height: 8px;
+      }
+
+      .card-mid {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 30px;
+      }
+
+      .card-value {
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: clamp(1.5rem, 2.4vw, 2.05rem);
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+        letter-spacing: -0.06em;
+        line-height: 1;
+      }
+
+      .card-change {
+        gap: 5px;
+        padding-bottom: 2px;
+        font-family: var(--font-mono);
+        font-size: 0.73rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .card-change.up {
+        color: var(--up);
+      }
+
+      .card-change.down {
+        color: var(--down);
+      }
+
+      .card-foot {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        margin-top: 28px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .metric-label {
+        margin-bottom: 4px;
+        color: var(--dim);
+        font-size: 0.59rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .right {
+        text-align: right;
+      }
+
+      .status-line {
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 22px;
+        padding: 14px 2px 0;
+        border-top: 1px solid var(--border);
+        color: var(--dim);
+        font-size: 0.63rem;
+        letter-spacing: 0.1em;
+      }
+
+      /* ---------- 下方模块：沿用总览页的三列信息节奏 ---------- */
+      .overview-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.76fr) minmax(0, 1.24fr) minmax(300px, 0.88fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .mini-panel {
+        min-height: 230px;
+      }
+
+      .mini-panel.wide {
+        grid-column: span 2;
+      }
+
+      .mini-body {
+        padding: 16px 18px 18px;
+      }
+
+      .section-heading.small h2 {
+        font-size: 0.92rem;
+      }
+
+      .stock-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .stock-row {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .stock-row:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+      }
+
+      .stock-rank,
+      .stock-code {
+        color: var(--dim);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+      }
+
+      .stock-rank.hot {
+        color: var(--primary);
+      }
+
+      .stock-name {
+        color: var(--foreground);
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .stock-code {
+        margin-top: 1px;
+        color: var(--dim);
+        font-size: 0.57rem;
+      }
+
+      .stock-change {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+
+      .stock-change.up {
+        color: var(--up);
+      }
+
+      .stock-change.down {
+        color: var(--down);
+      }
+
+      .temperature {
+        display: grid;
+        gap: 16px;
+        height: 100%;
+      }
+
+      .temperature-top {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .temperature-value {
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: 2.8rem;
+        font-weight: 500;
+        letter-spacing: -0.08em;
+        line-height: 0.95;
+      }
+
+      .temperature-copy {
+        max-width: 12rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+        line-height: 1.6;
+        text-align: right;
+      }
+
+      .temperature-track {
+        position: relative;
+        height: 10px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--secondary);
+      }
+
+      .temperature-track::before {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, var(--down), var(--primary), var(--up));
+        content: "";
+        opacity: 0.8;
+      }
+
+      .temperature-marker {
+        position: absolute;
+        top: 50%;
+        left: 64%;
+        width: 16px;
+        height: 16px;
+        border: 3px solid var(--card);
+        border-radius: 50%;
+        background: var(--foreground);
+        box-shadow: 0 0 0 1px var(--border);
+        transform: translate(-50%, -50%);
+      }
+
+      .bar-legend {
+        justify-content: space-between;
+        color: var(--dim);
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+      }
+
+      .metric-row {
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .metric-row span:first-child {
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+
+      .metric-row strong {
+        color: var(--foreground);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 500;
+      }
+
+      .industry-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .industry-row {
+        gap: 12px;
+      }
+
+      .industry-name {
+        width: 74px;
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+
+      .industry-bar {
+        flex: 1;
+        height: 7px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--secondary);
+      }
+
+      .industry-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--primary);
+      }
+
+      .industry-value {
+        width: 48px;
+        color: var(--up);
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        text-align: right;
+      }
+
+      .page-foot {
+        padding: 16px 32px;
+        border-top: 1px solid var(--border);
+        color: var(--dim);
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+      }
+
+      .prototype-note {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 20;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--primary-border);
+        border-radius: 999px;
+        background: var(--card);
+        box-shadow: var(--shadow-raised);
+        color: var(--primary);
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        letter-spacing: 0.05em;
+      }
+
+      .prototype-note::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--primary);
+        content: "";
+      }
+
+      .toast {
+        position: fixed;
+        top: 84px;
+        left: 50%;
+        z-index: 30;
+        padding: 9px 14px;
+        border: 1px solid var(--primary-border);
+        border-radius: 9px;
+        background: var(--card);
+        box-shadow: var(--shadow-raised);
+        color: var(--foreground);
+        font-size: 0.76rem;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -8px);
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 1180px) {
+        .content {
+          padding: 32px;
+        }
+
+        .overview-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .mini-panel.wide {
+          grid-column: span 2;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .shell {
+          display: block;
+        }
+
+        .sidebar {
+          position: relative;
+          width: 100%;
+          height: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--shell-border);
+        }
+
+        .brand {
+          height: 72px;
+          padding: 0 20px;
+        }
+
+        .nav {
+          padding: 14px 12px 18px;
+          overflow-x: auto;
+        }
+
+        .nav-group-title,
+        .sidebar-foot {
+          display: none;
+        }
+
+        .nav-list {
+          display: flex;
+          gap: 6px;
+          min-width: max-content;
+        }
+
+        .nav-item {
+          height: 36px;
+          padding: 0 12px;
+          font-size: 0.78rem;
+        }
+
+        .nav-number {
+          display: none;
+        }
+
+        .topbar {
+          padding: 0 20px;
+        }
+
+        .market-state {
+          display: none;
+        }
+
+        .content {
+          padding: 28px 20px;
+        }
+
+        .index-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .index-card:nth-child(2) {
+          border-right: 0;
+        }
+
+        .index-card:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--border);
+        }
+
+        .index-card:nth-child(3) {
+          border-right: 1px solid var(--border);
+        }
+
+        .overview-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .mini-panel.wide {
+          grid-column: span 1;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .topbar {
+          height: 60px;
+        }
+
+        .topbar-actions {
+          gap: 4px;
+        }
+
+        .user,
+        .btn-ghost span {
+          display: none;
+        }
+
+        .theme-toggle,
+        .btn-ghost {
+          padding: 8px;
+        }
+
+        .content {
+          padding: 24px 14px 32px;
+        }
+
+        .page-header {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 18px;
+        }
+
+        .page-title {
+          font-size: 2rem;
+        }
+
+        .btn-outline {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .panel-header {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 10px;
+          padding: 14px 16px;
+        }
+
+        .panel-toolbar {
+          justify-content: space-between;
+          width: 100%;
+        }
+
+        .index-card {
+          min-height: 186px;
+          padding: 15px 13px 14px;
+        }
+
+        .card-mid {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 24px;
+        }
+
+        .card-foot {
+          gap: 8px;
+          margin-top: 20px;
+        }
+
+        .card-value {
+          font-size: 1.45rem;
+        }
+
+        .card-change {
+          font-size: 0.65rem;
+        }
+
+        .status-line {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .prototype-note {
+          right: 12px;
+          bottom: 12px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark">D</div>
+          <div>
+            <div class="brand-title">DIBOBO</div>
+            <div class="brand-sub">PRIVATE WORKBENCH</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <p class="nav-group-title">工作区 / WORKSPACE</p>
+          <div class="nav-list">
+            <a class="nav-item active" href="#overview" data-label="总览面板">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></svg>
+              <span>总览面板</span><span class="nav-number">01</span>
+            </a>
+            <a class="nav-item" href="#news" data-label="财经资讯">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+              <span>财经资讯</span><span class="nav-number">02</span>
+            </a>
+            <a class="nav-item" href="#watchlist" data-label="自选管理">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" /></svg>
+              <span>自选管理</span><span class="nav-number">03</span>
+            </a>
+            <a class="nav-item" href="#portfolios" data-label="投资组合">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M8 6V4h8v2M3 11h18M10 13h4" /></svg>
+              <span>投资组合</span><span class="nav-number">04</span>
+            </a>
+            <a class="nav-item" href="#review" data-label="复盘分析">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 18 9 12l4 3 7-9" /><path d="M4 20h16" /></svg>
+              <span>复盘分析</span><span class="nav-number">05</span>
+            </a>
+            <a class="nav-item" href="#radar" data-label="红利雷达">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14a8 8 0 1 1 16 0" /><path d="M7 14a5 5 0 1 1 10 0" /><path d="M10 14a2 2 0 1 1 4 0" /><path d="m12 14 5-5" /></svg>
+              <span>红利雷达</span><span class="nav-number">06</span>
+            </a>
+            <a class="nav-item" href="#calendar" data-label="事件日历">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18M7 14h.01M12 14h.01M17 14h.01M7 18h.01M12 18h.01" /></svg>
+              <span>事件日历</span><span class="nav-number">07</span>
+            </a>
+            <a class="nav-item" href="#journals" data-label="投资日记">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 4h12v16H6z" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>
+              <span>投资日记</span><span class="nav-number">08</span>
+            </a>
+            <a class="nav-item" href="#settings" data-label="系统设置">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" /><circle cx="12" cy="12" r="4" /></svg>
+              <span>系统设置</span><span class="nav-number">09</span>
+            </a>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="connection-state"><span class="connection-dot"></span>已接入数据源</div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div class="breadcrumb" aria-label="当前位置">
+            <span class="root">Dibobo</span><span class="sep">/</span><strong id="breadcrumbLabel">总览面板</strong>
+          </div>
+
+          <div class="topbar-actions">
+            <span class="market-state"><span class="market-dot"></span>行情状态 · 按页面更新</span>
+            <span class="user">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+              <strong>dibobo</strong>
+            </span>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false" title="切换到暗黑主题">
+              <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></svg>
+              <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20.5 15.3A8.5 8.5 0 0 1 8.7 3.5 8.5 8.5 0 1 0 20.5 15.3Z" /></svg>
+              <span id="themeToggleLabel">暗黑主题</span>
+            </button>
+            <button class="btn-ghost" type="button" id="logoutButton">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+              <span>退出</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="content" id="overview">
+          <div class="container">
+            <section class="page-header">
+              <div>
+                <p class="eyebrow">Market Overview / 市场总览</p>
+                <h1 class="page-title">四个坐标，看清今日市场</h1>
+                <p class="page-desc">固定宽基指数行情，不叠加个人资产，不制造多余判断。</p>
+              </div>
+              <button class="btn-outline" type="button" id="refreshButton">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8" /><path d="M21 3v5h-5" /></svg>
+                <span>手动刷新</span>
+              </button>
+            </section>
+
+            <div class="tabs" role="tablist" aria-label="市场范围">
+              <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="a-share">A股市场</button>
+              <button class="tab" type="button" role="tab" aria-selected="false" data-tab="global">全球市场</button>
+            </div>
+
+            <div class="tab-panel" id="a-share-panel" role="tabpanel">
+              <section class="panel" aria-labelledby="indexPanelTitle">
+                <div class="panel-header">
+                  <div class="section-heading">
+                    <h2 id="indexPanelTitle">指数情况</h2>
+                    <span class="panel-code">INDEX OVERVIEW</span>
+                  </div>
+                  <div class="panel-toolbar">
+                    <span class="panel-status"><span class="market-dot"></span>交易中 · <span id="updatedAt">10:42:18</span></span>
+                    <button class="refresh-button" id="panelRefreshButton" type="button" aria-label="刷新指数卡片" title="刷新指数卡片">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8.1 8.1 0 1 0 1 4" /><path d="M20 4v7h-7" /></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="index-grid">
+                  <article class="index-card">
+                    <span class="ordinal">01</span>
+                    <div class="card-head">
+                      <div><h3 class="card-name">上证指数</h3><p class="card-code">000001.SH</p></div>
+                      <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>交易中</span>
+                    </div>
+                    <div class="card-mid"><p class="card-value">3,247.36</p><div class="card-change down"><span>−</span><span>0.38%</span></div></div>
+                    <div class="card-foot"><div><p class="metric-label">涨跌额</p><p class="metric-value">−12.45</p></div><div class="right"><p class="metric-label">成交额</p><p class="metric-value">3,842.6 亿</p></div></div>
+                  </article>
+
+                  <article class="index-card">
+                    <span class="ordinal">02</span>
+                    <div class="card-head">
+                      <div><h3 class="card-name">深证成指</h3><p class="card-code">399001.SZ</p></div>
+                      <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>交易中</span>
+                    </div>
+                    <div class="card-mid"><p class="card-value">10,523.81</p><div class="card-change up"><span>+</span><span>0.86%</span></div></div>
+                    <div class="card-foot"><div><p class="metric-label">涨跌额</p><p class="metric-value">+89.22</p></div><div class="right"><p class="metric-label">成交额</p><p class="metric-value">4,671.2 亿</p></div></div>
+                  </article>
+
+                  <article class="index-card">
+                    <span class="ordinal">03</span>
+                    <div class="card-head">
+                      <div><h3 class="card-name">创业板指</h3><p class="card-code">399006.SZ</p></div>
+                      <span class="badge"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>交易中</span>
+                    </div>
+                    <div class="card-mid"><p class="card-value">2,118.92</p><div class="card-change up"><span>+</span><span>1.64%</span></div></div>
+                    <div class="card-foot"><div><p class="metric-label">涨跌额</p><p class="metric-value">+34.10</p></div><div class="right"><p class="metric-label">成交额</p><p class="metric-value">2,156.8 亿</p></div></div>
+                  </article>
+
+                  <article class="index-card">
+                    <span class="ordinal">04</span>
+                    <div class="card-head">
+                      <div><h3 class="card-name">沪深300</h3><p class="card-code">000300.SH</p></div>
+                      <span class="badge neutral"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>已收盘</span>
+                    </div>
+                    <div class="card-mid"><p class="card-value">3,821.55</p><div class="card-change down"><span>−</span><span>0.14%</span></div></div>
+                    <div class="card-foot"><div><p class="metric-label">涨跌额</p><p class="metric-value">−5.33</p></div><div class="right"><p class="metric-label">成交额</p><p class="metric-value">2,094.3 亿</p></div></div>
+                  </article>
+                </div>
+              </section>
+
+              <div class="overview-grid">
+                <section class="panel mini-panel">
+                  <div class="panel-header"><div class="section-heading small"><h2>人气榜</h2><span class="panel-code">HOT STOCKS</span></div><span class="panel-meta">TOP 5</span></div>
+                  <div class="mini-body stock-list">
+                    <div class="stock-row"><span class="stock-rank hot">01</span><div><p class="stock-name">宁德时代</p><p class="stock-code">300750.SZ</p></div><span class="stock-change up">+3.21%</span></div>
+                    <div class="stock-row"><span class="stock-rank hot">02</span><div><p class="stock-name">中际旭创</p><p class="stock-code">300308.SZ</p></div><span class="stock-change up">+2.86%</span></div>
+                    <div class="stock-row"><span class="stock-rank">03</span><div><p class="stock-name">贵州茅台</p><p class="stock-code">600519.SH</p></div><span class="stock-change down">−0.74%</span></div>
+                    <div class="stock-row"><span class="stock-rank">04</span><div><p class="stock-name">招商银行</p><p class="stock-code">600036.SH</p></div><span class="stock-change up">+0.42%</span></div>
+                  </div>
+                </section>
+
+                <section class="panel mini-panel">
+                  <div class="panel-header"><div class="section-heading small"><h2>市场温度</h2><span class="panel-code">MARKET TEMPERATURE</span></div><span class="panel-meta">实时</span></div>
+                  <div class="mini-body temperature">
+                    <div class="temperature-top"><p class="temperature-value">64.8</p><p class="temperature-copy">偏强区域。上涨动能占优，但仍需留意成交量是否跟随。</p></div>
+                    <div class="temperature-track"><span class="temperature-marker"></span></div>
+                    <div class="bar-legend"><span>低温</span><span>中性</span><span>高温</span></div>
+                    <div class="metric-row"><span>上涨 / 下跌</span><strong><span class="stock-change up">2,841</span> / <span class="stock-change down">1,762</span></strong></div>
+                  </div>
+                </section>
+
+                <section class="panel mini-panel">
+                  <div class="panel-header"><div class="section-heading small"><h2>行业表现</h2><span class="panel-code">INDUSTRIES</span></div><span class="panel-meta">涨幅排序</span></div>
+                  <div class="mini-body industry-list">
+                    <div class="industry-row"><span class="industry-name">半导体</span><span class="industry-bar"><span style="width: 88%"></span></span><span class="industry-value">+2.84%</span></div>
+                    <div class="industry-row"><span class="industry-name">通信设备</span><span class="industry-bar"><span style="width: 76%"></span></span><span class="industry-value">+2.21%</span></div>
+                    <div class="industry-row"><span class="industry-name">电力设备</span><span class="industry-bar"><span style="width: 62%"></span></span><span class="industry-value">+1.73%</span></div>
+                    <div class="industry-row"><span class="industry-name">银行</span><span class="industry-bar"><span style="width: 32%"></span></span><span class="industry-value">+0.48%</span></div>
+                    <div class="industry-row"><span class="industry-name">煤炭</span><span class="industry-bar"><span style="width: 18%; background: var(--down)"></span></span><span class="industry-value" style="color: var(--down)">−0.32%</span></div>
+                  </div>
+                </section>
+
+                <section class="panel mini-panel wide">
+                  <div class="panel-header"><div class="section-heading small"><h2>涨跌分布</h2><span class="panel-code">MARKET BREADTH</span></div><span class="panel-meta">全市场 4,603 家</span></div>
+                  <div class="mini-body">
+                    <div class="metric-row"><span>涨停 / 上涨</span><strong><span class="stock-change up">68</span> / <span class="stock-change up">2,841</span></strong></div>
+                    <div class="metric-row"><span>平盘 / 下跌 / 跌停</span><strong><span style="color: var(--flat)">192</span> / <span class="stock-change down">1,762</span> / <span class="stock-change down">11</span></strong></div>
+                    <div class="metric-row"><span>全市场成交额</span><strong>10,764.9 亿</strong></div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="status-line"><span>UPSTREAM · FUYAO</span><span>交易时段每 5 秒更新</span></div>
+            </div>
+
+            <div class="tab-panel" id="global-panel" role="tabpanel" hidden>
+              <section class="panel" style="padding: 56px 24px; text-align: center">
+                <p class="eyebrow">Global Market / 全球市场</p>
+                <h2 style="margin-top: 8px; font-size: 1.3rem">全球市场模块预留</h2>
+                <p style="margin-top: 8px; color: var(--muted); font-size: 0.86rem">当前原型聚焦明亮主题下的总览布局，切换回 A 股市场可查看完整卡片。</p>
+              </section>
+            </div>
+          </div>
+        </main>
+
+        <footer class="page-foot">DIBOBO · 数据仅供参考，不构成任何投资建议</footer>
+      </div>
+    </div>
+
+    <div class="prototype-note">LIGHT THEME / PROTOTYPE</div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const themeToggle = document.getElementById("themeToggle");
+        const themeToggleLabel = document.getElementById("themeToggleLabel");
+        const refreshButton = document.getElementById("refreshButton");
+        const panelRefreshButton = document.getElementById("panelRefreshButton");
+        const updatedAt = document.getElementById("updatedAt");
+        const toast = document.getElementById("toast");
+        const breadcrumbLabel = document.getElementById("breadcrumbLabel");
+        const tabs = [...document.querySelectorAll(".tab")];
+        const tabPanels = {
+          "a-share": document.getElementById("a-share-panel"),
+          global: document.getElementById("global-panel"),
+        };
+
+        const storageKey = "dibobo-light-prototype-theme";
+        const storedTheme = window.localStorage.getItem(storageKey);
+        if (storedTheme === "dark") root.dataset.theme = "dark";
+
+        function syncThemeControl() {
+          const isDark = root.dataset.theme === "dark";
+          themeToggleLabel.textContent = isDark ? "明亮主题" : "暗黑主题";
+          themeToggle.title = isDark ? "切换到明亮主题" : "切换到暗黑主题";
+          themeToggle.setAttribute("aria-pressed", String(isDark));
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", isDark ? "#111317" : "#f7f9fc");
+        }
+
+        function showToast(message) {
+          toast.textContent = message;
+          toast.classList.add("show");
+          window.clearTimeout(showToast.timer);
+          showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+        }
+
+        function refresh(button) {
+          button.classList.add("is-refreshing");
+          window.setTimeout(() => {
+            const now = new Date();
+            updatedAt.textContent = now.toLocaleTimeString("zh-CN", { hour12: false });
+            button.classList.remove("is-refreshing");
+            showToast("指数数据已刷新");
+          }, 650);
+        }
+
+        themeToggle.addEventListener("click", () => {
+          const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+          root.dataset.theme = nextTheme;
+          window.localStorage.setItem(storageKey, nextTheme);
+          syncThemeControl();
+          showToast(nextTheme === "dark" ? "已切换到暗黑主题" : "已切换到明亮主题");
+        });
+
+        refreshButton.addEventListener("click", () => refresh(panelRefreshButton));
+        panelRefreshButton.addEventListener("click", () => refresh(panelRefreshButton));
+
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            const selectedTab = tab.dataset.tab;
+            tabs.forEach((item) => {
+              const isActive = item === tab;
+              item.classList.toggle("active", isActive);
+              item.setAttribute("aria-selected", String(isActive));
+            });
+            Object.entries(tabPanels).forEach(([key, panel]) => {
+              panel.hidden = key !== selectedTab;
+            });
+          });
+        });
+
+        document.querySelectorAll(".nav-item").forEach((item) => {
+          item.addEventListener("click", (event) => {
+            event.preventDefault();
+            document.querySelectorAll(".nav-item").forEach((navItem) => navItem.classList.remove("active"));
+            item.classList.add("active");
+            breadcrumbLabel.textContent = item.dataset.label;
+            showToast(`${item.dataset.label} · 原型预览`);
+          });
+        });
+
+        document.getElementById("logoutButton").addEventListener("click", () => showToast("原型页面不执行退出操作"));
+        syncThemeControl();
+      })();
+    </script>
+  </body>
+</html>

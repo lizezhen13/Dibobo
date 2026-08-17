@@ -26,8 +26,8 @@ from app.data_sources.domain import (
 from app.data_sources.fuyao import FuyaoAdapter
 from app.holdings.schemas import (
     HoldingCreate,
-    HoldingOrderPayload,
     HoldingItem,
+    HoldingOrderPayload,
     HoldingsListResponse,
     HoldingStatus,
     HoldingSummaryResponse,
@@ -103,6 +103,7 @@ async def _active_source(db: AsyncSession, user: User) -> DataSource | None:
         select(DataSource).where(
             DataSource.user_id == user.id,
             DataSource.is_active.is_(True),
+            DataSource.provider_type.in_(("fuyao", "fuyao_compatible")),
         )
     )
 
@@ -281,7 +282,10 @@ async def update_holding(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="当前持仓的清仓数量由系统自动记录",
             )
-        if close_detail_fields & payload.model_fields_set and "quantity" not in payload.model_fields_set:
+        if (
+            close_detail_fields & payload.model_fields_set
+            and "quantity" not in payload.model_fields_set
+        ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="清仓请先提交清仓数量",

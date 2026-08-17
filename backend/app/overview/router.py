@@ -11,12 +11,14 @@ from app.overview.schemas import (
     OverviewIndicesResponse,
     OverviewIndustriesResponse,
     OverviewMarketBreadthResponse,
+    OverviewMarketTemperatureResponse,
 )
 from app.overview.service import (
     get_overview_hot_stocks,
     get_overview_indices,
     get_overview_industries,
     get_overview_market_breadth,
+    get_overview_market_temperature,
 )
 
 router = APIRouter(prefix="/overview", tags=["总览"])
@@ -60,3 +62,13 @@ async def market_breadth(
     settings: Settings = Depends(get_settings),
 ) -> OverviewMarketBreadthResponse:
     return await get_overview_market_breadth(db, cache, user, settings)
+
+
+@router.get("/market-temperature", response_model=OverviewMarketTemperatureResponse)
+async def market_temperature(
+    db: AsyncSession = Depends(get_db),
+    cache: Redis = Depends(get_cache),
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> OverviewMarketTemperatureResponse:
+    return await get_overview_market_temperature(db, cache, user, settings)

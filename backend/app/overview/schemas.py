@@ -113,3 +113,18 @@ class OverviewMarketBreadthResponse(OverviewModuleResponse):
     strong_down_count: int = 0
     turnover: float = 0
     bins: list[DistributionBin]
+
+
+class MarketTemperatureSnapshot(BaseModel):
+    updated_at: datetime | None = None
+    temperature: int | None = None
+    description: str | None = None
+    valuation: int | None = None
+    sentiment: int | None = None
+
+
+class OverviewMarketTemperatureResponse(OverviewModuleResponse):
+    temperature: int | None = None
+    description: str | None = None
+    valuation: int | None = None
+    sentiment: int | None = None

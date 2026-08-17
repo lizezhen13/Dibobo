@@ -8,6 +8,7 @@ from app.core.database import Base
 from app.core.models import User
 from app.data_sources.longbridge import (
     LongbridgeHttpClient,
+    LongbridgeMarketTemperatureAdapter,
     OAuthClientRegistration,
     OAuthTokenResponse,
     build_legacy_signature,
@@ -101,17 +102,67 @@ async def test_probe_uses_bearer_auth_and_records_all_capabilities() -> None:
     assert result.capabilities["quote"] == "supported"
     assert result.capabilities["fundamental"] == "supported"
     assert result.capabilities["market"] == "supported"
+    assert result.capabilities["market_temperature"] == "supported"
     assert result.capabilities["content"] == "supported"
     assert result.capabilities["financial_calendar"] == "supported"
-    assert len(requests) == 5
+    assert len(requests) == 6
     assert all(request.headers["Authorization"] == "Bearer oauth-secret" for request in requests)
     assert {request.url.path for request in requests} == {
         "/v1/quote/get_security_list",
         "/v1/quote/financial-reports",
         "/v1/quote/market-status",
+        "/v1/quote/market_temperature",
         "/v1/content/AAPL.US/news",
         "/v1/quote/finance_calendar",
     }
+
+
+@pytest.mark.asyncio
+async def test_market_temperature_adapter_uses_cn_market_and_normalizes_snapshot() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "temperature": 85,
+                    "description": "过热并逐渐上升中",
+                    "valuation": 92,
+                    "sentiment": 78,
+                    "updated_at": 1_744_616_612,
+                },
+            },
+        )
+
+    client = LongbridgeHttpClient(
+        "https://openapi.longbridge.cn",
+        "oauth",
+        {"access_token": "oauth-secret"},
+        5,
+    )
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(
+        base_url="https://openapi.longbridge.cn",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        result = await LongbridgeMarketTemperatureAdapter(
+            client
+        ).get_current_market_temperature()
+    finally:
+        await client.__aexit__()
+
+    assert result.temperature == 85
+    assert result.description == "过热并逐渐上升中"
+    assert result.valuation == 92
+    assert result.sentiment == 78
+    assert result.updated_at.isoformat() == "2025-04-14T07:43:32+00:00"
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v1/quote/market_temperature"
+    assert requests[0].url.params["market"] == "CN"
 
 
 @pytest.mark.asyncio

@@ -569,7 +569,11 @@ async def _cache_set(cache: Redis, key: str, response: CalendarEventsResponse) -
 async def _longbridge_source(db: AsyncSession, user: User) -> DataSource | None:
     return await db.scalar(
         select(DataSource)
-        .where(DataSource.user_id == user.id, DataSource.provider_type == "longbridge")
+        .where(
+            DataSource.user_id == user.id,
+            DataSource.provider_type == "longbridge",
+            DataSource.is_active.is_(True),
+        )
         .order_by(DataSource.is_active.desc(), DataSource.updated_at.desc())
     )
 
@@ -772,10 +776,10 @@ async def list_events(
             cached.data_source = CalendarDataSource(
                 name=cached.data_source.name,
                 state="stale",
-                message="Longbridge 尚未配置，当前展示最近一次成功同步的数据",
+                message="Longbridge 尚未启用，当前展示最近一次成功同步的数据",
             )
             return cached
-        raise LongbridgeError("请先在系统设置中接入 Longbridge 数据源", code=2001)
+        raise LongbridgeError("请先在系统设置中配置并启用 Longbridge 数据源", code=2001)
 
     if category not in {CalendarCategory.MACRO, CalendarCategory.CLOSED} and not symbols:
         now = utc_now()
