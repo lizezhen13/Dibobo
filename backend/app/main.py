@@ -19,6 +19,8 @@ from app.holdings.router import router as holdings_router
 from app.journals.router import router as journals_router
 from app.overview.router import router as overview_router
 from app.portfolios.router import router as portfolios_router
+from app.radar.router import router as radar_router
+from app.radar.service import run_radar_scheduler
 from app.settings.router import router as settings_router
 from app.watchlist.router import router as watchlist_router
 
@@ -40,11 +42,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             run_global_market_scheduler(app.state.cache, settings),
             name="dibobo-global-market-refresh",
         )
+    app.state.radar_refresh_task = None
+    if settings.radar_scheduler_enabled:
+        app.state.radar_refresh_task = asyncio.create_task(
+            run_radar_scheduler(settings),
+            name="dibobo-radar-daily-refresh",
+        )
     yield
     refresh_task = app.state.global_market_refresh_task
     if refresh_task is not None:
         refresh_task.cancel()
         await asyncio.gather(refresh_task, return_exceptions=True)
+    radar_refresh_task = app.state.radar_refresh_task
+    if radar_refresh_task is not None:
+        radar_refresh_task.cancel()
+        await asyncio.gather(radar_refresh_task, return_exceptions=True)
     await app.state.cache.aclose()
 
 
@@ -77,4 +89,5 @@ app.include_router(portfolios_router, prefix="/api")
 app.include_router(holdings_router, prefix="/api")
 app.include_router(journals_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
+app.include_router(radar_router, prefix="/api")
 app.include_router(watchlist_router, prefix="/api")

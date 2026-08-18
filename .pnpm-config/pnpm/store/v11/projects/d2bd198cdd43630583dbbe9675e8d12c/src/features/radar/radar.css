@@ -1,0 +1,117 @@
+.radar-page {
+  --radar-orange: #ef612a;
+  --radar-border: rgba(239, 97, 42, 0.22);
+  height: calc(100vh - 108px);
+  min-height: 0;
+}
+
+.radar-strategy-card {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--radar-border);
+  isolation: isolate;
+}
+
+.radar-strategy-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(117deg, rgba(239, 97, 42, 0.13), transparent 38%),
+    linear-gradient(90deg, transparent 0 62%, rgba(242, 236, 228, 0.025) 62% 62.1%, transparent 62.1% 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.radar-strategy-grid {
+  position: absolute;
+  inset: 0 0 0 57%;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(242, 236, 228, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242, 236, 228, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(90deg, transparent, black 30%, black 100%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.radar-strategy-sweep {
+  position: absolute;
+  top: -70%;
+  right: 9%;
+  width: 1px;
+  height: 240%;
+  z-index: -1;
+  background: linear-gradient(transparent, rgba(239, 97, 42, 0.75), transparent);
+  box-shadow: 0 0 36px 8px rgba(239, 97, 42, 0.08);
+  transform: rotate(28deg);
+  transform-origin: center;
+  animation: radar-sweep 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.radar-signal-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--radar-orange);
+  box-shadow:
+    0 0 0 4px rgba(239, 97, 42, 0.12),
+    0 0 14px rgba(239, 97, 42, 0.45);
+}
+
+@keyframes radar-sweep {
+  0%,
+  32% {
+    opacity: 0;
+    transform: translateX(-22vw) rotate(28deg);
+  }
+
+  42%,
+  70% {
+    opacity: 1;
+  }
+
+  86%,
+  100% {
+    opacity: 0;
+    transform: translateX(17vw) rotate(28deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .radar-strategy-grid {
+    inset: 40% 0 0;
+  }
+
+  .radar-strategy-sweep {
+    right: 25%;
+  }
+}
+
+@media (min-width: 640px) {
+  .radar-page {
+    height: calc(100vh - 124px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .radar-page {
+    height: calc(100vh - 132px);
+  }
+}
+
+@media (min-width: 1280px) {
+  .radar-page {
+    height: calc(100vh - 148px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-strategy-sweep {
+    animation: none;
+  }
+}

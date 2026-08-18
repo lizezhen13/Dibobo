@@ -27,6 +27,42 @@ class WatchlistItemCreate(BaseModel):
         return normalized or None
 
 
+class WatchlistFromRadarCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    thscode: str = Field(min_length=9, max_length=9)
+    name: str = Field(min_length=1, max_length=120)
+    industry: str | None = Field(default=None, max_length=100)
+
+    @field_validator("thscode")
+    @classmethod
+    def normalize_radar_thscode(cls, value: str) -> str:
+        normalized = value.upper()
+        if (
+            len(normalized) != 9
+            or not normalized[:6].isdigit()
+            or normalized[6:] not in {".SH", ".SZ"}
+        ):
+            raise ValueError("红利雷达只支持沪深 A 股")
+        return normalized
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("股票名称不能为空")
+        return normalized
+
+    @field_validator("industry")
+    @classmethod
+    def normalize_industry(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
 class WatchlistItemUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

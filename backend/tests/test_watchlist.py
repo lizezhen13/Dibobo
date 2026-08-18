@@ -18,6 +18,7 @@ from app.watchlist.service import (
     build_watchlist_items,
     create_watchlist_item,
     delete_watchlist_item,
+    delete_watchlist_item_by_thscode,
     delete_watchlist_items,
     reorder_watchlist,
     update_watchlist_item,
@@ -123,6 +124,30 @@ async def test_watchlist_note_update_and_delete_recompact_order(db: AsyncSession
 
     await delete_watchlist_item(db, user, second.id)
     assert first.sort_order == 0
+
+
+@pytest.mark.asyncio
+async def test_watchlist_can_delete_by_thscode_and_normalizes_code(db: AsyncSession) -> None:
+    user = await make_user(db, "watchlist-delete-by-code")
+    first = await create_watchlist_item(
+        db,
+        user,
+        WatchlistItemCreate(thscode="600519.SH"),
+        instrument(),
+    )
+    second = await create_watchlist_item(
+        db,
+        user,
+        WatchlistItemCreate(thscode="510300.SH"),
+        instrument("510300.SH", "沪深300ETF"),
+    )
+
+    await delete_watchlist_item_by_thscode(db, user, " 510300.sh ")
+
+    assert first.sort_order == 0
+    with pytest.raises(HTTPException) as missing:
+        await delete_watchlist_item_by_thscode(db, user, second.thscode)
+    assert missing.value.status_code == 404
 
 
 @pytest.mark.asyncio

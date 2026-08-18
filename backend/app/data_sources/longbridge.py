@@ -3,6 +3,9 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
+import math
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -12,12 +15,15 @@ from urllib.parse import urlencode
 
 import httpx
 
+logger = logging.getLogger(__name__)
+
 LONGBRIDGE_DEFAULT_BASE_URL = "https://openapi.longbridge.cn"
 
 LONGBRIDGE_CAPABILITIES: dict[str, Literal["supported", "unsupported", "partial"]] = {
     "quote": "supported",
     "quote_realtime": "partial",
     "fundamental": "supported",
+    "screener": "supported",
     "market": "supported",
     "market_temperature": "supported",
     "content": "supported",
@@ -71,22 +77,370 @@ class OAuthTokenResponse:
     token_type: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class LongbridgeScreenerItem:
+    """A normalized row returned by Longbridge's CN stock screener."""
+
+    thscode: str
+    ticker: str
+    name: str
+    exchange: Literal["SH", "SZ"]
+    market_cap: float | None = None
+    dividend_yield: float | None = None
+    pb: float | None = None
+    pe_ttm: float | None = None
+    latest: float | None = None
+    change_percent: float | None = None
+    industry: str | None = None
+    status: str | None = None
+    quoted_at: datetime | None = None
+
+    @property
+    def incomplete(self) -> bool:
+        return any(
+            value is None
+            for value in (
+                self.market_cap,
+                self.dividend_yield,
+                self.pb,
+                self.pe_ttm,
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LongbridgeScreenerPage:
+    items: list[LongbridgeScreenerItem]
+    total: int
+    page: int
+    size: int
+
+
+def _screener_value(item: dict[str, Any], *keys: str) -> object:
+    lookup_keys = (*keys, *(f"filter_{key}" for key in keys if not key.startswith("filter_")))
+    for key in lookup_keys:
+        if key in item and item[key] is not None:
+            return item[key]
+
+    indicators = item.get("indicators")
+    if isinstance(indicators, dict):
+        for key in lookup_keys:
+            if key in indicators and indicators[key] is not None:
+                return indicators[key]
+    elif isinstance(indicators, list):
+        aliases = set(keys)
+        for indicator in indicators:
+            if not isinstance(indicator, dict):
+                continue
+            indicator_key = indicator.get("key") or indicator.get("name")
+            if isinstance(indicator_key, str):
+                indicator_key = indicator_key.removeprefix("filter_")
+            if indicator_key in aliases:
+                return indicator.get("value")
+    return None
+
+
+def _screener_float(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, dict):
+        value = value.get("value")
+    if isinstance(value, str):
+        normalized = value.strip().replace(",", "")
+        for suffix in ("亿元", "亿", "%", "倍"):
+            if normalized.endswith(suffix):
+                normalized = normalized[: -len(suffix)]
+                break
+        if normalized in {"", "-", "--", "N/A", "NA", "null", "None"}:
+            return None
+        value = normalized
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _screener_market_cap(value: object, unit: str | None = None) -> float | None:
+    """Normalize Longbridge market cap values to the product unit, 亿元."""
+    raw_text = value.strip().lower() if isinstance(value, str) else ""
+    parsed = _screener_float(value)
+    if parsed is None:
+        return None
+    if "亿" in raw_text or "100m" in raw_text:
+        return parsed
+    if "bn" in raw_text or "billion" in raw_text:
+        return parsed * 10
+    if parsed >= 100_000_000:
+        # The screener search response documents marketcap as base currency.
+        return parsed / 100_000_000
+    if unit is not None and _screener_unit_kind(unit) == "bn":
+        return parsed * 10
+    return parsed
+
+
+def _screener_unit_kind(unit: str | None) -> str | None:
+    if not unit:
+        return None
+    normalized = unit.strip().lower().replace(" ", "")
+    if normalized in {"bn", "b", "billion", "十亿", "十亿美元"}:
+        return "bn"
+    if "亿" in normalized or "100m" in normalized or "hundredmillion" in normalized:
+        return "yi"
+    if normalized in {"元", "cny", "rmb", "base", "basecurrency"}:
+        return "base"
+    return None
+
+
+def _screener_condition_bound(
+    key: str,
+    value: float,
+    *,
+    market_cap_unit: str | None = None,
+) -> str:
+    """Convert the product's 亿元 bound to Longbridge's current unit."""
+    normalized = value
+    if key == "marketcap":
+        unit_kind = _screener_unit_kind(market_cap_unit) or "bn"
+        if unit_kind == "bn":
+            normalized = value / 10
+        elif unit_kind == "base":
+            normalized = value * 100_000_000
+    return f"{normalized:g}"
+
+
+def _screener_api_key(key: str) -> str:
+    return key if key.startswith("filter_") else f"filter_{key}"
+
+
+def _screener_text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _screener_datetime(value: object) -> datetime | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        timestamp = float(value)
+        if timestamp > 10_000_000_000:
+            timestamp /= 1000
+        try:
+            return datetime.fromtimestamp(timestamp, tz=UTC)
+        except (OverflowError, OSError, ValueError):
+            return None
+    if isinstance(value, str):
+        normalized = value.strip().replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+        return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+    return None
+
+
+def _normalize_screener_symbol(
+    value: object,
+    market: object | None = None,
+) -> tuple[str, str, Literal["SH", "SZ"]] | None:
+    raw = _screener_text(value)
+    if raw is None:
+        return None
+    raw_upper = raw.upper()
+    counter_match = re.fullmatch(r"(?:[A-Z]+/)?(SH|SZ|BJ)/(\d{6})", raw_upper)
+    if counter_match is not None:
+        raw_upper = f"{counter_match.group(2)}.{counter_match.group(1)}"
+    normalized = raw_upper.replace("/", ".")
+    if re.fullmatch(r"(?:SH|SZ|BJ)\.\d{6}", normalized):
+        exchange, ticker = normalized.split(".", 1)
+        normalized = f"{ticker}.{exchange}"
+    elif re.fullmatch(r"\d{6}(?:SH|SZ|BJ)", normalized):
+        normalized = f"{normalized[:6]}.{normalized[6:]}"
+    elif re.fullmatch(r"\d{6}", normalized):
+        exchange = (_screener_text(market) or "").upper()
+        if exchange in {"SH", "SZ", "BJ"}:
+            normalized = f"{normalized}.{exchange}"
+
+    match = re.fullmatch(r"(\d{6})\.(SH|SZ|BJ)", normalized)
+    if match is None or match.group(2) == "BJ":
+        return None
+    ticker, exchange = match.groups()
+    return normalized, ticker, exchange  # type: ignore[return-value]
+
+
+def _screener_is_suspended(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    normalized = (_screener_text(value) or "").lower()
+    return any(token in normalized for token in ("停牌", "暂停", "suspend", "halt", "delist"))
+
+
+def _screener_items(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
+    candidates: list[object] = [payload]
+    data = payload.get("data")
+    if isinstance(data, (dict, list)):
+        candidates.insert(0, data)
+
+    raw_items: list[dict[str, Any]] = []
+    total: int | None = None
+    for candidate in candidates:
+        if isinstance(candidate, list):
+            raw_items = [item for item in candidate if isinstance(item, dict)]
+            break
+        if not isinstance(candidate, dict):
+            continue
+        possible_items = candidate.get("items") or candidate.get("results") or candidate.get("list")
+        if isinstance(possible_items, list):
+            raw_items = [item for item in possible_items if isinstance(item, dict)]
+            raw_total = candidate.get("total")
+            total = int(raw_total) if isinstance(raw_total, (int, float)) else None
+            break
+
+    if total is None:
+        raw_total = payload.get("total")
+        total = int(raw_total) if isinstance(raw_total, (int, float)) else len(raw_items)
+    return raw_items, max(total, len(raw_items))
+
+
+def _normalize_screener_item(
+    item: dict[str, Any],
+    *,
+    market_cap_unit: str | None = None,
+) -> LongbridgeScreenerItem | None:
+    market = _screener_value(item, "market", "exchange", "market_code")
+    symbol = _normalize_screener_symbol(
+        _screener_value(item, "symbol", "thscode", "security_id", "counter_id", "code"),
+        market,
+    )
+    if symbol is None:
+        return None
+    thscode, ticker, exchange = symbol
+    name = _screener_text(
+        _screener_value(item, "name", "security_name", "stock_name", "counter_name")
+    )
+    if name is None:
+        return None
+
+    normalized_name = name.replace(" ", "").replace("\u3000", "").upper()
+    status = _screener_text(
+        _screener_value(item, "status", "security_status", "trading_status", "state")
+    )
+    suspended = _screener_value(item, "suspended", "is_suspended", "halted")
+    if (
+        normalized_name.lstrip("*").startswith("ST")
+        or "退市" in name
+        or _screener_is_suspended(status)
+        or _screener_is_suspended(suspended)
+    ):
+        return None
+
+    return LongbridgeScreenerItem(
+        thscode=thscode,
+        ticker=ticker,
+        name=name,
+        exchange=exchange,
+        market_cap=_screener_market_cap(
+            _screener_value(item, "marketcap", "market_cap"), market_cap_unit
+        ),
+        dividend_yield=_screener_float(
+            _screener_value(item, "divyld", "dividend_yield", "dividend_yield_ttm")
+        ),
+        pb=_screener_float(_screener_value(item, "pbmrq", "pb_mrq", "pb")),
+        pe_ttm=_screener_float(_screener_value(item, "pettm", "pe_ttm", "pe")),
+        latest=_screener_float(
+            _screener_value(item, "prevclose", "prev_close", "last_done", "latest", "price")
+        ),
+        change_percent=_screener_float(
+            _screener_value(item, "prevchg", "change_percent", "change_pct")
+        ),
+        industry=_screener_text(_screener_value(item, "industry", "industry_name")),
+        status=status,
+        quoted_at=_screener_datetime(
+            _screener_value(item, "quoted_at", "quote_time", "updated_at", "timestamp")
+        ),
+    )
+
+
+def _upstream_error_code(payload: object) -> int | str | None:
+    if not isinstance(payload, dict):
+        return None
+    raw_code = payload.get("code")
+    if isinstance(raw_code, bool) or raw_code is None:
+        return None
+    if isinstance(raw_code, int):
+        return raw_code
+    if isinstance(raw_code, str):
+        normalized = raw_code.strip()
+        return normalized or None
+    return str(raw_code)
+
+
+def _upstream_error_message(payload: object) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+
+    candidates: list[object] = [
+        payload.get("message"),
+        payload.get("msg"),
+        payload.get("error_description"),
+        payload.get("error"),
+    ]
+    data = payload.get("data")
+    if isinstance(data, dict):
+        candidates.extend(
+            (data.get("message"), data.get("msg"), data.get("error_description"))
+        )
+    for candidate in candidates:
+        if not isinstance(candidate, str):
+            continue
+        normalized = " ".join(candidate.split())
+        if normalized:
+            return normalized[:240]
+    return None
+
+
+def _is_success_response_code(value: object) -> bool:
+    return value is None or value == 0 or value == "0"
+
+
 def _safe_error_message(status_code: int, payload: object) -> tuple[str, int]:
+    upstream_code = _upstream_error_code(payload)
+    upstream_message = _upstream_error_message(payload)
+    numeric_code: int | None = None
+    if isinstance(upstream_code, int):
+        numeric_code = upstream_code
+    elif isinstance(upstream_code, str) and upstream_code.isdigit():
+        numeric_code = int(upstream_code)
+
     if status_code in {401, 403}:
         return "Longbridge 鉴权失败，请重新授权或检查 API 凭证", 2001
     if status_code == 429:
         return "Longbridge 访问频率受限，请稍后再试", 4001
     if status_code >= 500:
+        if upstream_message:
+            return f"Longbridge 服务暂时不可用：{upstream_message}", 5003
         return "Longbridge 服务暂时不可用，请稍后再试", 5003
 
-    raw_code: object = payload.get("code") if isinstance(payload, dict) else None
-    code = raw_code if isinstance(raw_code, int) else 5003
-    if code in {401, 401001, 401002, 403, 403001}:
+    if numeric_code in {401, 401001, 401002, 403, 403001}:
         return "Longbridge 鉴权失败，请重新授权或检查 API 凭证", 2001
-    if code in {429, 429001}:
+    if numeric_code in {429, 429001}:
         return "Longbridge 访问频率受限，请稍后再试", 4001
-    if code in {400, 400001}:
+    if status_code == 400 or numeric_code in {400, 400001}:
+        if upstream_message:
+            return f"Longbridge 请求参数不符合接口要求：{upstream_message}", 3001
         return "Longbridge 请求参数不符合接口要求", 3001
+
+    details: list[str] = []
+    if upstream_code is not None:
+        details.append(f"错误码 {upstream_code}")
+    if upstream_message:
+        details.append(upstream_message)
+    if details:
+        return f"Longbridge 返回业务错误（{'：'.join(details)}）", 5003
     return "Longbridge 返回了无法识别的业务错误", 5003
 
 
@@ -253,13 +607,31 @@ class LongbridgeHttpClient:
             raise LongbridgeError("Longbridge 返回了无法识别的响应", code=5003) from exc
 
         if response.status_code >= 400:
+            logger.warning(
+                "Longbridge upstream HTTP error",
+                extra={
+                    "status_code": response.status_code,
+                    "upstream_code": _upstream_error_code(response_payload),
+                    "upstream_message": _upstream_error_message(response_payload),
+                    "path": path,
+                },
+            )
             message, code = _safe_error_message(response.status_code, response_payload)
             raise LongbridgeError(message, code=code)
         if not isinstance(response_payload, dict):
             raise LongbridgeError("Longbridge 返回了无法识别的响应", code=5003)
 
         code = response_payload.get("code")
-        if code is not None and code != 0:
+        if not _is_success_response_code(code):
+            logger.warning(
+                "Longbridge upstream business error",
+                extra={
+                    "status_code": response.status_code,
+                    "upstream_code": _upstream_error_code(response_payload),
+                    "upstream_message": _upstream_error_message(response_payload),
+                    "path": path,
+                },
+            )
             message, error_code = _safe_error_message(response.status_code, response_payload)
             raise LongbridgeError(message, code=error_code)
         return response_payload
@@ -338,6 +710,159 @@ class LongbridgeHttpClient:
         else:
             message = "连接成功，行情、基本面、市场、市场温度、资讯与财经日历接口均返回正常"
         return LongbridgeProbeResult(status="success", capabilities=capabilities, message=message)
+
+
+class LongbridgeScreenerAdapter:
+    """Fetch and normalize CN A-share screener rows."""
+
+    _PATH = "/v1/quote/ai/screener/search"
+    _DEFAULT_RETURNS = (
+        "filter_prevclose",
+        "filter_prevchg",
+        "filter_marketcap",
+        "filter_salesgrowthyoy",
+        "filter_pettm",
+        "filter_pbmrq",
+        "filter_industry",
+    )
+    # Dividend yield is not part of Longbridge's default seven return columns.
+    _EXTRA_RETURNS = ("filter_divyld",)
+    _INDICATORS_PATH = "/v1/quote/ai/screener/indicators"
+
+    def __init__(self, client: LongbridgeHttpClient) -> None:
+        self._client = client
+        self._market_cap_unit: str | None = None
+        self._market_cap_unit_loaded = False
+
+    @staticmethod
+    def _read_market_cap_unit(payload: dict[str, Any]) -> str | None:
+        data = payload.get("data")
+        candidates: list[object] = [data, payload]
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                groups = candidate.get("groups")
+                if isinstance(groups, list):
+                    for group in groups:
+                        if not isinstance(group, dict):
+                            continue
+                        indicators = group.get("indicators")
+                        if not isinstance(indicators, list):
+                            continue
+                        for indicator in indicators:
+                            if not isinstance(indicator, dict):
+                                continue
+                            key = indicator.get("key")
+                            if key in {"marketcap", "filter_marketcap"}:
+                                unit = indicator.get("unit")
+                                return unit if isinstance(unit, str) and unit.strip() else None
+                indicators = candidate.get("indicators")
+                if isinstance(indicators, list):
+                    for indicator in indicators:
+                        if not isinstance(indicator, dict):
+                            continue
+                        key = indicator.get("key")
+                        if key in {"marketcap", "filter_marketcap"}:
+                            unit = indicator.get("unit")
+                            return unit if isinstance(unit, str) and unit.strip() else None
+            elif isinstance(candidate, list):
+                for indicator in candidate:
+                    if not isinstance(indicator, dict):
+                        continue
+                    key = indicator.get("key")
+                    if key in {"marketcap", "filter_marketcap"}:
+                        unit = indicator.get("unit")
+                        return unit if isinstance(unit, str) and unit.strip() else None
+        return None
+
+    async def _load_market_cap_unit(self) -> str | None:
+        if self._market_cap_unit_loaded:
+            return self._market_cap_unit
+        self._market_cap_unit_loaded = True
+        try:
+            payload = await self._client.request_json("GET", self._INDICATORS_PATH)
+        except LongbridgeError:
+            logger.warning("Longbridge screener indicator metadata unavailable")
+            return None
+        self._market_cap_unit = self._read_market_cap_unit(payload)
+        return self._market_cap_unit
+
+    async def search(
+        self,
+        filters: dict[str, float | None],
+        *,
+        page: int = 0,
+        size: int = 100,
+    ) -> LongbridgeScreenerPage:
+        has_market_cap_bound = any(
+            filters.get(field) is not None
+            for field in ("market_cap_min", "market_cap_max")
+        )
+        market_cap_unit = await self._load_market_cap_unit() if has_market_cap_bound else None
+        conditions: list[dict[str, Any]] = []
+        for field, key in (
+            ("market_cap", "marketcap"),
+            ("dividend_yield", "divyld"),
+            ("pb", "pbmrq"),
+            ("pe_ttm", "pettm"),
+        ):
+            minimum = filters.get(f"{field}_min")
+            maximum = filters.get(f"{field}_max")
+            if minimum is None and maximum is None:
+                continue
+            condition: dict[str, Any] = {
+                "key": _screener_api_key(key),
+                "min": "",
+                "max": "",
+                "tech_values": {},
+            }
+            if minimum is not None:
+                condition["min"] = _screener_condition_bound(
+                    key, minimum, market_cap_unit=market_cap_unit
+                )
+            if maximum is not None:
+                condition["max"] = _screener_condition_bound(
+                    key, maximum, market_cap_unit=market_cap_unit
+                )
+            conditions.append(condition)
+
+        returns = list(self._DEFAULT_RETURNS)
+        for field in [*self._EXTRA_RETURNS, *(condition["key"] for condition in conditions)]:
+            if field not in returns:
+                returns.append(field)
+
+        payload = await self._client.request_json(
+            "POST",
+            self._PATH,
+            payload={
+                "market": "CN",
+                "filters": conditions,
+                "returns": returns,
+                "page": page,
+                "size": size,
+            },
+        )
+        raw_items, total = _screener_items(payload)
+        items = [
+            normalized
+            for raw_item in raw_items
+            if (
+                normalized := _normalize_screener_item(
+                    raw_item, market_cap_unit=market_cap_unit
+                )
+            )
+            is not None
+        ]
+        logger.info(
+            "Longbridge screener page normalized",
+            extra={
+                "page": page,
+                "raw_item_count": len(raw_items),
+                "normalized_item_count": len(items),
+                "upstream_total": total,
+                "market_cap_unit": market_cap_unit,
+            },
+        )
+        return LongbridgeScreenerPage(items=items, total=total, page=page, size=size)
 
 
 def _longbridge_integer(value: object, field: str) -> int:

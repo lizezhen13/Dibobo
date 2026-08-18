@@ -59,4 +59,7 @@ export const queryKeys = {
   settings: {
     dataSources: ["settings", "data-sources"] as const,
   },
+  radar: {
+    daily: (page: number, pageSize: number) => ["radar", "daily", page, pageSize] as const,
+  },
 } as const;

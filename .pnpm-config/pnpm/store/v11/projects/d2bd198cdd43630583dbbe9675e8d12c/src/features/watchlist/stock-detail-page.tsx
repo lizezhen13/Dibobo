@@ -7,14 +7,18 @@ import { PageContainer } from "../../components/patterns";
 
 const STOCKPAGE_ORIGIN = "https://stockpage.10jqka.com.cn";
 
-export function StockDetailPage() {
+type StockDetailContext = "watchlist" | "radar";
+
+export function StockDetailPage({ context = "watchlist" }: { context?: StockDetailContext }) {
   const { ticker: routeTicker } = useParams<{ ticker: string }>();
   const ticker = normalizeTicker(routeTicker);
   const [frameError, setFrameError] = useState(false);
   const stockPageUrl = ticker ? `${STOCKPAGE_ORIGIN}/${encodeURIComponent(ticker)}` : null;
+  const returnTo = context === "radar" ? "/radar" : "/watchlist";
+  const detailLabel = context === "radar" ? "RADAR DETAIL" : "INLINE DETAIL";
 
   if (!stockPageUrl) {
-    return <InvalidTickerState />;
+    return <InvalidTickerState context={context} />;
   }
 
   return (
@@ -23,7 +27,9 @@ export function StockDetailPage() {
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-5">
         <div className="hidden items-center gap-2 text-[0.7rem] text-muted-foreground/65 sm:flex">
           <span className="size-1.5 rounded-full bg-market-up" />
-          <span className="font-mono tracking-[0.14em]">INLINE DETAIL · {ticker}</span>
+          <span className="font-mono tracking-[0.14em]">
+            {detailLabel} · {ticker}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
@@ -32,7 +38,7 @@ export function StockDetailPage() {
             </a>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/watchlist">返回</Link>
+            <Link to={returnTo}>返回</Link>
           </Button>
         </div>
       </div>
@@ -61,22 +67,30 @@ export function StockDetailPage() {
   );
 }
 
-function InvalidTickerState() {
+export function RadarStockDetailPage() {
+  return <StockDetailPage context="radar" />;
+}
+
+function InvalidTickerState({ context }: { context: StockDetailContext }) {
+  const isRadar = context === "radar";
+  const moduleName = isRadar ? "红利雷达" : "自选管理";
+  const returnTo = isRadar ? "/radar" : "/watchlist";
+
   return (
     <PageContainer size="wide">
       <div className="rounded-xl border border-border bg-card px-6 py-16 text-center shadow-raised">
         <span className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/20 bg-primary/8 text-primary">
           <FileText size={23} />
         </span>
-        <p className="mt-5 font-mono text-[0.64rem] tracking-[0.16em] text-primary/75">WATCHLIST / INVALID CODE</p>
+        <p className="mt-5 font-mono text-[0.64rem] tracking-[0.16em] text-primary/75">{isRadar ? "RADAR" : "WATCHLIST"} / INVALID CODE</p>
         <h1 className="mt-2 font-display text-2xl tracking-tight text-foreground">缺少有效的股票代码</h1>
         <p className="mx-auto mt-2 max-w-md text-[0.9rem] leading-relaxed text-muted-foreground">
-          当前详情地址无法识别，请返回自选管理后重新选择标的。
+          当前详情地址无法识别，请返回{moduleName}后重新选择标的。
         </p>
         <Button asChild className="mt-6">
-          <Link to="/watchlist">
+          <Link to={returnTo}>
             <ArrowLeft size={15} />
-            返回自选管理
+            返回{moduleName}
           </Link>
         </Button>
       </div>

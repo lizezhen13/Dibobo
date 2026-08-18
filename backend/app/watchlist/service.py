@@ -14,6 +14,7 @@ from app.data_sources.domain import AssetType, Instrument, SecurityQuote
 from app.holdings.service import load_market_context, resolve_instrument
 from app.watchlist.schemas import (
     WatchlistBatchDeletePayload,
+    WatchlistFromRadarCreate,
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
@@ -102,6 +103,28 @@ async def create_watchlist_item(
     return item
 
 
+async def create_watchlist_item_from_radar(
+    db: AsyncSession,
+    user: User,
+    payload: WatchlistFromRadarCreate,
+) -> WatchlistItem:
+    exchange = payload.thscode[-2:]
+    instrument = Instrument(
+        thscode=payload.thscode,
+        ticker=payload.thscode[:6],
+        name=payload.name,
+        asset_type="a_share",
+        exchange=exchange,  # type: ignore[arg-type]
+        industry=payload.industry,
+    )
+    return await create_watchlist_item(
+        db,
+        user,
+        WatchlistItemCreate(thscode=payload.thscode, note=None),
+        instrument,
+    )
+
+
 async def update_watchlist_item(
     db: AsyncSession,
     user: User,
@@ -147,6 +170,22 @@ async def delete_watchlist_item(
         "Watchlist item deleted",
         extra={"user_id": str(user.id), "watchlist_item_id": str(item_id)},
     )
+
+
+async def delete_watchlist_item_by_thscode(
+    db: AsyncSession,
+    user: User,
+    thscode: str,
+) -> None:
+    item = await db.scalar(
+        select(WatchlistItem).where(
+            WatchlistItem.user_id == user.id,
+            WatchlistItem.thscode == thscode.strip().upper(),
+        )
+    )
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="自选记录不存在")
+    await delete_watchlist_item(db, user, item.id)
 
 
 async def delete_watchlist_items(

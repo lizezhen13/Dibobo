@@ -28,6 +28,10 @@ interface DataTableProps<TData> {
   centered?: boolean;
   ariaLabel?: string;
   ariaLabelledBy?: string;
+  toolbar?: ReactNode;
+  toolbarClassName?: string;
+  tableClassName?: string;
+  headerClassName?: string;
   pagination?: ReactNode;
   rowReorder?: {
     enabled: boolean;
@@ -46,6 +50,10 @@ export function DataTable<TData>({
   centered = false,
   ariaLabel,
   ariaLabelledBy,
+  toolbar,
+  toolbarClassName,
+  tableClassName,
+  headerClassName,
   pagination,
   rowReorder,
 }: DataTableProps<TData>) {
@@ -124,13 +132,20 @@ export function DataTable<TData>({
         className,
       )}
     >
+      {toolbar ? <div className={cn("shrink-0 border-b border-border bg-card px-5 py-4 sm:px-6", toolbarClassName)}>{toolbar}</div> : null}
       <div className={cn(stickyHeader ? (hasPagination ? "min-h-0 flex-1 overflow-auto" : "overflow-visible") : "overflow-x-auto")}>
         <table
-          className={cn("w-full min-w-max border-collapse text-left text-[13px]", stickyHeader && "border-separate border-spacing-0")}
+          className={cn(
+            "w-full min-w-max border-collapse text-left text-[13px]",
+            stickyHeader && "border-separate border-spacing-0",
+            tableClassName,
+          )}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
         >
-          <thead className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary")}>
+          <thead
+            className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary", headerClassName)}
+          >
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {

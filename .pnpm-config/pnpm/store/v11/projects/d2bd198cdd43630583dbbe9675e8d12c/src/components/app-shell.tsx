@@ -47,7 +47,8 @@ export function AppShell() {
   const isFullBleedRoute =
     location.pathname === "/calendar" ||
     location.pathname.startsWith("/watchlist/detail/") ||
-    location.pathname.startsWith("/portfolios/detail/");
+    location.pathname.startsWith("/portfolios/detail/") ||
+    location.pathname.startsWith("/radar/detail/");
 
   const mobileNavOpen = mobileNavOpenAtPath === location.pathname;
   const closeMobileNav = () => setMobileNavOpenAtPath(null);

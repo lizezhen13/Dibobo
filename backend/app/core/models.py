@@ -63,6 +63,9 @@ class User(TimestampMixin, Base):
     journals: Mapped[list["Journal"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    radar_snapshots: Mapped[list["RadarSnapshot"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserSession(Base):
@@ -123,6 +126,33 @@ class DataSource(TimestampMixin, Base):
     )
 
     user: Mapped[User] = relationship(back_populates="data_sources")
+
+
+class RadarSnapshot(TimestampMixin, Base):
+    """The latest default-strategy result for one user."""
+
+    __tablename__ = "radar_snapshots"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_radar_snapshots_user"),
+        Index("ix_radar_snapshots_user_generated", "user_id", "generated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    data_source_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("data_sources.id", ondelete="SET NULL"), index=True
+    )
+    run_date: Mapped[date] = mapped_column(index=True, nullable=False)
+    filters: Mapped[dict[str, object]] = mapped_column(JSON_VALUE, nullable=False)
+    items: Mapped[list[dict[str, object]]] = mapped_column(JSON_VALUE, nullable=False)
+    total: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="success", nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error: Mapped[str | None] = mapped_column(String(500))
+
+    user: Mapped[User] = relationship(back_populates="radar_snapshots")
 
 
 class Portfolio(TimestampMixin, Base):

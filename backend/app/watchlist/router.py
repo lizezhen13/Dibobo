@@ -13,6 +13,7 @@ from app.data_sources.domain import AssetType
 from app.watchlist.schemas import (
     MessageResponse,
     WatchlistBatchDeletePayload,
+    WatchlistFromRadarCreate,
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
@@ -22,7 +23,9 @@ from app.watchlist.schemas import (
 from app.watchlist.service import (
     build_watchlist_items,
     create_watchlist_item,
+    create_watchlist_item_from_radar,
     delete_watchlist_item,
+    delete_watchlist_item_by_thscode,
     delete_watchlist_items,
     list_watchlist,
     reorder_watchlist,
@@ -69,6 +72,21 @@ async def post_watchlist_item(
     return build_watchlist_items([item], {})[0]
 
 
+@router.post(
+    "/watchlist/from-radar",
+    response_model=WatchlistItemResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_csrf)],
+)
+async def post_watchlist_item_from_radar(
+    payload: WatchlistFromRadarCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> WatchlistItemResponse:
+    item = await create_watchlist_item_from_radar(db, user, payload)
+    return build_watchlist_items([item], {})[0]
+
+
 @router.patch(
     "/watchlist/order",
     response_model=MessageResponse,
@@ -95,6 +113,20 @@ async def batch_delete_watchlist(
 ) -> MessageResponse:
     count = await delete_watchlist_items(db, user, payload)
     return MessageResponse(message=f"已删除 {count} 条自选记录")
+
+
+@router.delete(
+    "/watchlist/by-thscode/{thscode}",
+    response_model=MessageResponse,
+    dependencies=[Depends(require_csrf)],
+)
+async def remove_watchlist_item_by_thscode(
+    thscode: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> MessageResponse:
+    await delete_watchlist_item_by_thscode(db, user, thscode)
+    return MessageResponse(message="自选记录已永久删除")
 
 
 @router.patch(

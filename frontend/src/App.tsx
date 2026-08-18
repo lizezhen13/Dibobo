@@ -15,6 +15,9 @@ const WatchlistPage = lazy(() => import("./features/watchlist/watchlist-page").t
 const StockDetailPage = lazy(() =>
   import("./features/watchlist/stock-detail-page").then(({ StockDetailPage: Page }) => ({ default: Page })),
 );
+const RadarStockDetailPage = lazy(() =>
+  import("./features/watchlist/stock-detail-page").then(({ RadarStockDetailPage: Page }) => ({ default: Page })),
+);
 const PortfolioStockDetailPage = lazy(() =>
   import("./features/portfolios/portfolio-stock-detail-page").then(({ PortfolioStockDetailPage: Page }) => ({ default: Page })),
 );
@@ -45,6 +48,7 @@ export function App() {
             <Route path="/holdings" element={<Navigate to="/portfolios" replace />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/radar" element={<RadarPage />} />
+            <Route path="/radar/detail/:ticker" element={<RadarStockDetailPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/journals" element={<JournalsPage />} />
             <Route path="/settings" element={<SettingsPage />} />

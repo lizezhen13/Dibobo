@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     upstream_timeout_seconds: float = Field(default=8, gt=0, le=60)
     upstream_concurrency: int = Field(default=4, ge=1, le=32)
 
+    # Dividend radar's default snapshot schedule. The product default is
+    # Beijing time 15:30; keeping the values configurable makes scheduler
+    # behavior deterministic in tests and private deployments.
+    radar_scheduler_enabled: bool = True
+    radar_daily_hour: int = Field(default=15, ge=0, le=23)
+    radar_daily_minute: int = Field(default=30, ge=0, le=59)
+    radar_fetch_page_size: int = Field(default=100, ge=20, le=500)
+
     # System-level AKShare global market feed. It is deliberately independent
     # from the user-configured A-share data source and ships behind its own flag.
     akshare_enabled: bool = True

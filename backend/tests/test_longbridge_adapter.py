@@ -7,8 +7,10 @@ from app.core.config import Settings
 from app.core.database import Base
 from app.core.models import User
 from app.data_sources.longbridge import (
+    LongbridgeError,
     LongbridgeHttpClient,
     LongbridgeMarketTemperatureAdapter,
+    LongbridgeScreenerAdapter,
     OAuthClientRegistration,
     OAuthTokenResponse,
     build_legacy_signature,
@@ -163,6 +165,222 @@ async def test_market_temperature_adapter_uses_cn_market_and_normalizes_snapshot
     assert len(requests) == 1
     assert requests[0].url.path == "/v1/quote/market_temperature"
     assert requests[0].url.params["market"] == "CN"
+
+
+@pytest.mark.asyncio
+async def test_screener_adapter_maps_conditions_and_excludes_bj_st_and_delisted_rows() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/screener/indicators"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "groups": [
+                            {
+                                "group_name": "公司规模与财务",
+                                "indicators": [{"key": "marketcap", "unit": "亿"}],
+                            }
+                        ]
+                    },
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "total": 4,
+                "page": 0,
+                "items": [
+                    {
+                        "symbol": "600000.SH",
+                        "name": "浦发银行",
+                        "marketcap": "123450000000",
+                        "divyld": "4.8",
+                        "pbmrq": "0.6",
+                        "pettm": "5.1",
+                        "last_done": "10.25",
+                        "prevchg": "1.2",
+                    },
+                    {
+                        "symbol": "000001.SZ",
+                        "name": "平安银行",
+                        "marketcap": 98000000000,
+                        "divyld": 4,
+                        "pbmrq": None,
+                        "pettm": 4.8,
+                    },
+                    {"symbol": "430047.BJ", "name": "北交所样本"},
+                    {"symbol": "600001.SH", "name": "*ST 样本"},
+                ],
+            },
+        )
+
+    client = LongbridgeHttpClient(
+        "https://openapi.longbridge.cn",
+        "oauth",
+        {"access_token": "oauth-secret"},
+        5,
+    )
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(
+        base_url="https://openapi.longbridge.cn",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        result = await LongbridgeScreenerAdapter(client).search(
+            {
+                "market_cap_min": 1000,
+                "market_cap_max": None,
+                "dividend_yield_min": 4,
+                "dividend_yield_max": None,
+                "pb_min": None,
+                "pb_max": None,
+                "pe_min": None,
+                "pe_max": None,
+            },
+            page=0,
+            size=20,
+        )
+    finally:
+        await client.__aexit__()
+
+    assert [item.thscode for item in result.items] == ["600000.SH", "000001.SZ"]
+    assert result.items[0].market_cap == 1234.5
+    assert result.items[0].dividend_yield == 4.8
+    assert result.items[1].pb is None
+    assert result.items[1].incomplete is True
+    assert len(requests) == 2
+    assert requests[0].url.path == "/v1/quote/ai/screener/indicators"
+    assert requests[1].url.path == "/v1/quote/ai/screener/search"
+    body = requests[1].content.decode()
+    assert '"market":"CN"' in body
+    assert '"filters":[{"key":"filter_marketcap"' in body
+    assert '"min":"1000","max":"","tech_values":{}' in body
+    assert '"key":"filter_divyld"' in body
+    assert '"returns":[' in body
+    assert '"filter_divyld"' in body
+    assert '"conditions"' not in body
+    assert '"show"' not in body
+
+
+@pytest.mark.asyncio
+async def test_screener_adapter_reads_sdk_indicator_rows_with_filter_prefixes() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/screener/indicators"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "groups": [{"indicators": [{"key": "marketcap", "unit": "亿"}]}]
+                    },
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "total": 1,
+                    "page": 0,
+                    "items": [
+                        {
+                            "symbol": "600519.SH",
+                            "name": "贵州茅台",
+                            "indicators": [
+                                {"key": "filter_marketcap", "value": 250000000000},
+                                {"key": "filter_divyld", "value": 4.2},
+                                {"key": "filter_pbmrq", "value": 8.1},
+                                {"key": "filter_pettm", "value": 30.5},
+                            ],
+                        }
+                    ],
+                },
+            },
+        )
+
+    client = LongbridgeHttpClient(
+        "https://openapi.longbridge.cn",
+        "oauth",
+        {"access_token": "oauth-secret"},
+        5,
+    )
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(
+        base_url="https://openapi.longbridge.cn",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        result = await LongbridgeScreenerAdapter(client).search(
+            {"market_cap_min": 1000, "dividend_yield_min": 4},
+            page=0,
+            size=20,
+        )
+    finally:
+        await client.__aexit__()
+
+    assert len(result.items) == 1
+    assert result.items[0].market_cap == 2500
+    assert result.items[0].dividend_yield == 4.2
+    assert result.items[0].pb == 8.1
+    assert result.items[0].pe_ttm == 30.5
+
+
+@pytest.mark.asyncio
+async def test_longbridge_error_keeps_upstream_message_for_diagnosis() -> None:
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            500,
+            json={"code": "500123", "message": "screener service is unavailable"},
+        )
+
+    client = LongbridgeHttpClient(
+        "https://openapi.longbridge.cn",
+        "oauth",
+        {"access_token": "oauth-secret"},
+        5,
+    )
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(
+        base_url="https://openapi.longbridge.cn",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        with pytest.raises(LongbridgeError) as error:
+            await client.get_json("/v1/quote/ai/screener/search")
+    finally:
+        await client.__aexit__()
+
+    assert error.value.code == 5003
+    assert error.value.user_message == "Longbridge 服务暂时不可用：screener service is unavailable"
+
+
+@pytest.mark.asyncio
+async def test_longbridge_accepts_string_zero_success_code() -> None:
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"code": "0", "data": {}})
+
+    client = LongbridgeHttpClient(
+        "https://openapi.longbridge.cn",
+        "oauth",
+        {"access_token": "oauth-secret"},
+        5,
+    )
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(
+        base_url="https://openapi.longbridge.cn",
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        payload = await client.get_json("/v1/quote/ai/screener/search")
+    finally:
+        await client.__aexit__()
+
+    assert payload == {"code": "0", "data": {}}
 
 
 @pytest.mark.asyncio

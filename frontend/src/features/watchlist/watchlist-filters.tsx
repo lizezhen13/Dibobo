@@ -1,6 +1,7 @@
 import { ChevronDown, Check, Search, SlidersHorizontal, X } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { FilterPanel } from "../../components/patterns";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
@@ -30,74 +31,72 @@ export function WatchlistFiltersPanel({
   onClear: () => void;
 }) {
   return (
-    <div className="relative flex min-h-[128px] flex-col justify-center overflow-hidden rounded-xl border border-border bg-card px-5 py-3 shadow-raised">
-      <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-primary/10 bg-primary/8 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/4 h-px w-3/4 bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
-      <div className="relative">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
-              <SlidersHorizontal size={15} />
-            </span>
-            <div>
-              <p className="font-mono text-caption tracking-[0.16em] text-muted-foreground/65">FILTER DECK / WATCHLIST</p>
-              <p className="mt-0.5 text-body-sm text-muted-foreground/55">快速定位并缩小观察范围</p>
+    <FilterPanel
+      eyebrow="FILTER DECK / WATCHLIST"
+      title="快速定位并缩小观察范围"
+      leading={
+        <span className="grid size-8 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+          <SlidersHorizontal size={15} />
+        </span>
+      }
+      trailing={
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[13px] tracking-[0.08em] transition-colors",
+            activeFilterCount > 0
+              ? "border-primary/25 bg-primary/10 text-primary/90"
+              : "border-border/80 bg-background/35 text-muted-foreground/65",
+          )}
+        >
+          <span className={cn("size-1.5 rounded-full", activeFilterCount > 0 ? "bg-primary" : "bg-muted-foreground/45")} />
+          {activeFilterCount > 0 ? activeFilterCount + " 项条件已启用" : "全部标的"}
+        </span>
+      }
+      contentClassName="px-5 py-3 sm:px-6"
+      footer={
+        (isFiltered || sortKey !== "custom") && (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-caption text-muted-foreground/65">
+            <div className="flex flex-wrap items-center gap-3">
+              {isFiltered && <span>筛选后显示 {displayCount} 条</span>}
+              {sortKey !== "custom" && <span className="font-mono tracking-[0.05em]">{"TEMP SORT · " + sortLabel(sortKey)}</span>}
             </div>
+            <Button variant="ghost" size="sm" onClick={onClear}>
+              <X size={14} /> 恢复默认
+            </Button>
           </div>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[13px] tracking-[0.08em] transition-colors",
-              activeFilterCount > 0
-                ? "border-primary/25 bg-primary/10 text-primary/90"
-                : "border-border/80 bg-background/35 text-muted-foreground/65",
+        )
+      }
+      className="min-h-[128px]"
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(150px,0.38fr)]">
+        <div className="min-w-0">
+          <p className="mb-1.5 text-label font-medium text-muted-foreground">搜索标的</p>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/65" size={16} />
+            <Input
+              value={keyword}
+              onChange={(event) => onKeywordChange(event.target.value)}
+              placeholder="筛选代码或名称"
+              className={cn("pl-10 pr-10", keyword && "border-primary/40 bg-primary/[0.04]")}
+            />
+            {keyword && (
+              <button
+                type="button"
+                aria-label="清除关键词"
+                className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                onClick={() => onKeywordChange("")}
+              >
+                <X size={15} />
+              </button>
             )}
-          >
-            <span className={cn("size-1.5 rounded-full", activeFilterCount > 0 ? "bg-primary" : "bg-muted-foreground/45")} />
-            {activeFilterCount > 0 ? `${activeFilterCount} 项条件已启用` : "全部标的"}
-          </span>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(150px,0.38fr)]">
-          <div className="min-w-0">
-            <p className="mb-1.5 text-label font-medium text-muted-foreground">搜索标的</p>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/65" size={16} />
-              <Input
-                value={keyword}
-                onChange={(event) => onKeywordChange(event.target.value)}
-                placeholder="筛选代码或名称"
-                className={cn("pl-10 pr-10", keyword && "border-primary/40 bg-primary/[0.04]")}
-              />
-              {keyword && (
-                <button
-                  type="button"
-                  aria-label="清除关键词"
-                  className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                  onClick={() => onKeywordChange("")}
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="min-w-0">
-            <p className="mb-1.5 text-label font-medium text-muted-foreground">标的类型</p>
-            <WatchlistTypeFilter value={assetType} onChange={onAssetTypeChange} />
-          </div>
+        <div className="min-w-0">
+          <p className="mb-1.5 text-label font-medium text-muted-foreground">标的类型</p>
+          <WatchlistTypeFilter value={assetType} onChange={onAssetTypeChange} />
         </div>
       </div>
-      {(isFiltered || sortKey !== "custom") && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-caption text-muted-foreground/65">
-          <div className="flex flex-wrap items-center gap-3">
-            {isFiltered && <span>筛选后显示 {displayCount} 条</span>}
-            {sortKey !== "custom" && <span className="font-mono tracking-[0.05em]">TEMP SORT · {sortLabel(sortKey)}</span>}
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClear}>
-            <X size={14} /> 恢复默认
-          </Button>
-        </div>
-      )}
-    </div>
+    </FilterPanel>
   );
 }
 
@@ -152,11 +151,12 @@ function WatchlistTypeFilter({ value, onChange }: { value: WatchlistAssetType | 
         <div
           role="listbox"
           aria-label="标的类型"
-          aria-activedescendant={`watchlist-asset-type-${selected.value || "all"}`}
+          aria-activedescendant={"watchlist-asset-type-" + (selected.value || "all")}
           className="space-y-0.5"
         >
           {options.map((option) => {
             const isSelected = option.value === value;
+            const optionId = "watchlist-asset-type-" + (option.value || "all");
             return (
               <button
                 key={option.value || "all"}
@@ -164,7 +164,7 @@ function WatchlistTypeFilter({ value, onChange }: { value: WatchlistAssetType | 
                   optionRefs.current[options.indexOf(option)] = element;
                 }}
                 type="button"
-                id={`watchlist-asset-type-${option.value || "all"}`}
+                id={optionId}
                 role="option"
                 aria-selected={isSelected}
                 tabIndex={isSelected ? 0 : -1}
