@@ -4,8 +4,8 @@
 
 /* ========== 设计令牌（Design Tokens）==========
  * 风格：暗夜驾驶舱 · 去雾化 —— 深蓝灰黑纯色底 + 小面积橙色点缀
- * 字体：Inter（正文/标题）+ JetBrains Mono（数据/编号）
- * 基线：15px / 1.6 行高，等宽数字保证行情跳动时不位移
+ * 字体：Inter（正文/标题/数字）+ JetBrains Mono（代码）
+ * 基线：15px / 1.6 行高，数字统一使用 Inter 保持全局观感一致
  * 约定：不用网格底纹、辉光、磨砂等柔焦效果，元素全部硬边
  */
 
@@ -71,12 +71,13 @@
   --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.28);
   --shadow-dialog: 0 16px 44px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35);
 
-  /* 字体族：全无衬线，标题与正文同族、数据用等宽 */
+  /* 字体族：正文、标题和数字统一使用 Inter；代码保留等宽字体 */
   --font-display:
     "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-sans:
     "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", "Menlo", "Consolas", monospace;
+  --font-code: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", "Menlo", "Consolas", monospace;
+  --font-mono: var(--font-sans);
 }
 
 @theme inline {
@@ -188,9 +189,12 @@
   /* 数据与代码 */
   code,
   kbd,
-  pre,
+  pre {
+    font-family: var(--font-code);
+  }
+
   .font-mono {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
   }
 
   /* 滚动条：深色细滚动条 */
@@ -240,9 +244,9 @@
   color: var(--muted-foreground);
 }
 
-/* 数字/金额：等宽 + tabular */
+/* 数字/金额：统一使用 Inter + tabular */
 .numeric {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }

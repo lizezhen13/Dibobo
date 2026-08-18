@@ -329,7 +329,8 @@
   }
 
   .journal-reading-title {
-    max-width: 50rem;
+    width: 100%;
+    max-width: none;
     margin-top: 0.8rem;
     color: var(--foreground);
     font-family: var(--font-display);
@@ -347,7 +348,8 @@
   }
 
   .journal-reading-copy {
-    max-width: 54rem;
+    width: 100%;
+    max-width: none;
     color: var(--card-foreground);
     font-size: 1.08rem;
     line-height: 2.15;

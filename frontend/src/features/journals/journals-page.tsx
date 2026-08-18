@@ -91,7 +91,7 @@ export function JournalsPage() {
   };
 
   return (
-    <PageContainer size="default" className="journals-page">
+    <PageContainer size="wide" className="journals-page">
       <PageHeader
         eyebrow="INVESTMENT NOTES / 投资日记"
         title="投资日记"
