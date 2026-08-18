@@ -27,12 +27,7 @@ export interface RadarItem {
   in_watchlist: boolean;
 }
 
-export type RadarDataSourceState =
-  | "ready"
-  | "not_configured"
-  | "authentication_failed"
-  | "rate_limited"
-  | "unavailable";
+export type RadarDataSourceState = "ready" | "not_configured" | "authentication_failed" | "rate_limited" | "unavailable";
 
 export interface RadarResponse {
   items: RadarItem[];
