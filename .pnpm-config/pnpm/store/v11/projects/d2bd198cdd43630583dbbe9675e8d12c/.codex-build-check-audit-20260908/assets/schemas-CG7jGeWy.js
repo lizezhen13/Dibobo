@@ -1,0 +1,1 @@
+import{o as e,n as t,a as s,s as a}from"./schemas-DEwpCL8o.js";const o=e({id:a(),journal_date:a(),title:a(),content:a(),created_at:a(),updated_at:a()}).passthrough(),n=e({items:s(o),page:t(),page_size:t(),total:t(),total_pages:t()}).passthrough();export{n as journalListSchema,o as journalSchema};

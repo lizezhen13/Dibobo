@@ -45,6 +45,7 @@ export function AppShell() {
   const isConnected = dataSources.data?.some((source) => source.is_active) ?? false;
   const current = useMemo(() => navigation.find((item) => location.pathname.startsWith(item.to)) ?? navigation[0], [location.pathname]);
   const isFullBleedRoute =
+    location.pathname === "/news" ||
     location.pathname === "/calendar" ||
     location.pathname.startsWith("/watchlist/detail/") ||
     location.pathname.startsWith("/portfolios/detail/") ||
