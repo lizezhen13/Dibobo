@@ -4,6 +4,7 @@ import { CalendarDays } from "lucide-react";
 
 import { Button } from "../../components/ui/button";
 import { Calendar } from "../../components/ui/calendar";
+import { formControlVariants } from "../../components/ui/form-control";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { cn } from "../../lib/utils";
 
@@ -126,7 +127,8 @@ export function DateRangeField({ openedFrom, openedTo, onChange, showPopoverClea
         <button
           type="button"
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            formControlVariants({ density: "compact" }),
+            "items-center justify-between hover:bg-accent hover:text-accent-foreground",
             !(draft.from || draft.to) && "text-muted-foreground",
           )}
         >
@@ -137,7 +139,7 @@ export function DateRangeField({ openedFrom, openedTo, onChange, showPopoverClea
       <PopoverContent align="end" className="date-range-popover w-auto p-3">
         <div className="date-range-calendar-pair flex gap-3">
           <div className="flex flex-col gap-1">
-            <span className="px-1 text-xs font-medium text-muted-foreground">开始日期</span>
+            <span className="px-1 text-caption font-medium text-muted-foreground">开始日期</span>
             <Calendar
               mode="single"
               selected={draft.from}
@@ -145,11 +147,11 @@ export function DateRangeField({ openedFrom, openedTo, onChange, showPopoverClea
               month={leftMonth}
               onMonthChange={handleLeftMonthChange}
               modifiers={{ inRange: inRangeModifier }}
-              modifiersClassNames={{ inRange: "bg-primary/10 text-primary rounded-none" }}
+              modifiersClassNames={{ inRange: "bg-primary/10 text-primary-text rounded-none" }}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="px-1 text-xs font-medium text-muted-foreground">结束日期</span>
+            <span className="px-1 text-caption font-medium text-muted-foreground">结束日期</span>
             <Calendar
               mode="single"
               selected={draft.to}
@@ -157,16 +159,16 @@ export function DateRangeField({ openedFrom, openedTo, onChange, showPopoverClea
               month={rightMonth}
               onMonthChange={handleRightMonthChange}
               modifiers={{ inRange: inRangeModifier }}
-              modifiersClassNames={{ inRange: "bg-primary/10 text-primary rounded-none" }}
+              modifiersClassNames={{ inRange: "bg-primary/10 text-primary-text rounded-none" }}
             />
           </div>
         </div>
-        <div className="mt-2 flex items-center justify-between border-t pt-2">
-          <span className="text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+          <span className="text-caption text-muted-foreground">
             {draft.from && draft.to ? `共 ${formatLocalDate(draft.from)} 至 ${formatLocalDate(draft.to)}` : "请选择起止日期"}
           </span>
           {showPopoverClear && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClear}>
+            <Button type="button" variant="ghost" size="sm" onClick={handleClear}>
               清除
             </Button>
           )}

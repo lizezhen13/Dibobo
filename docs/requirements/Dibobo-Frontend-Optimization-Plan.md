@@ -1,5 +1,7 @@
 # Dibobo 前端工程优化方案
 
+> 历史版本说明（2026-09-10）：本文保留 2026-08-16 的方案和当时计数，不代表当前未完成项。当前可读性问题基线见 `Dibobo-Frontend-Readability-Audit-2026-09-08.md`，本轮已实施改动与验证结果见 `Dibobo-Frontend-Readability-Implementation-2026-09-10.md`。
+
 > 文档类型：前端工程治理方案、实施计划与验收标准  
 > 适用范围：`frontend/`  
 > 版本：4.0  

@@ -5,26 +5,26 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
+  "ui-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-label font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground shadow-subtle hover:bg-primary-hover hover:shadow-raised hover:-translate-y-px",
         outline:
-          "border border-input bg-background text-foreground hover:border-primary/40 hover:bg-secondary hover:text-primary hover:shadow-subtle",
+          "border border-input bg-background text-foreground hover:border-primary/40 hover:bg-secondary hover:text-primary-text hover:shadow-subtle",
         ghost: "text-muted-foreground hover:bg-secondary hover:text-foreground",
         danger: "bg-destructive text-destructive-foreground shadow-subtle hover:bg-destructive/90 hover:shadow-raised",
       },
       size: {
-        xs: "h-7 px-2.5 text-xs",
-        sm: "h-8 px-3 text-xs",
-        compact: "h-8 px-3 text-xs tracking-normal",
-        default: "h-10 px-5",
-        md: "h-10 px-5",
-        lg: "h-12 px-7 text-base",
-        "icon-sm": "size-8",
-        "icon-md": "size-9",
-        icon: "size-10",
+        xs: "h-8 px-2.5 text-label",
+        sm: "h-9 px-3 text-label",
+        compact: "h-9 px-3 text-label tracking-normal",
+        default: "h-11 px-5",
+        md: "h-11 px-5",
+        lg: "h-12 px-7 text-body",
+        "icon-sm": "size-9",
+        "icon-md": "size-10",
+        icon: "size-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -37,5 +37,5 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+  return <Comp data-size={size ?? "default"} className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 }

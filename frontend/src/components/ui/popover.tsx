@@ -19,7 +19,7 @@ export function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 rounded-xl border border-border bg-popover text-popover-foreground shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[fade-out_150ms_ease-in] data-[state=open]:animate-[fade-in_180ms_ease-out]",
+          "z-50 max-h-[min(var(--radix-popover-content-available-height),calc(100dvh-1rem))] max-w-[calc(100vw-1rem)] overflow-auto overscroll-contain rounded-xl border border-border bg-popover text-popover-foreground shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[fade-out_150ms_ease-in] data-[state=open]:animate-[fade-in_180ms_ease-out]",
           className,
         )}
         {...props}

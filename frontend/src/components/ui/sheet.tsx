@@ -32,7 +32,7 @@ export function SheetContent({ className, children, side = "right", showClose = 
         {children}
         {showClose ? (
           <DialogPrimitive.Close
-            className="absolute right-4 top-4 grid size-9 place-items-center rounded-lg text-muted-foreground/80 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-4 top-4 grid size-9 place-items-center rounded-lg text-subtle transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="关闭"
           >
             <X size={18} />

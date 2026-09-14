@@ -30,15 +30,17 @@ const HotStockRow = memo(function HotStockRow({ item }: { item: HotStockItem }) 
 
   return (
     <div className="grid min-h-11 grid-cols-[32px_minmax(0,1fr)_72px_52px] items-center gap-2 px-4 text-center transition-colors hover:bg-row-hover">
-      <span className={cn("font-mono text-[13px] tracking-normal text-muted-foreground", item.rank <= 3 && "font-semibold text-primary")}>
+      <span
+        className={cn("font-mono text-table tracking-normal text-muted-foreground", item.rank <= 3 && "font-semibold text-primary-text")}
+      >
         {String(item.rank).padStart(2, "0")}
       </span>
       <div className="min-w-0 text-center">
-        <p className="truncate text-[13px] font-medium text-foreground/90">{item.name}</p>
-        <p className="font-mono text-[10px] tracking-normal text-muted-foreground/45">{item.ticker}</p>
+        <p className="truncate text-table font-medium text-foreground">{item.name}</p>
+        <p className="font-mono text-caption tracking-normal text-subtle">{item.ticker}</p>
       </div>
-      <span className="truncate font-mono text-[13px] tracking-normal text-foreground/80">{formatHeat(item.heat)}</span>
-      <span className={cn("flex items-center justify-center gap-1 font-mono text-[11px] tracking-normal", trendTone)}>
+      <span className="truncate font-mono text-table tracking-normal text-foreground">{formatHeat(item.heat)}</span>
+      <span className={cn("flex items-center justify-center gap-1 font-mono text-caption tracking-normal", trendTone)}>
         <TrendIcon size={11} />
         {item.rank_change === null ? "-" : Math.abs(item.rank_change)}
       </span>
@@ -71,7 +73,7 @@ export function HotStocksCard({ query }: { query: UseQueryResult<OverviewHotStoc
         <PanelState kind="empty" />
       ) : (
         <div className="flex h-full min-h-0 flex-col">
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_72px_52px] gap-2 border-b border-border/70 px-4 py-2 text-center text-[11.5px] font-semibold text-muted-foreground/60">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_72px_52px] gap-2 border-b border-border/70 px-4 py-2 text-center text-caption font-semibold text-subtle">
             <span>排名</span>
             <span>股票</span>
             <span>热度</span>

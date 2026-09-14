@@ -12,10 +12,10 @@ export function AlertDialogContent({ className, ...props }: React.ComponentProps
     <AlertDialogPrimitive.Portal>
       <AlertDialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] data-[state=closed]:animate-[fade-out_150ms_ease-in] data-[state=open]:animate-[fade-in_180ms_ease-out]" />
       {/* 使用 flex 容器居中弹窗，避免 transform 与动画 keyframes 冲突导致左上角闪现 */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <AlertDialogPrimitive.Content
           className={cn(
-            "w-[min(480px,calc(100vw-64px))] rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[dialog-out_150ms_ease-in] data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
+            "max-h-[calc(100dvh-2rem)] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-border bg-background p-0 shadow-dialog outline-none will-change-transform data-[state=closed]:animate-[dialog-out_150ms_ease-in] data-[state=open]:animate-[dialog-in_220ms_cubic-bezier(.22,1,.36,1)]",
             className,
           )}
           {...props}
@@ -30,15 +30,20 @@ export function AlertDialogHeader({ className, ...props }: React.ComponentProps<
 }
 
 export function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
-  return <AlertDialogPrimitive.Title className={cn("font-display text-2xl tracking-tight text-foreground", className)} {...props} />;
+  return <AlertDialogPrimitive.Title className={cn("font-display text-heading tracking-tight text-foreground", className)} {...props} />;
 }
 
 export function AlertDialogDescription({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
-  return <AlertDialogPrimitive.Description className={cn("text-[0.95rem] leading-relaxed text-muted-foreground", className)} {...props} />;
+  return <AlertDialogPrimitive.Description className={cn("text-body leading-relaxed text-muted-foreground", className)} {...props} />;
 }
 
 export function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex justify-end gap-3 border-t border-line px-6 py-4", className)} {...props} />;
+  return (
+    <div
+      className={cn("sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-line bg-background px-6 py-4", className)}
+      {...props}
+    />
+  );
 }
 
 export function AlertDialogCancel({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {

@@ -8,13 +8,15 @@ import {
   ChevronUp,
   Edit3,
   FileText,
-  GripVertical,
   Search,
   Tags,
   Trash2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { InstrumentCell as SecurityCell } from "../../components/patterns/instrument-cell";
+import { Select } from "../../components/ui/select";
+import { Card } from "../../components/ui/card";
 import { DataTable } from "../../components/data-table";
 import { EmptyState, ErrorState, Pagination } from "../../components/patterns";
 import { Badge } from "../../components/ui/badge";
@@ -98,23 +100,23 @@ export function PortfolioHoldingsWorkspace({
   const closedColumns = createClosedColumns(openHoldingEditor, onDetails, setDeleteHoldingTarget, holdingSort, toggleHoldingSort);
 
   return (
-    <div className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+    <Card className="workspace-content mt-6 flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-col gap-2 bg-transparent px-5 pt-0 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as HoldingStatus)}>
           <TabsList variant="underline" className="border-b-0">
-            <TabsTrigger value="open" className="text-sm">
+            <TabsTrigger value="open" className="text-body-sm">
               当前持仓
-              <span className="font-mono text-caption-xs text-muted-foreground/60">
+              <span className="font-mono text-caption text-subtle">
                 {openHoldings.data?.items.length ?? selectedPortfolio.open_holding_count}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="closed" className="text-sm">
+            <TabsTrigger value="closed" className="text-body-sm">
               已清仓
-              <span className="font-mono text-caption-xs text-muted-foreground/60">{closedHoldings.data?.items.length ?? 0}</span>
+              <span className="font-mono text-caption text-subtle">{closedHoldings.data?.items.length ?? 0}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="mb-3 flex items-center gap-3 text-caption tracking-[0.05em] text-muted-foreground/60">
+        <div className="mb-3 flex items-center gap-3 text-caption tracking-[0.05em] text-subtle">
           <span className={cn("size-1.5 rounded-full", openHoldings.data?.market_status === "交易中" ? "bg-market-down" : "bg-primary")} />
           {activeTab === "open" ? `市场 · ${openHoldings.data?.market_status ?? "未知"}` : "历史记录 · 不轮询行情"}
           {openHoldings.data?.stale && <Badge variant="warning">最后成功行情</Badge>}
@@ -126,9 +128,9 @@ export function PortfolioHoldingsWorkspace({
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as HoldingStatus)}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        className="workspace-content flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <TabsContent value="open" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+        <TabsContent value="open" className="workspace-content mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
           {openHoldings.isError ? (
             <ErrorState
               title="当前持仓加载失败"
@@ -145,8 +147,9 @@ export function PortfolioHoldingsWorkspace({
               stickyHeader
               centered
               ariaLabel="当前持仓"
+              mobile={{ titleColumn: "instrument", primaryColumns: ["latest", "market_value", "floating_gain", "floating_gain_percent"] }}
               rowReorder={{ enabled: canReorderOpen, onReorder: reorderOpenHoldings }}
-              className="rounded-none border-0 bg-transparent shadow-none"
+              appearance="embedded"
               empty={
                 <EmptyState
                   icon={BriefcaseBusiness}
@@ -178,7 +181,7 @@ export function PortfolioHoldingsWorkspace({
             />
           )}
         </TabsContent>
-        <TabsContent value="closed" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+        <TabsContent value="closed" className="workspace-content mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
           {closedHoldings.isError ? (
             <ErrorState
               title="清仓历史加载失败"
@@ -195,7 +198,11 @@ export function PortfolioHoldingsWorkspace({
               stickyHeader
               centered
               ariaLabel="清仓历史"
-              className="rounded-none border-0 bg-transparent shadow-none"
+              mobile={{
+                titleColumn: "instrument",
+                primaryColumns: ["close_price", "close_amount", "realized_gain", "realized_gain_percent"],
+              }}
+              appearance="embedded"
               empty={
                 <EmptyState
                   icon={Archive}
@@ -223,7 +230,7 @@ export function PortfolioHoldingsWorkspace({
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </Card>
   );
 }
 
@@ -258,15 +265,15 @@ function HoldingsFilterBar({
             <label className="mb-1 flex items-center gap-1.5 text-label font-medium text-muted-foreground">
               <Tags size={12} /> 类型
             </label>
-            <select
+            <Select
               value={filters.asset_type}
               onChange={(event) => update({ asset_type: event.target.value as AssetType | "" })}
-              className="h-9 w-full appearance-none rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              density="compact"
             >
               <option value="">全部类型</option>
               <option value="a_share">A 股</option>
               <option value="fund_etf">ETF</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-label font-medium text-muted-foreground">
@@ -310,7 +317,7 @@ function createOpenColumns(
     {
       accessorKey: "asset_type",
       header: "类型",
-      cell: ({ row }) => <Badge className="text-[13px]">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>,
+      cell: ({ row }) => <Badge className="text-table">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>,
     },
     numericColumn("average_cost", "平均成本", (holding) => formatPoint(holding.average_cost, { group: false })),
     numericColumn("quantity", "数量", (holding) => holding.quantity.toLocaleString("zh-CN", { useGrouping: false })),
@@ -382,7 +389,7 @@ function createClosedColumns(
     {
       accessorKey: "asset_type",
       header: "类型",
-      cell: ({ row }) => <Badge className="text-[13px]">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>,
+      cell: ({ row }) => <Badge className="text-table">{row.original.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>,
     },
     numericColumn("average_cost", "原平均成本", (holding) => formatPoint(holding.average_cost, { group: false })),
     numericColumn(
@@ -456,7 +463,7 @@ function SortHeader({
   return (
     <button
       type="button"
-      className="inline-flex items-center justify-center gap-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+      className="inline-flex items-center justify-center gap-1 text-table font-semibold text-muted-foreground transition-colors hover:text-foreground"
       onClick={() => onSort(sortKey)}
       aria-label={`按${label}${isActive && sort.direction === "desc" ? "降序" : "升序"}排序`}
     >
@@ -467,15 +474,7 @@ function SortHeader({
 }
 
 function InstrumentCell({ holding, showDragHandle = false }: { holding: Holding; showDragHandle?: boolean }) {
-  return (
-    <div className="relative flex w-full items-center justify-center">
-      {showDragHandle && <GripVertical className="absolute left-0 shrink-0 text-muted-foreground/45" size={14} aria-hidden="true" />}
-      <div className="min-w-0 text-center">
-        <p className="font-semibold text-foreground">{holding.name}</p>
-        <p className="mt-1 font-mono text-[13px] tracking-[0.04em] text-muted-foreground/60">{holding.thscode}</p>
-      </div>
-    </div>
-  );
+  return <SecurityCell name={holding.name} code={holding.thscode} draggable={showDragHandle} />;
 }
 
 function RowActions({

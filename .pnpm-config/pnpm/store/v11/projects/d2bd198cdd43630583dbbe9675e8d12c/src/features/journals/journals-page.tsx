@@ -91,7 +91,7 @@ export function JournalsPage() {
   };
 
   return (
-    <PageContainer size="wide" className="journals-page">
+    <PageContainer size="wide" layout="workspace" className="journals-page">
       <PageHeader
         eyebrow="INVESTMENT NOTES / 投资日记"
         title="投资日记"
@@ -151,7 +151,12 @@ export function JournalsPage() {
             dateFrom={filters.dateFrom}
             dateTo={filters.dateTo}
             isFiltered={isFiltered}
-            onSelect={setSelectedJournalId}
+            onSelect={(id) => {
+              setSelectedJournalId(id);
+              if (window.matchMedia("(max-width: 767px)").matches) {
+                requestAnimationFrame(() => document.querySelector(".journal-reading-pane")?.scrollIntoView({ block: "start" }));
+              }
+            }}
             onEdit={openEditor}
             onDelete={setDeleteTarget}
             onApply={applyFilters}
@@ -182,7 +187,7 @@ export function JournalsPage() {
             <AlertDialogDescription>这篇日记及其正文会被立即删除，且没有回收站或版本历史。该操作无法撤销。</AlertDialogDescription>
           </AlertDialogHeader>
           {deleteMutation.error && (
-            <div role="alert" className="mt-4 border-l-2 border-market-up bg-danger/10 px-4 py-3 text-sm text-market-up">
+            <div role="alert" className="mt-4 border-l-2 border-market-up bg-danger/10 px-4 py-3 text-body-sm text-market-up">
               删除失败，请稍后重试
             </div>
           )}

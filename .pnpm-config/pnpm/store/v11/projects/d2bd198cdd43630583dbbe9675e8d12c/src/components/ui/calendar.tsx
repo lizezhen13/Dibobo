@@ -13,37 +13,37 @@ export function Calendar({ className, classNames, showOutsideDays = true, ...pro
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        root: "w-fit",
+        root: "relative w-fit",
         months: "flex flex-col gap-4 sm:flex-row",
         month: "flex flex-col gap-4",
-        month_caption: "flex h-9 justify-center items-center relative",
-        caption_label: "text-sm font-semibold",
-        nav: "flex items-center gap-1 absolute inset-x-0 justify-between px-1",
-        button_previous: cn(buttonVariants({ variant: "outline", size: "icon" }), "size-7 bg-transparent p-0 opacity-70 hover:opacity-100"),
-        button_next: cn(buttonVariants({ variant: "outline", size: "icon" }), "size-7 bg-transparent p-0 opacity-70 hover:opacity-100"),
+        month_caption: "relative flex h-11 items-center justify-center px-10",
+        caption_label: "text-body-sm font-semibold",
+        nav: "pointer-events-none absolute inset-x-3 top-3 z-10 flex items-center justify-between",
+        button_previous: cn(buttonVariants({ variant: "outline", size: "icon-sm" }), "pointer-events-auto bg-transparent p-0"),
+        button_next: cn(buttonVariants({ variant: "outline", size: "icon-sm" }), "pointer-events-auto bg-transparent p-0"),
         month_grid: "w-full border-collapse",
         weekdays: "flex",
-        weekday: "text-muted-foreground/70 rounded-md w-9 font-medium text-[0.75rem]",
+        weekday: "text-subtle rounded-md w-9 font-medium text-caption",
         week: "flex w-full mt-2",
         day: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+          "relative p-0 text-center text-body-sm focus-within:relative focus-within:z-20",
           "[&:has([aria-selected])]:bg-primary/10",
           "[&:has([aria-selected].day-range_end)]:rounded-r-md",
           "[&:has([aria-selected].day-range_start)]:rounded-l-md",
           "first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
         ),
-        day_button: cn(buttonVariants({ variant: "ghost" }), "size-9 p-0 font-normal aria-selected:opacity-100"),
+        day_button: cn(buttonVariants({ variant: "ghost" }), "size-9 p-0 font-normal text-inherit hover:text-inherit"),
         selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "bg-primary text-primary-foreground [&_button]:bg-primary [&_button]:text-primary-foreground [&_button:hover]:bg-primary-hover [&_button:hover]:text-primary-foreground",
         today: "bg-secondary text-foreground",
-        outside: "text-muted-foreground/40",
-        disabled: "text-muted-foreground/30 opacity-50",
+        outside: "text-subtle",
+        disabled: "text-subtle opacity-50",
         hidden: "invisible",
         ...classNames,
       }}
       components={{
         Chevron: ({ orientation, className: chevronClassName, ...chevronProps }) => (
-          <Chevron orientation={orientation} className={cn("size-4", chevronClassName)} {...chevronProps} />
+          <Chevron orientation={orientation} className={cn("size-4 fill-current", chevronClassName)} {...chevronProps} />
         ),
       }}
       {...props}

@@ -3,8 +3,10 @@ import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 
+import { Button } from "../../components/ui/button";
 import { Calendar } from "../../components/ui/calendar";
 import { Input } from "../../components/ui/input";
+import { formControlVariants } from "../../components/ui/form-control";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { cn } from "../../lib/utils";
 
@@ -54,7 +56,8 @@ export function SingleDateField({
           aria-invalid={ariaInvalid}
           aria-required={ariaRequired}
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            formControlVariants({ density: "compact" }),
+            "items-center justify-between text-left hover:bg-accent hover:text-accent-foreground",
             !value && "text-muted-foreground",
           )}
           aria-haspopup="dialog"
@@ -75,17 +78,18 @@ export function SingleDateField({
           disabled={maxDate ? { after: maxDate } : undefined}
         />
         <div className="flex items-center justify-between border-t border-border px-1 pt-2">
-          <span className="text-xs text-muted-foreground">{value || "未选择日期"}</span>
-          <button
+          <span className="text-caption text-muted-foreground">{value || "未选择日期"}</span>
+          <Button
             type="button"
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               onChange("");
               setOpen(false);
             }}
           >
             清除
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -117,38 +121,34 @@ export function NumberStepper({
   const canDecrease = Number.isFinite(numericValue) && numericValue > min;
 
   return (
-    <div className="group relative">
+    <div className="flex min-w-0 items-center gap-1">
       <Input
         type="number"
         min={min}
         step={step}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="number-input--custom-stepper pr-10"
+        className="number-input--custom-stepper min-w-0 flex-1"
         {...registration}
         id={id}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
         aria-required={ariaRequired}
       />
-      <div className="invisible absolute right-1 top-1/2 z-10 flex -translate-y-1/2 flex-col overflow-hidden rounded-md border border-border/70 bg-card-deep shadow-subtle opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-        <button
+      <div className="flex shrink-0 gap-1">
+        <Button type="button" variant="outline" size="icon" onClick={() => onStep(1)} aria-label={`增加${ariaLabel ?? "数值"}`}>
+          <ChevronUp size={16} strokeWidth={2.25} />
+        </Button>
+        <Button
           type="button"
-          className="pointer-events-auto grid h-4 w-6 place-items-center text-muted-foreground/70 transition-colors hover:bg-secondary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
-          onClick={() => onStep(1)}
-          aria-label={`增加${ariaLabel ?? "数值"}`}
-        >
-          <ChevronUp size={12} strokeWidth={2.25} />
-        </button>
-        <button
-          type="button"
-          className="pointer-events-auto grid h-4 w-6 place-items-center text-muted-foreground/70 transition-colors hover:bg-secondary hover:text-primary disabled:pointer-events-none disabled:opacity-30"
+          variant="outline"
+          size="icon"
           onClick={() => onStep(-1)}
           disabled={!canDecrease}
           aria-label={`减少${ariaLabel ?? "数值"}`}
         >
-          <ChevronDown size={12} strokeWidth={2.25} />
-        </button>
+          <ChevronDown size={16} strokeWidth={2.25} />
+        </Button>
       </div>
     </div>
   );

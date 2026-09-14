@@ -22,13 +22,13 @@ const tabsListVariants = cva("inline-flex items-center text-muted-foreground", {
 });
 
 const tabsTriggerVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap text-body-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         pill: "rounded-lg px-4 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-subtle hover:text-foreground",
         underline:
-          "relative h-12 gap-2 rounded-none border-b-2 border-transparent px-0 text-muted-foreground/60 data-[state=active]:border-primary data-[state=active]:text-foreground hover:text-foreground",
+          "relative h-12 gap-2 rounded-none border-b-2 border-transparent px-0 text-subtle data-[state=active]:border-primary data-[state=active]:text-foreground hover:text-foreground",
         segment:
           "rounded-md px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-subtle hover:text-foreground",
       },

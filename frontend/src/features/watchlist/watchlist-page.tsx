@@ -65,6 +65,7 @@ export function WatchlistPage() {
     clearFilters,
     goToPage,
     dropRow,
+    moveRow,
     confirmDelete,
     confirmBatchDelete,
     source,
@@ -73,8 +74,9 @@ export function WatchlistPage() {
   } = useWatchlistController();
 
   return (
-    <PageContainer size="wide" className="watchlist-page flex min-h-0 flex-col">
+    <PageContainer size="wide" layout="workspace" className="watchlist-page flex min-h-0 flex-col">
       <PageHeader
+        density="compact"
         eyebrow="WATCHLIST / 自选管理"
         title="自选管理"
         description="只保留你真正想盯住的 A 股与 ETF；顺序、备注和观察习惯都属于你。"
@@ -97,17 +99,17 @@ export function WatchlistPage() {
           <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full border border-primary/10 bg-primary/8 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-1/4 h-px w-3/4 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           <div className="relative flex min-h-[142px] flex-col justify-between px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
+            <div className="hidden items-start justify-between gap-4 md:flex">
               <div className="flex items-center gap-2.5">
-                <span className="grid size-8 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+                <span className="grid size-8 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary-text">
                   <Activity size={16} />
                 </span>
                 <div>
-                  <p className="font-mono text-[11.5px] tracking-[0.16em] text-muted-foreground/65">WATCHLIST DESK / ACTIVE</p>
-                  <p className="mt-0.5 text-[12px] text-muted-foreground/55">自选观察面板</p>
+                  <p className="font-mono text-caption tracking-[0.16em] text-subtle">WATCHLIST DESK / ACTIVE</p>
+                  <p className="mt-0.5 text-caption text-subtle">自选观察面板</p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 font-mono text-[0.62rem] tracking-[0.08em] text-primary/85">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 font-mono text-caption tracking-[0.08em] text-primary-text">
                 <span
                   className={cn("size-1.5 rounded-full", query.data?.polling_enabled ? "animate-pulse bg-market-up" : "bg-primary/70")}
                 />
@@ -115,22 +117,22 @@ export function WatchlistPage() {
               </span>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 md:mt-5">
               <div className="flex items-baseline gap-3">
-                <p className="whitespace-nowrap text-[14px] text-muted-foreground">当前自选标的</p>
-                <p className="font-display text-4xl leading-none tracking-tight text-foreground">{query.data ? items.length : "—"}</p>
-                <span className="text-[14px] text-muted-foreground/65">只</span>
+                <p className="whitespace-nowrap text-table text-muted-foreground">当前自选标的</p>
+                <p className="font-display text-display leading-none tracking-tight text-foreground">{query.data ? items.length : "—"}</p>
+                <span className="text-table text-subtle">只</span>
               </div>
 
               <div className="border-l border-border/70 pl-4 text-right">
-                <p className="flex items-center justify-end gap-1.5 font-mono text-[0.61rem] tracking-[0.13em] text-muted-foreground/60">
+                <p className="flex items-center justify-end gap-1.5 font-mono text-caption tracking-[0.13em] text-subtle">
                   <Clock3 size={12} /> MARKET STATUS
                 </p>
-                <div className="mt-1 flex items-center justify-end gap-2 text-[0.84rem] font-semibold text-foreground">
+                <div className="mt-1 flex items-center justify-end gap-2 text-table font-semibold text-foreground">
                   <span className={cn("size-1.5 rounded-full", marketStatus === "交易中" ? "bg-market-up" : "bg-primary")} />
                   {marketStatus}
                 </div>
-                <p className="mt-0.5 text-[0.68rem] text-muted-foreground/55">
+                <p className="mt-0.5 text-caption text-subtle">
                   {latestQuoteTime ? `最新行情 ${formatDateTime(latestQuoteTime)}` : "等待行情数据"}
                 </p>
               </div>
@@ -154,12 +156,12 @@ export function WatchlistPage() {
       {source && source.state !== "ready" && (
         <div className="mt-4 flex items-center justify-between gap-6 rounded-xl border border-border bg-card px-6 py-5 shadow-subtle">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary/90">
+            <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary-text">
               <Settings size={16} />
             </span>
             <div>
-              <p className="text-[0.95rem] font-semibold text-foreground">行情连接未就绪</p>
-              <p className="mt-1 text-[0.85rem] leading-relaxed text-muted-foreground">{source.message ?? "请检查当前启用的数据源"}</p>
+              <p className="text-body font-semibold text-foreground">行情连接未就绪</p>
+              <p className="mt-1 text-table leading-relaxed text-muted-foreground">{source.message ?? "请检查当前启用的数据源"}</p>
             </div>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -171,7 +173,7 @@ export function WatchlistPage() {
       {(query.data?.stale || mutationErrorMessage) && (
         <div
           className={cn(
-            "mt-4 flex items-center gap-2.5 rounded-r-xl border-l-4 px-5 py-3.5 text-[0.85rem]",
+            "mt-4 flex items-center gap-2.5 rounded-r-xl border-l-4 px-5 py-3.5 text-table",
             mutationErrorMessage ? "border-market-up bg-market-up/7 text-danger" : "border-warning bg-warning/8 text-warning",
           )}
         >
@@ -203,6 +205,7 @@ export function WatchlistPage() {
         onOpenNote={setNoteDialogItem}
         onDelete={setDeleteTarget}
         onDetails={(item) => navigate(`/watchlist/detail/${encodeURIComponent(item.ticker)}`)}
+        onMove={(id, direction) => void moveRow(id, direction)}
         onDragStart={setDraggedId}
         onDragEnd={() => setDraggedId(null)}
         onDragOver={(event) => {

@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run --configLoader runner",
     "test:watch": "vitest --configLoader runner",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run format:check && pnpm run build",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run style:check && pnpm run test && pnpm run format:check && pnpm run build",
+    "style:check": "node scripts/check-styles.mjs",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "preview": "vite preview"

@@ -116,7 +116,7 @@ function InfoPopover({ item }: { item: GlobalMarketItem }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:bg-secondary hover:text-foreground focus-visible:text-foreground"
+          className="grid size-6 shrink-0 place-items-center rounded-md text-subtle transition-colors hover:bg-secondary hover:text-foreground focus-visible:text-foreground"
           aria-label={`查看${item.name}数据说明`}
           title="查看数据说明"
           onPointerEnter={handlePointerEnter}
@@ -140,14 +140,14 @@ function InfoPopover({ item }: { item: GlobalMarketItem }) {
       >
         <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{item.display_code}</p>
+            <p className="truncate text-body-sm font-semibold text-foreground">{item.name}</p>
+            <p className="mt-0.5 font-mono text-caption text-muted-foreground">{item.display_code}</p>
           </div>
-          <span className="shrink-0 rounded-full border border-primary/25 bg-primary/[0.08] px-2 py-1 font-mono text-[10px] text-primary">
+          <span className="shrink-0 rounded-full border border-primary/25 bg-primary/[0.08] px-2 py-1 font-mono text-caption text-primary-text">
             {item.provider_type ?? "—"}
           </span>
         </div>
-        <dl className="mt-3 space-y-2 text-xs">
+        <dl className="mt-3 space-y-2 text-caption">
           <InfoRow label="供应商代码" value={item.source_symbol} />
           <InfoRow label="适配器版本" value={item.adapter_version} />
           <InfoRow label="能力" value={item.capability} />
@@ -170,8 +170,8 @@ function InfoPopover({ item }: { item: GlobalMarketItem }) {
 function InfoRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3">
-      <dt className="text-muted-foreground/70">{label}</dt>
-      <dd className="break-words text-right font-mono text-[11px] text-foreground/85">{value || EMPTY_VALUE}</dd>
+      <dt className="text-subtle">{label}</dt>
+      <dd className="break-words text-right font-mono text-caption text-foreground">{value || EMPTY_VALUE}</dd>
     </div>
   );
 }
@@ -180,7 +180,7 @@ function StatusPill({ item }: { item: GlobalMarketItem }) {
   if (item.market_status === "不适用") return null;
 
   return (
-    <span className={cn("flex shrink-0 items-center gap-1.5 text-[11.5px]", statusTone(item.market_status))}>
+    <span className={cn("flex shrink-0 items-center gap-1.5 text-caption", statusTone(item.market_status))}>
       <span className={cn("size-1.5 rounded-full bg-muted-foreground/45", item.market_status === "交易中" && "bg-success")} />
       {item.market_status}
     </span>
@@ -200,8 +200,8 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-semibold text-foreground">{item.name}</p>
-          <p className="mt-0.5 font-mono text-[10px] tracking-[0.05em] text-muted-foreground/60">{item.display_code}</p>
+          <p className="truncate text-table font-semibold text-foreground">{item.name}</p>
+          <p className="mt-0.5 font-mono text-caption tracking-[0.05em] text-subtle">{item.display_code}</p>
         </div>
         <div className="flex items-center gap-1">
           <StatusPill item={item} />
@@ -212,15 +212,15 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
       <div className="mt-2.5 min-w-0">
         <p
           className={cn(
-            "truncate font-mono text-[22px] font-medium leading-none tracking-[-0.04em]",
+            "truncate font-mono text-title font-medium leading-none tracking-[-0.04em]",
             hasValue ? movement(changeValue) : "text-muted-foreground",
           )}
         >
           {formatValue(item.latest, item.precision)}
         </p>
         <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-[10px] text-muted-foreground/65">{yieldMode ? item.unit : (direction ?? item.unit)}</p>
-          <div className={cn("flex shrink-0 items-center gap-1 font-mono text-[13px]", movement(changeValue))}>
+          <p className="min-w-0 truncate text-caption text-subtle">{yieldMode ? item.unit : (direction ?? item.unit)}</p>
+          <div className={cn("flex shrink-0 items-center gap-1 font-mono text-table", movement(changeValue))}>
             <MovementIcon value={changeValue} />
             <span>
               {yieldMode ? formatBp(item.change_bp) : `${formatSigned(item.change, item.precision)}  ${formatPercent(item.change_percent)}`}
@@ -229,12 +229,12 @@ function QuoteItem({ item, yieldMode = false }: { item: GlobalMarketItem; yieldM
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/60 pt-2 text-[10px] text-muted-foreground/60">
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/60 pt-2 text-caption text-subtle">
         <span className="truncate">{yieldMode ? `截至 ${formatDate(item.as_of_date)}` : freshnessLabel(item.freshness)}</span>
         <span className="shrink-0 font-mono">{yieldMode ? "日频" : formatTime(item.quoted_at || item.fetched_at)}</span>
       </div>
       {item.missing_reason ? (
-        <p className="mt-2 truncate text-[10px] text-warning" title={item.missing_reason}>
+        <p className="mt-2 truncate text-caption text-warning" title={item.missing_reason}>
           {item.missing_reason}
         </p>
       ) : null}
@@ -275,7 +275,7 @@ function IndicesBody({ items }: { items: GlobalMarketItem[] }) {
         <section key={subgroup}>
           <div className="mb-2 flex items-center gap-2">
             <span className="h-px flex-1 bg-border/70" />
-            <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground/65">{subgroup}</span>
+            <span className="font-mono text-caption tracking-[0.16em] text-subtle">{subgroup}</span>
             <span className="h-px flex-1 bg-border/70" />
           </div>
           <div className="grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 min-[820px]:grid-cols-3">
@@ -307,7 +307,7 @@ function CommoditiesBody({ items }: { items: GlobalMarketItem[] }) {
       {(["伦敦现货", "纽约期货", "国内期货", "能源"] as const).map((subgroup) => (
         <section key={subgroup} className="min-w-0">
           <div className="mb-2 flex items-center gap-2">
-            <span className="font-mono text-[10px] tracking-[0.12em] text-muted-foreground/65">{subgroup}</span>
+            <span className="font-mono text-caption tracking-[0.12em] text-subtle">{subgroup}</span>
             <span className="h-px flex-1 bg-border/70" />
           </div>
           <div className="grid gap-2.5">
@@ -367,7 +367,7 @@ function GroupCard({
       bodyClassName="flex-none"
       toolbar={
         <div className="flex items-center gap-2">
-          <div className={cn("flex items-center gap-1.5 text-[10px]", stateTone(state))}>
+          <div className={cn("flex items-center gap-1.5 text-caption", stateTone(state))}>
             {state === "ready" ? (
               <Check size={12} />
             ) : state === "stale" ? (
@@ -379,7 +379,7 @@ function GroupCard({
             )}
             <span>{isLoading ? "读取中" : stateLabel(state)}</span>
             {data ? (
-              <span className="font-mono text-muted-foreground/55">
+              <span className="font-mono text-subtle">
                 {data.available_count}/{data.expected_count}
               </span>
             ) : null}
@@ -421,7 +421,7 @@ function GlobalMarketToolbar({
     <div className="contents">
       {query.isError && !data ? (
         <div
-          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-caption text-muted-foreground"
           role="alert"
         >
           <WifiOff size={15} className="mt-0.5 shrink-0 text-danger" />
@@ -429,7 +429,7 @@ function GlobalMarketToolbar({
         </div>
       ) : !data?.enabled ? (
         <div
-          className="flex items-start gap-3 border-l-2 border-warning bg-warning/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          className="flex items-start gap-3 border-l-2 border-warning bg-warning/[0.07] px-4 py-3 text-caption text-muted-foreground"
           role="status"
         >
           <TriangleAlert size={15} className="mt-0.5 shrink-0 text-warning" />
@@ -437,7 +437,7 @@ function GlobalMarketToolbar({
         </div>
       ) : allUnavailable ? (
         <div
-          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-xs text-muted-foreground"
+          className="flex items-start gap-3 border-l-2 border-danger bg-danger/[0.07] px-4 py-3 text-caption text-muted-foreground"
           role="alert"
         >
           <WifiOff size={15} className="mt-0.5 shrink-0 text-danger" />

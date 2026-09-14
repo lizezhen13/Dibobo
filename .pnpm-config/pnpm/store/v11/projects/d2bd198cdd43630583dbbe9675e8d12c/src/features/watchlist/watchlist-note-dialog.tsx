@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Button } from "../../components/ui/button";
 import { FormField, InlineAlert, LoadingButton } from "../../components/patterns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
 import { ApiError } from "../../lib/api";
 import type { WatchlistItem } from "./types";
@@ -35,7 +35,7 @@ export function WatchlistNoteDialog({ open, onOpenChange, item }: WatchlistNoteD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="md">
         <DialogHeader className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary-text">
             <PencilLine size={18} />
           </div>
           <div className="min-w-0 pt-0.5">
@@ -44,7 +44,7 @@ export function WatchlistNoteDialog({ open, onOpenChange, item }: WatchlistNoteD
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-6">
+        <DialogBody>
           <FormField label="观察备注" hint={`${note.length}/1000`}>
             <Textarea
               autoFocus
@@ -55,10 +55,10 @@ export function WatchlistNoteDialog({ open, onOpenChange, item }: WatchlistNoteD
             />
           </FormField>
           {errorMessage && <InlineAlert className="mt-4">{errorMessage}</InlineAlert>}
-        </div>
+        </DialogBody>
 
         <DialogFooter>
-          <Button type="button" variant="ghost" className="!text-[12px]" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
             取消
           </Button>
           <LoadingButton type="button" onClick={() => void save()} loading={mutation.isPending} disabled={!item}>

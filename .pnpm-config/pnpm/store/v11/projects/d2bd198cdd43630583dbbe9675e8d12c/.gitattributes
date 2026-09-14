@@ -1,0 +1,2 @@
+# Match Prettier's LF output on every development platform.
+* text=auto eol=lf

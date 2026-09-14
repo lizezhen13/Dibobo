@@ -65,7 +65,7 @@ export function AppShell() {
   };
 
   return (
-    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="app-shell min-h-screen bg-background lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* 侧边栏：暗夜驾驶舱深黑外壳 */}
       <aside
         className={cn(
@@ -73,21 +73,21 @@ export function AppShell() {
           mobileNavOpen && "translate-x-0",
         )}
       >
-        <div className="relative z-10 flex h-[88px] items-center justify-between gap-3 border-b border-dark-border px-5 lg:px-7">
+        <div className="relative z-10 flex min-h-22 shrink-0 items-center justify-between gap-3 border-b border-dark-border px-5 lg:px-7">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary font-mono text-base font-semibold text-primary-foreground shadow-subtle">
+            <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary font-mono text-body font-semibold text-primary-foreground shadow-subtle">
               D
             </div>
             <div className="min-w-0">
-              <p className="font-display text-[1.35rem] tracking-[0.05em]">DIBOBO</p>
-              <p className="mt-0.5 truncate font-mono text-[0.6rem] tracking-[0.18em] text-dark-fg/40">PRIVATE WORKBENCH</p>
+              <p className="font-display text-title tracking-[0.05em]">DIBOBO</p>
+              <p className="mt-0.5 truncate font-mono text-caption tracking-[0.18em] text-dark-muted">PRIVATE WORKBENCH</p>
             </div>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="text-dark-fg/65 hover:bg-white/5 hover:text-dark-fg lg:hidden"
+            className="text-dark-muted hover:bg-white/5 hover:text-dark-fg lg:hidden"
             aria-label="关闭导航菜单"
             onClick={closeMobileNav}
           >
@@ -95,8 +95,8 @@ export function AppShell() {
           </Button>
         </div>
 
-        <nav className="relative z-10 flex-1 px-3 py-6" aria-label="主导航">
-          <p className="mb-3 px-4 font-mono text-[0.6rem] tracking-[0.18em] text-dark-fg/30">工作区 / WORKSPACE</p>
+        <nav className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 py-6" aria-label="主导航">
+          <p className="mb-3 px-4 font-mono text-caption tracking-[0.18em] text-dark-muted">工作区 / WORKSPACE</p>
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -107,21 +107,21 @@ export function AppShell() {
                   onClick={closeMobileNav}
                   className={({ isActive }) =>
                     cn(
-                      "group flex h-11 items-center gap-3 rounded-lg px-4 text-[0.9rem] tracking-wide text-dark-fg/55 transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] hover:text-dark-fg/90",
-                      isActive && "bg-primary/[0.14] font-semibold text-primary hover:bg-primary/[0.14] hover:text-primary",
+                      "group flex h-11 items-center gap-3 rounded-lg px-4 text-table tracking-wide text-dark-muted transition-all duration-200 hover:bg-[rgba(255,255,255,0.04)] hover:text-dark-muted",
+                      isActive && "bg-primary/[0.14] font-semibold text-primary-text hover:bg-primary/[0.14] hover:text-primary-text",
                     )
                   }
                 >
                   <Icon size={17} strokeWidth={1.6} />
                   <span className="flex-1">{item.label}</span>
-                  <span className="font-mono text-[0.6rem] text-dark-fg/25 transition group-hover:text-dark-fg/45">{item.number}</span>
+                  <span className="font-mono text-caption text-dark-muted transition group-hover:text-dark-muted">{item.number}</span>
                 </NavLink>
               );
             })}
           </div>
         </nav>
 
-        <div className="relative z-10 border-t border-dark-border px-7 py-5">
+        <div className="relative z-10 shrink-0 border-t border-dark-border px-7 py-5">
           <div className="flex items-center justify-center gap-2">
             {/* 数据源接入状态指示灯：系统成功/错误语义与行情涨跌色分离。 */}
             <span
@@ -132,7 +132,7 @@ export function AppShell() {
               }}
               aria-hidden
             />
-            <p className={cn("text-sm leading-5", isConnected ? "text-success" : "text-danger")}>
+            <p className={cn("text-body-sm leading-5", isConnected ? "text-success" : "text-danger")}>
               {isConnected ? "已接入数据源" : "未接入数据源"}
             </p>
           </div>
@@ -150,8 +150,8 @@ export function AppShell() {
 
       <div className="flex min-h-screen min-w-0 flex-col lg:col-start-2">
         {/* 顶部标题栏：实底深色，无磨砂模糊 */}
-        <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-border bg-background px-4 text-foreground sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2 text-base">
+        <header className="app-header sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-border bg-background px-4 text-foreground sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2 text-body">
             <Button
               type="button"
               variant="ghost"
@@ -167,7 +167,7 @@ export function AppShell() {
             <span className="truncate font-semibold text-foreground">{current.label}</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-5">
-            <div className="hidden items-center gap-2.5 text-base text-muted-foreground sm:flex">
+            <div className="hidden items-center gap-2.5 text-body text-muted-foreground sm:flex">
               <CircleUserRound size={17} />
               <span className="font-medium text-foreground">{session.data?.user.username}</span>
             </div>
@@ -177,14 +177,14 @@ export function AppShell() {
               onClick={() => void handleLogout()}
               disabled={logout.isPending}
               aria-label="退出登录"
-              className="text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="text-body-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <LogOut size={15} /> 退出
             </Button>
           </div>
         </header>
 
-        <main className={cn("min-h-0 min-w-0 flex-1 bg-background", isFullBleedRoute ? "p-0" : "px-4 py-5 sm:px-6 sm:py-7 lg:p-8 xl:p-10")}>
+        <main data-full-bleed={isFullBleedRoute} className="app-content min-h-0 min-w-0 flex-1 bg-background">
           <Outlet />
         </main>
       </div>

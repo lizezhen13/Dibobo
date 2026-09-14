@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "./components/workspace.css";
 
 @custom-variant dark (&:is(.dark *));
 
 /* ========== 设计令牌（Design Tokens）==========
  * 风格：暗夜驾驶舱 · 去雾化 —— 深蓝灰黑纯色底 + 小面积橙色点缀
  * 字体：Inter（正文/标题/数字）+ JetBrains Mono（代码）
- * 基线：15px / 1.6 行高，数字统一使用 Inter 保持全局观感一致
+ * 基线：浏览器默认字号 / 1.6 行高；正文 1rem，表格 .875rem
  * 约定：不用网格底纹、辉光、磨砂等柔焦效果，元素全部硬边
  */
 
@@ -27,21 +28,23 @@
   /* 主色：艳橙（HSL 17 86% 55%）深色底保证对比度 */
   --primary: #ef612a;
   --primary-hover: #f07a4b;
+  --primary-text: #ff9a6b;
   --primary-foreground: #111317;
 
   /* 次要：深蓝灰 */
   --secondary: #23262c;
   --secondary-foreground: #d9cfc1;
   --muted: #17191d;
-  --muted-foreground: #9b9084;
+  --muted-foreground: #b8c1cc;
+  --subtle: #9aa5b1;
   --accent: #2b3038;
   --accent-foreground: #f2ece4;
 
   /* 边框与分割线 */
   --border: #2c313a;
   --line: #1f2227;
-  --input: #303540;
-  --ring: rgba(239, 97, 42, 0.35);
+  --input: #667384;
+  --ring: #ff9a6b;
 
   /* 状态色 */
   --destructive: #e0705c;
@@ -52,8 +55,8 @@
   --info: #74a8d8;
 
   /* 行情涨跌色：A 股红涨绿跌（深色版调亮） */
-  --market-up: #f2543b;
-  --market-down: #22c55e;
+  --market-up: #ff7c6b;
+  --market-down: #5cd993;
   --market-flat: #a8a29e;
 
   /* 表格行 */
@@ -63,7 +66,7 @@
   /* 深色外壳变量（侧边栏/登录页，与主背景同一家族，再暗一档） */
   --dark-bg: #0b0d12;
   --dark-fg: #f2ece4;
-  --dark-muted: #9b9084;
+  --dark-muted: #9aa5b1;
   --dark-border: #161922;
 
   /* 阴影层级：深色环境下以纯黑投影塑造纵深 */
@@ -91,10 +94,12 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-text: var(--primary-text);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
@@ -129,16 +134,26 @@
   --shadow-subtle: var(--shadow-subtle);
   --shadow-raised: var(--shadow-raised);
   --shadow-dialog: var(--shadow-dialog);
-  --text-caption-xs: 0.65rem;
-  --text-caption: 0.7rem;
-  --text-label: 0.75rem;
-  --text-table: 0.8125rem;
+  --text-caption-xs: 0.75rem;
+  --text-caption-xs--line-height: 1.5;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.5;
+  --text-table: 0.875rem;
+  --text-table--line-height: 1.5;
   --text-body-sm: 0.875rem;
-  --text-body: 0.9375rem;
+  --text-body-sm--line-height: 1.6;
+  --text-body: 1rem;
+  --text-body--line-height: 1.65;
   --text-title-sm: 1.125rem;
+  --text-title-sm--line-height: 1.4;
   --text-title: 1.25rem;
-  --text-heading: 1.5rem;
+  --text-title--line-height: 1.35;
+  --text-heading: 1.75rem;
+  --text-heading--line-height: 1.25;
   --text-display: 2.25rem;
+  --text-display--line-height: 1.2;
 }
 
 @layer base {
@@ -148,7 +163,7 @@
 
   html {
     @apply scroll-smooth antialiased;
-    font-size: 15px;
+    font-size: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -171,19 +186,20 @@
     font-family: var(--font-display);
     letter-spacing: -0.03em;
     line-height: 1.2;
+    font-weight: 600;
   }
 
   h1 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-size: var(--text-heading);
   }
   h2 {
-    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-size: var(--text-title);
   }
   h3 {
-    font-size: clamp(1.15rem, 2vw, 1.4rem);
+    font-size: var(--text-title-sm);
   }
   h4 {
-    font-size: 1.15rem;
+    font-size: var(--text-body);
   }
 
   /* 数据与代码 */
@@ -229,26 +245,22 @@
   }
 }
 
-/* 无衬线标题统一半粗字重，替代原衬线字的分量感 */
-.font-display {
-  font-weight: 600;
-}
+@layer components {
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: var(--text-caption);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-foreground);
+  }
 
-/* 工具类：页眉小标签 */
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--muted-foreground);
-}
-
-/* 数字/金额：统一使用 Inter + tabular */
-.numeric {
-  font-family: var(--font-sans);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  /* 数字/金额：统一使用 Inter + tabular */
+  .numeric {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
 }
 
 /* 持仓弹窗数值输入使用自定义步进按钮，隐藏浏览器原生 spinner，避免控件重叠 */
@@ -405,22 +417,11 @@ input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
 }
 
 @layer components {
-  .date-range-popover {
-    max-width: calc(100vw - 1rem);
-    max-height: calc(100dvh - 1rem);
-    overflow: auto;
-  }
-
   .date-range-calendar-pair {
     min-width: 0;
   }
 
-  @media (max-width: 767px) {
-    .date-range-popover {
-      max-height: min(400px, calc(100dvh - 1rem));
-      overflow-y: auto;
-    }
-
+  @media (max-width: 47.9375rem) {
     .date-range-calendar-pair {
       flex-direction: column;
     }
@@ -429,27 +430,9 @@ input[type="datetime-local"].date-input::-webkit-calendar-picker-indicator {
   .overview-list-viewport {
     position: relative;
     overflow-y: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
     overscroll-behavior: contain;
     overflow-anchor: none;
     scroll-behavior: auto;
-  }
-
-  .overview-list-viewport::-webkit-scrollbar {
-    display: none;
-  }
-
-  .watchlist-page,
-  .portfolio-page {
-    --page-viewport-height: calc(100vh - 132px);
-    height: var(--page-viewport-height);
-    min-height: 0;
-  }
-
-  @media (min-width: 1280px) {
-    .watchlist-page,
-    .portfolio-page {
-      --page-viewport-height: calc(100vh - 148px);
-    }
   }
 }

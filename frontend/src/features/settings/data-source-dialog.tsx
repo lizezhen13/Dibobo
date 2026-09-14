@@ -167,7 +167,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
 
         <form id="data-source-form" onSubmit={onSubmit} noValidate>
           <DialogBody className="space-y-5">
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <FormField label="数据源名称" required error={form.formState.errors.name?.message}>
                 <Input placeholder="例如：我的同花顺数据源" {...form.register("name")} />
               </FormField>
@@ -196,7 +196,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
               />
             </FormField>
             {isLongbridge && (
-              <p className="-mt-3 text-[0.78rem] leading-5 text-muted-foreground/65">
+              <p className="-mt-3 text-caption leading-5 text-subtle">
                 默认节点适用于中国大陆接入；如果账户属于 US 数据中心，可改用 Longbridge 官方对应节点。
               </p>
             )}
@@ -204,7 +204,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
             {isLongbridge ? (
               <>
                 <div>
-                  <p className="mb-2 text-[0.8rem] font-semibold tracking-[0.04em] text-muted-foreground">鉴权方式</p>
+                  <p className="mb-2 text-caption font-semibold tracking-[0.04em] text-muted-foreground">鉴权方式</p>
                   <div
                     className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-secondary/45 p-1"
                     role="group"
@@ -213,7 +213,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     <button
                       type="button"
                       aria-pressed={authType === "api_key"}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                      className={`rounded-lg px-3 py-2 text-body-sm font-semibold transition-colors ${
                         authType === "api_key"
                           ? "bg-background text-foreground shadow-subtle"
                           : "text-muted-foreground hover:text-foreground"
@@ -225,7 +225,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     <button
                       type="button"
                       aria-pressed={authType === "oauth"}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                      className={`rounded-lg px-3 py-2 text-body-sm font-semibold transition-colors ${
                         authType === "oauth" ? "bg-background text-foreground shadow-subtle" : "text-muted-foreground hover:text-foreground"
                       }`}
                       onClick={() => form.setValue("auth_type", "oauth", { shouldValidate: true })}
@@ -234,7 +234,7 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     </button>
                   </div>
                   {form.formState.errors.auth_type?.message && (
-                    <span className="mt-1.5 block text-[0.8rem] text-danger">{form.formState.errors.auth_type.message}</span>
+                    <span className="mt-1.5 block text-caption text-danger">{form.formState.errors.auth_type.message}</span>
                   )}
                 </div>
 
@@ -261,19 +261,19 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                           className="pl-10"
                           {...form.register("access_token")}
                         />
-                        <KeyRound className="absolute left-3.5 top-3 text-muted-foreground/60" size={15} />
+                        <KeyRound className="absolute left-3.5 top-3 text-subtle" size={15} />
                       </div>
                     </FormField>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-4">
                     <div className="flex items-start gap-3">
-                      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary-text">
                         <Link2 size={16} />
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">浏览器授权</p>
-                        <p className="mt-1 text-[0.82rem] leading-6 text-muted-foreground">
+                        <p className="mt-1 text-table leading-6 text-muted-foreground">
                           将打开 Longbridge
                           官方授权页。授权完成后会自动回到本页，并可在这里测试行情、基本面、市场、市场温度、资讯和财经日历。
                         </p>
@@ -296,12 +296,12 @@ export function DataSourceDialog({ open, onOpenChange, source }: DataSourceDialo
                     className="pl-10"
                     {...form.register("api_key")}
                   />
-                  <KeyRound className="absolute left-3.5 top-3 text-muted-foreground/60" size={15} />
+                  <KeyRound className="absolute left-3.5 top-3 text-subtle" size={15} />
                 </div>
               </FormField>
             )}
 
-            <div className="flex gap-3 rounded-lg border border-market-down/15 bg-market-down/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
+            <div className="flex gap-3 rounded-lg border border-market-down/15 bg-market-down/5 px-4 py-3 text-table leading-relaxed text-muted-foreground">
               <ShieldCheck className="mt-0.5 shrink-0 text-market-down" size={16} />
               {isLongbridge
                 ? "Longbridge 与其他数据源一样，测试通过后可在卡片中启用或停用；完整凭证不会出现在查询响应、页面状态或日志中。"

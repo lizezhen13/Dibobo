@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { Button } from "../../components/ui/button";
 import { FormField, InlineAlert, LoadingButton } from "../../components/patterns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { ApiError } from "../../lib/api";
@@ -77,7 +77,7 @@ export function PortfolioDialog({ open, onOpenChange, portfolio, onCreated }: Po
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="md">
         <DialogHeader>
-          <div className="mb-3 flex size-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+          <div className="mb-3 flex size-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary-text">
             <Orbit size={18} />
           </div>
           <DialogTitle>{isEditing ? "编辑投资组合" : "新建投资组合"}</DialogTitle>
@@ -87,7 +87,7 @@ export function PortfolioDialog({ open, onOpenChange, portfolio, onCreated }: Po
         </DialogHeader>
 
         <form onSubmit={submit} noValidate>
-          <div className="space-y-5 px-6 py-6">
+          <DialogBody className="space-y-5">
             <FormField label="组合名称" required error={form.formState.errors.name?.message}>
               <Input autoFocus placeholder="例如：长期红利、ETF 轮动" {...form.register("name")} />
             </FormField>
@@ -100,8 +100,8 @@ export function PortfolioDialog({ open, onOpenChange, portfolio, onCreated }: Po
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card-deep/40 px-4 py-3.5 transition hover:border-primary/35">
                 <input type="checkbox" className="mt-1 size-4 accent-[var(--primary)]" {...form.register("is_default")} />
                 <span>
-                  <span className="block text-[0.9rem] font-semibold text-foreground">设为默认组合</span>
-                  <span className="mt-1 block text-[0.78rem] leading-relaxed text-muted-foreground">
+                  <span className="block text-table font-semibold text-foreground">设为默认组合</span>
+                  <span className="mt-1 block text-caption leading-relaxed text-muted-foreground">
                     下次打开投资组合页面时，自动进入这个组合。
                   </span>
                 </span>
@@ -109,10 +109,10 @@ export function PortfolioDialog({ open, onOpenChange, portfolio, onCreated }: Po
             )}
 
             {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-          </div>
+          </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" className="!text-[12px]" onClick={() => onOpenChange(false)} disabled={isPending}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
               取消
             </Button>
             <LoadingButton type="submit" loading={isPending}>

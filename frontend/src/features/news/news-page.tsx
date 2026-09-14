@@ -2,7 +2,9 @@ import { ExternalLink, Globe2, Landmark, LoaderCircle, RadioTower, RefreshCw } f
 import { useState } from "react";
 
 import { PageContainer } from "../../components/patterns";
+import { ExternalContentFrame } from "../../components/patterns/external-content-frame";
 import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { cn } from "../../lib/utils";
 import "./news.css";
@@ -99,22 +101,22 @@ export function NewsPage() {
           <div>
             <p className="eyebrow">财经资讯 / MARKET INTELLIGENCE</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="font-display text-[clamp(1.75rem,3vw,2.35rem)] tracking-[-0.045em] text-foreground">财经资讯</h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/5 px-2.5 py-1 font-mono text-[0.65rem] tracking-[0.08em] text-success">
+              <h1 className="font-display text-heading tracking-[-0.045em] text-foreground">财经资讯</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/5 px-2.5 py-1 font-mono text-caption tracking-[0.08em] text-success">
                 <span className="size-1.5 rounded-full bg-success shadow-[0_0_8px_rgba(100,181,134,0.8)]" /> 原站直连
               </span>
             </div>
-            <p className="mt-2 max-w-2xl text-[0.88rem] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-2xl text-table leading-relaxed text-muted-foreground">
               在同一个工作台里切换三家主流财经资讯来源，内容由原站实时提供。
             </p>
           </div>
 
           <div className="hidden shrink-0 items-end gap-4 sm:flex">
             <div className="text-right">
-              <p className="font-mono text-[0.62rem] tracking-[0.2em] text-muted-foreground/60">ACTIVE SOURCE</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">{activeSource.label}</p>
+              <p className="font-mono text-caption tracking-[0.2em] text-subtle">ACTIVE SOURCE</p>
+              <p className="mt-1 text-body-sm font-semibold text-foreground">{activeSource.label}</p>
             </div>
-            <div className="news-hero-index font-mono text-4xl leading-none text-foreground/10">03</div>
+            <div className="news-hero-index font-mono text-display leading-none text-muted-foreground">03</div>
           </div>
         </div>
       </section>
@@ -135,7 +137,7 @@ export function NewsPage() {
                     value={source.id}
                     variant="segment"
                     className={cn(
-                      "news-source-tab h-10 gap-2 rounded-lg border px-3.5 text-[0.78rem] font-semibold sm:px-4",
+                      "news-source-tab h-10 gap-2 rounded-lg border px-3.5 text-caption font-semibold sm:px-4",
                       "border-border bg-card text-muted-foreground hover:border-primary/35 hover:text-foreground",
                       "data-[state=active]:border-primary/55 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-subtle",
                     )}
@@ -144,7 +146,7 @@ export function NewsPage() {
                       <Icon size={13} strokeWidth={2} />
                     </span>
                     <span>{source.label}</span>
-                    <span className="hidden font-mono text-[0.58rem] tracking-[0.12em] opacity-55 sm:inline">{source.english}</span>
+                    <span className="hidden font-mono text-caption tracking-[0.12em] opacity-55 sm:inline">{source.english}</span>
                   </TabsTrigger>
                 );
               })}
@@ -152,7 +154,7 @@ export function NewsPage() {
           </Tabs>
 
           <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 pr-2 text-[0.72rem] text-muted-foreground sm:flex">
+            <div className="hidden items-center gap-2 pr-2 text-caption text-muted-foreground sm:flex">
               <span className={cn("size-1.5 rounded-full", loadedSources[activeSourceId] ? "bg-success" : "bg-warning")} />
               {loadedSources[activeSourceId] ? "页面已加载" : "等待页面加载"}
             </div>
@@ -175,18 +177,18 @@ export function NewsPage() {
         className="news-frame-stage min-h-0 flex-1 px-3 py-3 sm:px-5 sm:py-4 lg:px-7 xl:px-9"
         aria-label={`${activeSource.label}资讯内容`}
       >
-        <div className="news-frame-shell mx-auto flex h-full max-w-[1680px] min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+        <Card className="news-frame-shell mx-auto flex h-full max-w-[1680px] min-h-0 flex-col overflow-hidden">
           <div className="news-frame-meta flex shrink-0 items-center justify-between gap-4 border-b border-border/80 bg-card-deep px-3.5 py-2.5 sm:px-4">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: activeSource.accent }} />
-              <span className="truncate text-[0.78rem] font-semibold text-foreground">{activeSource.label}</span>
-              <span className="hidden truncate font-mono text-[0.64rem] tracking-[0.06em] text-muted-foreground/60 sm:inline">
-                {activeSource.domain}
-              </span>
+              <span className="truncate text-caption font-semibold text-foreground">{activeSource.label}</span>
+              <span className="hidden truncate font-mono text-caption tracking-[0.06em] text-subtle sm:inline">{activeSource.domain}</span>
             </div>
-            <div className="hidden items-center gap-2 text-[0.68rem] text-muted-foreground/70 md:flex">
+            <div className="hidden items-center gap-2 text-caption text-subtle md:flex">
               <span>{activeSource.description}</span>
-              <span className="text-border">/</span>
+              <span aria-hidden="true" className="text-border">
+                /
+              </span>
               <span>内容来自原站</span>
             </div>
           </div>
@@ -207,23 +209,23 @@ export function NewsPage() {
                   aria-label={`${source.label}内联页面`}
                   aria-hidden={!isActive}
                 >
-                  <iframe
+                  <ExternalContentFrame
                     key={`${source.id}-${reloadTokens[source.id]}`}
                     title={`${source.label}财经资讯`}
                     src={source.url}
                     loading="lazy"
                     referrerPolicy="strict-origin-when-cross-origin"
-                    className="size-full border-0 bg-white"
+                    className="size-full"
                     tabIndex={isActive ? 0 : -1}
                     onLoad={() => markLoaded(source.id)}
                   />
                   {isActive && !loadedSources[source.id] ? (
                     <div className="pointer-events-none absolute inset-0 grid place-items-center bg-background/75 backdrop-blur-[2px]">
                       <div className="flex flex-col items-center gap-3 text-center">
-                        <LoaderCircle size={22} className="animate-spin text-primary" />
+                        <LoaderCircle size={22} className="animate-spin text-primary-text" />
                         <div>
-                          <p className="text-sm font-medium text-foreground">正在打开 {source.label}</p>
-                          <p className="mt-1 text-[0.75rem] text-muted-foreground">首次加载由原站提供，可能需要一点时间</p>
+                          <p className="text-body-sm font-medium text-foreground">正在打开 {source.label}</p>
+                          <p className="mt-1 text-caption text-muted-foreground">首次加载由原站提供，可能需要一点时间</p>
                         </div>
                       </div>
                     </div>
@@ -232,10 +234,10 @@ export function NewsPage() {
               );
             })}
           </div>
-        </div>
+        </Card>
       </section>
 
-      <p className="shrink-0 px-5 pb-3 text-center text-[0.68rem] text-muted-foreground/55 sm:px-7">
+      <p className="shrink-0 px-5 pb-3 text-center text-caption text-subtle sm:px-7">
         资讯页面为第三方原站内联展示；如页面未正常显示，请使用“原站打开”。
       </p>
     </PageContainer>

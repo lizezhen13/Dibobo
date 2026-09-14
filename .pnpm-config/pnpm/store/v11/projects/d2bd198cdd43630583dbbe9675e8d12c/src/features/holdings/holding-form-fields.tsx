@@ -30,7 +30,7 @@ export function HoldingFormFields({
     <>
       {!isClosed && (
         <>
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <FormField label="平均持仓成本" error={errors.average_cost?.message}>
               <NumberStepper
                 min={0}
@@ -63,7 +63,7 @@ export function HoldingFormFields({
             />
           </FormField>
           {isClosing && (
-            <div className="grid grid-cols-2 gap-5 rounded-xl border border-primary/20 bg-primary/[0.05] p-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 rounded-xl border border-primary/20 bg-primary/[0.05] p-4">
               <FormField label="清仓价格" error={errors.close_price?.message}>
                 <NumberStepper
                   min={0.0001}
@@ -90,7 +90,7 @@ export function HoldingFormFields({
 
       {isClosed && (
         <>
-          <div className="grid grid-cols-2 gap-5 rounded-xl border border-border bg-card-deep/30 p-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 rounded-xl border border-border bg-card-deep/30 p-4">
             <FormField label="清仓数量" error={errors.closed_quantity?.message}>
               <NumberStepper
                 min={1}

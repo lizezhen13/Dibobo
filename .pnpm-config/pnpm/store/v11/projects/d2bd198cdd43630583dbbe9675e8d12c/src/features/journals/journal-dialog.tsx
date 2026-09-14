@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { Button } from "../../components/ui/button";
 import { FormField, InlineAlert, LoadingButton } from "../../components/patterns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { ApiError } from "../../lib/api";
@@ -86,10 +86,10 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] w-[min(780px,calc(100vw-64px))] flex-col overflow-hidden">
+      <DialogContent size="lg">
         <DialogHeader className="shrink-0">
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-lg border border-primary/20 bg-primary/8 text-primary">
+            <span className="grid size-9 place-items-center rounded-lg border border-primary/20 bg-primary/8 text-primary-text">
               <NotebookPen size={17} />
             </span>
             <DialogTitle>{isEditing ? "编辑投资日记" : "写一篇投资日记"}</DialogTitle>
@@ -98,8 +98,8 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
         </DialogHeader>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit} noValidate>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6">
-            <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-5">
+          <DialogBody className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-[11.25rem_minmax(0,1fr)] gap-5">
               <FormField label="日记日期" required error={form.formState.errors.journal_date?.message}>
                 <Input type="date" max={todayInShanghai()} className="date-input" {...form.register("journal_date")} />
               </FormField>
@@ -122,7 +122,7 @@ export function JournalDialog({ open, onOpenChange, journal }: JournalDialogProp
             </FormField>
 
             {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-          </div>
+          </DialogBody>
 
           <DialogFooter className="shrink-0">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>

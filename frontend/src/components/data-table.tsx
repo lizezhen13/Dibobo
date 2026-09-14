@@ -1,7 +1,11 @@
 import { flexRender, getCoreRowModel, type ColumnDef, type RowData, useReactTable } from "@tanstack/react-table";
 import { useState, type DragEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import { RecordCard } from "./patterns/record-card";
+import { Button } from "./ui/button";
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from "./ui/table";
 
 declare module "@tanstack/react-table" {
   // TanStack requires these generic parameters for declaration merging even though
@@ -33,6 +37,8 @@ interface DataTableProps<TData> {
   tableClassName?: string;
   headerClassName?: string;
   pagination?: ReactNode;
+  appearance?: "card" | "embedded";
+  mobile?: { titleColumn: string; primaryColumns: string[]; actionColumn?: string };
   rowReorder?: {
     enabled: boolean;
     onReorder: (activeId: string, overId: string) => void | Promise<void>;
@@ -55,6 +61,8 @@ export function DataTable<TData>({
   tableClassName,
   headerClassName,
   pagination,
+  appearance = "card",
+  mobile,
   rowReorder,
 }: DataTableProps<TData>) {
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null);
@@ -62,7 +70,6 @@ export function DataTable<TData>({
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
 
   const rowReorderEnabled = rowReorder?.enabled ?? false;
-  const hasPagination = pagination !== undefined && pagination !== null;
 
   function handleDragStart(event: DragEvent<HTMLTableRowElement>, rowId: string) {
     if (!rowReorderEnabled) return;
@@ -122,41 +129,21 @@ export function DataTable<TData>({
   }
 
   return (
-    <div
-      className={cn(
-        stickyHeader
-          ? hasPagination
-            ? "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised"
-            : "h-full overflow-auto rounded-xl border border-border bg-card shadow-raised"
-          : "overflow-hidden rounded-xl border border-border bg-card shadow-raised",
-        className,
-      )}
-    >
+    <TableFrame appearance={appearance} className={cn(stickyHeader && "flex-1", className)}>
       {toolbar ? <div className={cn("shrink-0 border-b border-border bg-card px-5 py-4 sm:px-6", toolbarClassName)}>{toolbar}</div> : null}
-      <div className={cn(stickyHeader ? (hasPagination ? "min-h-0 flex-1 overflow-auto" : "overflow-visible") : "overflow-x-auto")}>
-        <table
-          className={cn(
-            "w-full min-w-max border-collapse text-left text-[13px]",
-            stickyHeader && "border-separate border-spacing-0",
-            tableClassName,
-          )}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledBy}
-        >
-          <thead
-            className={cn("border-b border-border bg-secondary/60", stickyHeader && "!sticky !top-0 !z-20 !bg-secondary", headerClassName)}
-          >
+      <div className={cn("workspace-table-scroll", stickyHeader && "flex-1", mobile && "hidden md:block")}>
+        <Table className={cn(tableClassName)} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy}>
+          <TableHeader className={cn(stickyHeader && "sticky top-0 z-20", headerClassName)}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const meta = header.column.columnDef.meta;
                   return (
-                    <th
+                    <TableHead
                       key={header.id}
+                      density={meta?.density}
                       aria-sort={meta?.sortDirection}
                       className={cn(
-                        meta?.density === "compact" ? "h-10 px-4 py-2" : "h-11 px-5 py-3",
-                        "whitespace-nowrap align-middle text-[13px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
                         stickyHeader && "sticky top-0 z-20 bg-secondary",
                         meta?.sticky === "left" && "sticky left-0 z-30 bg-secondary",
                         meta?.sticky === "right" && "sticky right-0 z-30 bg-secondary",
@@ -167,28 +154,28 @@ export function DataTable<TData>({
                       )}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
+                    </TableHead>
                   );
                 })}
               </tr>
             ))}
-          </thead>
-          <tbody className="divide-y divide-border/60">
+          </TableHeader>
+          <TableBody>
             {isLoading
               ? Array.from({ length: 4 }, (_, rowIndex) => (
                   <tr key={`skeleton-${rowIndex}`}>
                     {columns.map((_, columnIndex) => (
-                      <td key={columnIndex} className="h-[4.25rem] px-5">
+                      <TableCell key={columnIndex}>
                         <div
                           className="h-3.5 animate-pulse rounded-full bg-secondary"
                           style={{ width: `${44 + ((rowIndex + columnIndex) % 4) * 13}%` }}
                         />
-                      </td>
+                      </TableCell>
                     ))}
                   </tr>
                 ))
               : rows.map((row, index) => (
-                  <tr
+                  <TableRow
                     key={row.id}
                     draggable={rowReorderEnabled}
                     onDragStart={(event) => handleDragStart(event, row.id)}
@@ -198,6 +185,7 @@ export function DataTable<TData>({
                     tabIndex={rowReorderEnabled ? 0 : undefined}
                     aria-roledescription={rowReorderEnabled ? "可排序行" : undefined}
                     onKeyDown={(event) => {
+                      if (!rowReorderEnabled || event.target !== event.currentTarget) return;
                       if (event.key === "ArrowUp") {
                         event.preventDefault();
                         handleKeyboardReorder(row.id, index, -1);
@@ -207,7 +195,6 @@ export function DataTable<TData>({
                       }
                     }}
                     className={cn(
-                      "group transition-colors duration-150 hover:bg-row-hover",
                       index % 2 === 1 && "bg-row-stripe",
                       rowReorderEnabled && "cursor-grab active:cursor-grabbing",
                       draggingRowId === row.id && "opacity-50",
@@ -217,11 +204,10 @@ export function DataTable<TData>({
                     {row.getVisibleCells().map((cell) => {
                       const meta = cell.column.columnDef.meta;
                       return (
-                        <td
+                        <TableCell
                           key={cell.id}
+                          density={meta?.density}
                           className={cn(
-                            meta?.density === "compact" ? "h-12 px-4" : "h-[4.25rem] px-5",
-                            "whitespace-nowrap align-middle text-[13px] text-foreground/85",
                             meta?.sticky === "left" && "sticky left-0 z-10 bg-card group-hover:bg-secondary",
                             meta?.sticky === "right" && "sticky right-0 z-10 bg-card group-hover:bg-secondary",
                             meta?.align === "right" && "text-right font-mono tabular-nums",
@@ -231,14 +217,76 @@ export function DataTable<TData>({
                           )}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
+                        </TableCell>
                       );
                     })}
-                  </tr>
+                  </TableRow>
                 ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
+      {mobile && (
+        <div className="md:hidden" aria-label={ariaLabel} aria-labelledby={ariaLabelledBy}>
+          {isLoading ? (
+            <div className="p-6 text-body text-muted-foreground" role="status">
+              正在加载记录…
+            </div>
+          ) : (
+            rows.map((row, index) => {
+              const cells = row.getVisibleCells();
+              const renderCell = (id: string) => {
+                const cell = cells.find((candidate) => candidate.column.id === id);
+                return cell ? flexRender(cell.column.columnDef.cell, cell.getContext()) : null;
+              };
+              const fields = cells
+                .filter((cell) => cell.column.id !== mobile.titleColumn && cell.column.id !== (mobile.actionColumn ?? "actions"))
+                .map((cell) => {
+                  const header = table.getFlatHeaders().find((candidate) => candidate.column.id === cell.column.id);
+                  return {
+                    id: cell.column.id,
+                    label: header ? flexRender(header.column.columnDef.header, header.getContext()) : cell.column.id,
+                    value: flexRender(cell.column.columnDef.cell, cell.getContext()),
+                  };
+                });
+              return (
+                <RecordCard
+                  key={row.id}
+                  title={renderCell(mobile.titleColumn)}
+                  fields={fields.filter((field) => mobile.primaryColumns.includes(field.id))}
+                  details={fields.filter((field) => !mobile.primaryColumns.includes(field.id))}
+                  actions={
+                    <>
+                      {rowReorderEnabled && (
+                        <div className="mr-auto flex gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            disabled={index === 0}
+                            aria-label={`上移第 ${index + 1} 条`}
+                            onClick={() => handleKeyboardReorder(row.id, index, -1)}
+                          >
+                            <ArrowUp size={16} />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            disabled={index === rows.length - 1}
+                            aria-label={`下移第 ${index + 1} 条`}
+                            onClick={() => handleKeyboardReorder(row.id, index, 1)}
+                          >
+                            <ArrowDown size={16} />
+                          </Button>
+                        </div>
+                      )}
+                      {renderCell(mobile.actionColumn ?? "actions")}
+                    </>
+                  }
+                />
+              );
+            })
+          )}
+        </div>
+      )}
       {rowReorderEnabled ? (
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {reorderAnnouncement}
@@ -246,6 +294,6 @@ export function DataTable<TData>({
       ) : null}
       {!isLoading && data.length === 0 && <div className="border-t border-border/60">{empty}</div>}
       {pagination}
-    </div>
+    </TableFrame>
   );
 }

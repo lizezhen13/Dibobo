@@ -1,12 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { PageContainer } from "../../components/patterns";
+import { PageContainer, PageHeader } from "../../components/patterns";
 import { AccountSettings } from "./account-settings";
 import { DataSourceSettings } from "./data-source-settings";
 
 export function SettingsPage() {
   return (
     <PageContainer size="compact">
-      <h1 className="sr-only">系统设置</h1>
+      <PageHeader title="系统设置" density="compact" description="管理账号信息和行情数据源。" />
       <Tabs defaultValue="account" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="account">账号设置</TabsTrigger>

@@ -34,7 +34,7 @@ export function IndicesPanel({
       toolbar={
         <div className="flex items-center gap-2">
           {data ? (
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+            <span className="flex items-center gap-1.5 text-caption text-subtle">
               <span
                 className={cn(
                   "size-1.5 rounded-full bg-muted-foreground/50",
@@ -69,7 +69,7 @@ export function IndicesPanel({
       ) : data.data_source.state !== "ready" ? (
         <PanelState kind="unavailable" message={data.data_source.message} className="min-h-[166px]" />
       ) : (
-        <div className="grid grid-cols-1 min-[900px]:grid-cols-2 min-[1400px]:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-px bg-border">
           {data.indices.map((index, ordinal) => (
             <IndexCard key={index.thscode} data={index} ordinal={ordinal + 1} />
           ))}

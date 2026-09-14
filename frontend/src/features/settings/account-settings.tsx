@@ -68,8 +68,8 @@ export function AccountSettings() {
             </FormField>
           </div>
 
-          <div className="mt-6 flex items-start gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-[0.85rem] leading-relaxed text-muted-foreground">
-            <KeyRound className="mt-0.5 shrink-0 text-primary/80" size={15} />
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-table leading-relaxed text-muted-foreground">
+            <KeyRound className="mt-0.5 shrink-0 text-primary-text" size={15} />
             新密码至少 8 位，并同时包含字母和数字。密码不会进入浏览器持久化存储或应用日志。
           </div>
 

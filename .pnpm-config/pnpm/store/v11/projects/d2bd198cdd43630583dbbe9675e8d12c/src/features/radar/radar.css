@@ -1,7 +1,6 @@
 .radar-page {
   --radar-orange: #ef612a;
   --radar-border: rgba(239, 97, 42, 0.22);
-  height: calc(100vh - 108px);
   min-height: 0;
 }
 
@@ -82,31 +81,13 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
   .radar-strategy-grid {
     inset: 40% 0 0;
   }
 
   .radar-strategy-sweep {
     right: 25%;
-  }
-}
-
-@media (min-width: 640px) {
-  .radar-page {
-    height: calc(100vh - 124px);
-  }
-}
-
-@media (min-width: 1024px) {
-  .radar-page {
-    height: calc(100vh - 132px);
-  }
-}
-
-@media (min-width: 1280px) {
-  .radar-page {
-    height: calc(100vh - 148px);
   }
 }
 

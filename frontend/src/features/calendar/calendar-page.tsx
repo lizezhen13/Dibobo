@@ -90,6 +90,7 @@ export function CalendarPage() {
   const [scope, setScope] = useState<CalendarScope>("all");
   const [importance, setImportance] = useState<number[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"agenda" | "month">("agenda");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const queryParams = useMemo<CalendarQueryParams>(() => {
@@ -167,7 +168,7 @@ export function CalendarPage() {
   };
 
   return (
-    <PageContainer size="fluid" className="calendar-page flex min-h-0 flex-col overflow-hidden bg-background">
+    <PageContainer size="fluid" data-mobile-view={mobileView} className="calendar-page flex min-h-0 flex-col overflow-hidden bg-background">
       <h1 className="sr-only">事件日历</h1>
       <div className="calendar-toolbar shrink-0 border-b border-border bg-background px-5 py-3 xl:px-7">
         <Tabs value={category} onValueChange={(value) => changeCategory(value as CalendarCategory)}>
@@ -181,7 +182,7 @@ export function CalendarPage() {
                   value={item}
                   variant="segment"
                   className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition",
+                    "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-caption font-semibold transition",
                     "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
                     "data-[state=active]:border-primary/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-subtle",
                   )}
@@ -194,7 +195,7 @@ export function CalendarPage() {
         </Tabs>
       </div>
 
-      <div className="calendar-content flex min-h-0 flex-1 flex-col px-5 py-4 xl:px-7 xl:py-5">
+      <div className="calendar-content flex min-h-0 flex-1 flex-col px-3 py-4 sm:px-5 xl:px-7 xl:py-5">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToToday}>
@@ -203,7 +204,7 @@ export function CalendarPage() {
             <Button variant="outline" size="icon" onClick={() => shiftMonth(-1)} aria-label="上个月">
               <ChevronLeft size={16} />
             </Button>
-            <div className="min-w-[128px] text-center text-xl font-semibold tracking-tight">{monthLabel(month)}</div>
+            <div className="min-w-0 text-center text-title-sm font-semibold tracking-tight sm:min-w-[128px]">{monthLabel(month)}</div>
             <Button variant="outline" size="icon" onClick={() => shiftMonth(1)} aria-label="下个月">
               <ChevronRight size={16} />
             </Button>
@@ -215,11 +216,11 @@ export function CalendarPage() {
                   variant="outline"
                   size="sm"
                   aria-expanded={filtersOpen}
-                  className={cn("text-[12px]", filterCount > 0 && "border-primary/50 text-primary")}
+                  className={cn("", filterCount > 0 && "border-primary/50 text-primary-text")}
                 >
                   <SlidersHorizontal size={14} /> 筛选
                   {filterCount > 0 ? (
-                    <span className="grid size-4 place-items-center rounded-full bg-primary text-[0.7rem] text-primary-foreground">
+                    <span className="grid size-4 place-items-center rounded-full bg-primary text-caption text-primary-foreground">
                       {filterCount}
                     </span>
                   ) : null}
@@ -232,8 +233,8 @@ export function CalendarPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold">筛选事件</p>
-                    <p className="mt-0.5 text-[0.78rem] text-muted-foreground">条件会合并应用到当前分类</p>
+                    <p className="text-body-sm font-semibold">筛选事件</p>
+                    <p className="mt-0.5 text-caption text-muted-foreground">条件会合并应用到当前分类</p>
                   </div>
                   <button
                     type="button"
@@ -245,7 +246,7 @@ export function CalendarPage() {
                   </button>
                 </div>
                 <div className="mt-5">
-                  <p className="mb-2 font-mono text-[0.7rem] tracking-[0.16em] text-muted-foreground">MARKET</p>
+                  <p className="mb-2 font-mono text-caption tracking-[0.16em] text-muted-foreground">MARKET</p>
                   <div className="flex flex-wrap gap-2">
                     {visibleMarkets.map((market) => (
                       <button
@@ -254,9 +255,9 @@ export function CalendarPage() {
                         aria-pressed={markets.length === 0 || markets.includes(market)}
                         onClick={() => toggleMarket(market)}
                         className={cn(
-                          "rounded-lg border px-2.5 py-1.5 font-mono text-[0.78rem] transition",
+                          "rounded-lg border px-2.5 py-1.5 font-mono text-caption transition",
                           markets.length === 0 || markets.includes(market)
-                            ? "border-primary/50 bg-primary/15 text-primary"
+                            ? "border-primary/50 bg-primary/15 text-primary-text"
                             : "border-border text-muted-foreground hover:text-foreground",
                         )}
                       >
@@ -267,7 +268,7 @@ export function CalendarPage() {
                 </div>
                 {category !== "macro" && category !== "closed" ? (
                   <div className="mt-5">
-                    <p className="mb-2 font-mono text-[0.7rem] tracking-[0.16em] text-muted-foreground">SCOPE</p>
+                    <p className="mb-2 font-mono text-caption tracking-[0.16em] text-muted-foreground">SCOPE</p>
                     <div className="flex flex-wrap gap-2">
                       {(
                         [
@@ -282,9 +283,9 @@ export function CalendarPage() {
                           aria-pressed={scope === value}
                           onClick={() => setScope(value)}
                           className={cn(
-                            "rounded-lg border px-2.5 py-1.5 text-[0.78rem] transition",
+                            "rounded-lg border px-2.5 py-1.5 text-caption transition",
                             scope === value
-                              ? "border-primary/50 bg-primary/15 text-primary"
+                              ? "border-primary/50 bg-primary/15 text-primary-text"
                               : "border-border text-muted-foreground hover:text-foreground",
                           )}
                         >
@@ -296,7 +297,7 @@ export function CalendarPage() {
                 ) : null}
                 {category !== "closed" ? (
                   <div className="mt-5">
-                    <p className="mb-2 font-mono text-[0.7rem] tracking-[0.16em] text-muted-foreground">IMPORTANCE</p>
+                    <p className="mb-2 font-mono text-caption tracking-[0.16em] text-muted-foreground">IMPORTANCE</p>
                     <div className="flex gap-2">
                       {[1, 2, 3].map((value) => (
                         <button
@@ -305,7 +306,7 @@ export function CalendarPage() {
                           aria-pressed={importance.includes(value)}
                           onClick={() => toggleImportance(value)}
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[0.78rem] transition",
+                            "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-caption transition",
                             importance.includes(value)
                               ? "border-warning/50 bg-warning/10 text-warning"
                               : "border-border text-muted-foreground hover:text-foreground",
@@ -324,21 +325,40 @@ export function CalendarPage() {
                     setScope("all");
                     setImportance([]);
                   }}
-                  className="mt-5 text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                  className="mt-5 text-body-sm text-muted-foreground underline-offset-4 hover:text-primary-text hover:underline"
                 >
                   重置筛选
                 </button>
               </PopoverContent>
             </Popover>
-            <Button variant="outline" size="sm" onClick={refresh} disabled={refreshMutation.isPending} className="text-[12px]">
+            <Button variant="outline" size="sm" onClick={refresh} disabled={refreshMutation.isPending}>
               {refreshMutation.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               刷新
             </Button>
           </div>
         </div>
 
+        <div className="mt-4 flex gap-2 md:hidden" role="group" aria-label="日历视图">
+          <Button
+            size="sm"
+            variant={mobileView === "agenda" ? "default" : "outline"}
+            aria-pressed={mobileView === "agenda"}
+            onClick={() => setMobileView("agenda")}
+          >
+            日程列表
+          </Button>
+          <Button
+            size="sm"
+            variant={mobileView === "month" ? "default" : "outline"}
+            aria-pressed={mobileView === "month"}
+            onClick={() => setMobileView("month")}
+          >
+            月历选日
+          </Button>
+        </div>
+
         {eventsQuery.data?.data_source.state === "stale" ? (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-warning/20 bg-warning/5 px-3.5 py-2.5 text-sm text-warning">
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-warning/20 bg-warning/5 px-3.5 py-2.5 text-body-sm text-warning">
             <Clock3 size={14} /> {eventsQuery.data.data_source.message ?? "当前展示最近一次成功同步的数据"}
           </div>
         ) : null}
@@ -346,8 +366,8 @@ export function CalendarPage() {
         {eventsQuery.isError ? (
           <div className="mt-5 flex min-h-[180px] items-center justify-center rounded-2xl border border-danger/25 bg-danger/5 p-6 text-center">
             <div>
-              <p className="text-sm font-semibold text-foreground">{errorMessage}</p>
-              <p className="mt-1 text-sm text-muted-foreground">请检查 Longbridge 数据源连接后重试</p>
+              <p className="text-body-sm font-semibold text-foreground">{errorMessage}</p>
+              <p className="mt-1 text-body-sm text-muted-foreground">请检查 Longbridge 数据源连接后重试</p>
               <Button variant="outline" size="sm" className="mt-4" onClick={() => void eventsQuery.refetch()}>
                 重新加载
               </Button>
@@ -358,9 +378,9 @@ export function CalendarPage() {
             <div className="calendar-pane flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card/45 p-3.5 shadow-subtle sm:p-4">
               <div className="mb-3 flex shrink-0 items-center justify-between gap-3 px-1">
                 <div>
-                  <p className="font-mono text-[0.70rem] tracking-[0.16em] text-muted-foreground">MONTH VIEW</p>
+                  <p className="font-mono text-caption tracking-[0.16em] text-muted-foreground">MONTH VIEW</p>
                 </div>
-                <div className="flex items-center gap-2 text-[0.78rem] text-muted-foreground">
+                <div className="flex items-center gap-2 text-caption text-muted-foreground">
                   <span className="size-1.5 rounded-full bg-primary" /> {meta.label}
                 </div>
               </div>
@@ -374,7 +394,7 @@ export function CalendarPage() {
                     {WEEKDAYS.map((day) => (
                       <div
                         key={day}
-                        className="sticky top-0 z-10 border-b border-r border-border/70 bg-background py-2 text-center font-sans text-[12.5px] font-semibold text-white last:border-r-0"
+                        className="sticky top-0 z-10 border-b border-r border-border/70 bg-background py-2 text-center font-sans text-table font-semibold text-white last:border-r-0"
                       >
                         {day}
                       </div>
@@ -389,31 +409,37 @@ export function CalendarPage() {
                         <button
                           key={iso}
                           type="button"
-                          onClick={() => selectDay(day)}
+                          onClick={() => {
+                            selectDay(day);
+                            setMobileView("agenda");
+                          }}
                           aria-label={`${dateLabel(iso)}，${dayEvents.length} 个事件`}
                           aria-current={isToday ? "date" : undefined}
                           aria-pressed={isSelected}
                           className={cn(
                             "group relative min-h-0 overflow-hidden border-b border-r border-border/70 bg-card/20 p-1.5 text-left align-top transition hover:bg-secondary/60 sm:p-2",
-                            isOutside && "bg-background/20 text-muted-foreground/45",
+                            isOutside && "bg-background/20 text-subtle",
                             isSelected && "bg-primary/[0.07] shadow-[inset_0_0_0_1px_rgba(239,97,42,0.55)]",
                           )}
                         >
                           <span
                             className={cn(
-                              "inline-flex min-w-6 items-center justify-center rounded-md px-1 font-mono text-[0.86rem]",
+                              "inline-flex min-w-6 items-center justify-center rounded-md px-1 font-mono text-table",
                               isToday && "bg-primary font-semibold text-primary-foreground",
-                              isSelected && !isToday && "text-primary",
+                              isSelected && !isToday && "text-primary-text",
                             )}
                           >
                             {day.getDate()}
                           </span>
-                          <span className="mt-1.5 block space-y-1 overflow-hidden">
+                          {dayEvents.length > 0 && (
+                            <span className="mt-1 block text-center text-caption text-primary-text md:hidden">{dayEvents.length}项</span>
+                          )}
+                          <span className="mt-1.5 hidden space-y-1 overflow-hidden md:block">
                             {dayEvents.slice(0, 2).map((event) => (
                               <span
                                 key={event.id}
                                 className={cn(
-                                  "block truncate rounded-md border px-1.5 py-0.5 text-[0.68rem]",
+                                  "block truncate rounded-md border px-1.5 py-0.5 text-caption",
                                   CATEGORY_META[event.category].chip,
                                 )}
                                 title={event.title}
@@ -422,7 +448,7 @@ export function CalendarPage() {
                               </span>
                             ))}
                             {dayEvents.length > 2 ? (
-                              <span className="block pl-1 text-[0.72rem] text-muted-foreground">+{dayEvents.length - 2} 更多</span>
+                              <span className="block pl-1 text-caption text-muted-foreground">+{dayEvents.length - 2} 更多</span>
                             ) : null}
                           </span>
                         </button>
@@ -436,10 +462,10 @@ export function CalendarPage() {
             <div className="calendar-timeline-panel flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card/45 p-3.5 shadow-subtle sm:p-4">
               <div className="mb-3 flex shrink-0 items-start justify-between gap-3 px-1">
                 <div>
-                  <p className="font-mono text-[0.70rem] tracking-[0.16em] text-muted-foreground">UPCOMING EVENTS</p>
-                  <h2 className="mt-0.5 text-lg font-semibold">{dateLabel(selectedDate)}</h2>
+                  <p className="font-mono text-caption tracking-[0.16em] text-muted-foreground">UPCOMING EVENTS</p>
+                  <h2 className="mt-0.5 text-title-sm font-semibold">{dateLabel(selectedDate)}</h2>
                 </div>
-                <span className="rounded-md border border-border bg-background px-2 py-1 font-mono text-[12px] text-muted-foreground">
+                <span className="rounded-md border border-border bg-background px-2 py-1 font-mono text-caption text-muted-foreground">
                   {timelineGroups.reduce((total, group) => total + group.items.length, 0)} 条
                 </span>
               </div>
@@ -461,9 +487,9 @@ export function CalendarPage() {
                   timelineGroups.map((group) => (
                     <section key={group.event_date}>
                       <div className="mb-2 flex items-center gap-2 border-b border-border/70 px-1 pb-1.5">
-                        <span className="text-[0.86rem] font-semibold text-foreground">{dateLabel(group.event_date)}</span>
-                        <span className="font-mono text-[11px] text-muted-foreground">{group.event_date}</span>
-                        <span className="ml-auto rounded bg-secondary/80 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        <span className="text-table font-semibold text-foreground">{dateLabel(group.event_date)}</span>
+                        <span className="font-mono text-caption text-muted-foreground">{group.event_date}</span>
+                        <span className="ml-auto rounded bg-secondary/80 px-1.5 py-0.5 text-caption text-muted-foreground">
                           {group.items.length} 条
                         </span>
                       </div>

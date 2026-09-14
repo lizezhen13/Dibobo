@@ -19,7 +19,7 @@ const GlobalMarketPanel = lazy(() => import("./global-market-panel").then(({ Glo
 function GlobalMarketLoading() {
   return (
     <div
-      className="grid min-h-[360px] place-items-center rounded-xl border border-border/70 bg-card/40 text-sm text-muted-foreground"
+      className="grid min-h-[360px] place-items-center rounded-xl border border-border/70 bg-card/40 text-body-sm text-muted-foreground"
       role="status"
     >
       全球市场模块加载中…
@@ -74,10 +74,10 @@ export function OverviewPage() {
       {indices.data?.data_source.state === "not_configured" && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4 border-l-2 border-primary bg-primary/[0.07] px-4 py-3">
           <div className="flex items-center gap-3">
-            <DatabaseZap className="shrink-0 text-primary" size={18} />
+            <DatabaseZap className="shrink-0 text-primary-text" size={18} />
             <div>
-              <p className="text-sm font-medium text-foreground">行情数据源尚未配置</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">完成数据源配置后即可读取实时行情。</p>
+              <p className="text-body-sm font-medium text-foreground">行情数据源尚未配置</p>
+              <p className="mt-0.5 text-caption text-muted-foreground">完成数据源配置后即可读取实时行情。</p>
             </div>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -96,7 +96,7 @@ export function OverviewPage() {
 
         <TabsContent value="a-share" className="mt-0">
           {/* 2xl 下加宽人气榜、收窄市场温度，同时压低两张卡片的视觉高度 */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(340px,0.95fr)] 2xl:grid-rows-[auto_330px_350px]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(340px,0.95fr)] 2xl:grid-rows-[auto_24rem_26rem]">
             <div className="min-w-0 xl:col-span-2 2xl:col-span-3">
               <IndicesPanel query={indices} onRefresh={() => void refreshAll()} isRefreshing={manualRefreshing} />
             </div>

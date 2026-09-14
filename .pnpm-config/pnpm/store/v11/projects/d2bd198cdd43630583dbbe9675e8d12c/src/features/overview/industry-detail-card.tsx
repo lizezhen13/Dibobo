@@ -5,6 +5,7 @@ import type { RefCallback, UIEvent } from "react";
 
 import { formatMoney, formatPercent, formatPoint, movementClass } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
+import { Input } from "../../components/ui/input";
 import { OverviewPanel, PanelState } from "./overview-panel";
 import type { IndustryIndexItem, OverviewIndustries } from "./types";
 
@@ -20,16 +21,16 @@ const IndustryRow = memo(function IndustryRow({ item, measureRef }: IndustryRowP
   return (
     <tr ref={measureRef} className="h-11 transition-colors hover:bg-row-hover">
       <td className="py-2 pl-3 pr-2 text-left">
-        <p className="truncate text-[13px] font-medium text-foreground/88">{item.name}</p>
-        <p className="truncate font-mono text-[10px] tracking-normal text-muted-foreground/40">{item.thscode}</p>
+        <p className="truncate text-table font-medium text-foreground">{item.name}</p>
+        <p className="truncate font-mono text-caption tracking-normal text-subtle">{item.thscode}</p>
       </td>
-      <td className="truncate px-2 py-2 text-center font-mono text-xs tracking-normal text-foreground/78">
+      <td className="truncate px-2 py-2 text-center font-mono text-caption tracking-normal text-foreground">
         {formatPoint(item.latest, { group: false })}
       </td>
-      <td className={cn("truncate px-2 py-2 text-center font-mono text-xs tracking-normal", movementClass(item.change_percent))}>
+      <td className={cn("truncate px-2 py-2 text-center font-mono text-caption tracking-normal", movementClass(item.change_percent))}>
         {formatPercent(item.change_percent)}
       </td>
-      <td className="truncate px-4 py-2 text-center font-mono text-[11px] tracking-normal text-muted-foreground">
+      <td className="truncate px-4 py-2 text-center font-mono text-caption tracking-normal text-muted-foreground">
         {formatMoney(item.turnover)}
       </td>
     </tr>
@@ -148,34 +149,40 @@ export function IndustryDetailCard({ query }: { query: UseQueryResult<OverviewIn
       ) : data.items.length === 0 ? (
         <PanelState kind="empty" className="h-full" />
       ) : (
-        <div className="flex h-full min-h-0 flex-col">
+        <div
+          className="flex h-full min-h-0 flex-col overflow-x-auto"
+          role="region"
+          aria-label="行业行情表，可横向滚动查看全部指标"
+          tabIndex={0}
+        >
           <div className="flex shrink-0 items-center gap-3 border-b border-border/70 px-4 py-2.5">
             <label className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/55" size={13} />
-              <input
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle" size={13} />
+              <Input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="筛选行业"
                 aria-label="筛选行业"
-                className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[13px] tracking-normal text-foreground outline-none placeholder:text-muted-foreground/55 focus:border-primary/60 focus:ring-2 focus:ring-primary/15"
+                density="compact"
+                className="pl-8 pr-3"
               />
             </label>
-            <span className="shrink-0 font-mono text-[11px] tracking-normal text-muted-foreground/60">
+            <span className="shrink-0 font-mono text-caption tracking-normal text-subtle">
               {filtered.length} / {data.total}
             </span>
           </div>
-          <div className="shrink-0 border-b border-border/70">
-            <div className="grid grid-cols-4 text-center text-[11.5px] font-semibold text-muted-foreground/60">
+          <div className="min-w-[36rem] shrink-0 border-b border-border/70">
+            <div className="grid grid-cols-4 text-center text-caption font-semibold text-subtle">
               <span className="py-2.5 pl-3 pr-2 text-left">行业</span>
               <span className="px-2 py-2.5">指数</span>
               <span className="px-2 py-2.5">涨跌</span>
               <span className="px-4 py-2.5">成交额</span>
             </div>
           </div>
-          <div ref={viewportRef} onScroll={handleScroll} className="overview-list-viewport min-h-0 flex-1">
+          <div ref={viewportRef} onScroll={handleScroll} className="overview-list-viewport min-h-0 min-w-[36rem] flex-1">
             {filtered.length === 0 ? (
-              <div className="grid min-h-40 place-items-center text-[13px] text-muted-foreground">未找到匹配行业</div>
+              <div className="grid min-h-40 place-items-center text-table text-muted-foreground">未找到匹配行业</div>
             ) : (
               <div className="relative w-full" style={{ height: totalHeight }}>
                 <table
@@ -189,7 +196,7 @@ export function IndustryDetailCard({ query }: { query: UseQueryResult<OverviewIn
                     <col style={{ width: "25%" }} />
                   </colgroup>
                   <thead className="hidden">
-                    <tr className="border-b border-border text-[10px] text-muted-foreground/55">
+                    <tr className="border-b border-border text-caption text-subtle">
                       <th className="w-1/4 px-4 py-2.5 font-normal">行业</th>
                       <th className="w-1/4 px-2 py-2.5 text-right font-normal">指数</th>
                       <th className="w-1/4 px-2 py-2.5 text-right font-normal">涨跌</th>

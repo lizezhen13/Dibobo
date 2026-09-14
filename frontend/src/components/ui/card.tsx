@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "../../lib/utils";
 
-const cardVariants = cva("rounded-xl border border-border", {
+export const cardVariants = cva("rounded-xl border border-border", {
   variants: {
     variant: {
       flat: "bg-card shadow-none",
@@ -18,7 +18,7 @@ const cardVariants = cva("rounded-xl border border-border", {
   },
   defaultVariants: {
     variant: "raised",
-    interactive: true,
+    interactive: false,
   },
 });
 
@@ -37,9 +37,9 @@ export function CardContent({ className, ...props }: React.ComponentProps<"div">
 }
 
 export function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
-  return <h3 className={cn("font-display text-xl tracking-tight", className)} {...props} />;
+  return <h3 className={cn("font-display text-title tracking-tight", className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
-  return <p className={cn("mt-1 text-sm text-muted-foreground leading-relaxed", className)} {...props} />;
+  return <p className={cn("mt-1 text-body-sm text-muted-foreground leading-relaxed", className)} {...props} />;
 }

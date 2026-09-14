@@ -39,9 +39,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <main className="grid min-h-screen place-items-center bg-background px-6 py-12 text-center">
         <section role="alert" className="max-w-md rounded-2xl border border-danger/30 bg-card p-8 shadow-dialog">
-          <p className="font-mono text-xs tracking-[0.16em] text-danger">RENDER ERROR</p>
-          <h1 className="mt-3 text-2xl font-semibold">页面暂时无法加载</h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          <p className="font-mono text-caption tracking-[0.16em] text-danger">RENDER ERROR</p>
+          <h1 className="mt-3 text-heading font-semibold">页面暂时无法加载</h1>
+          <p className="mt-3 text-body-sm leading-6 text-muted-foreground">
             当前视图遇到未预期错误。重新加载页面通常可以恢复，也会同步最新的前端资源。
           </p>
           <Button type="button" className="mt-6" onClick={this.handleReload}>

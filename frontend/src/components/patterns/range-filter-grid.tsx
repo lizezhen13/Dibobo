@@ -25,12 +25,10 @@ export function RangeFilterGrid({ fields, className }: { fields: RangeFilterDefi
           <legend className="w-full">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-foreground">{field.label}</p>
-                {field.description && (
-                  <p className="mt-0.5 font-mono text-[0.6rem] tracking-[0.13em] text-muted-foreground/50">{field.description}</p>
-                )}
+                <p className="text-body-sm font-semibold text-foreground">{field.label}</p>
+                {field.description && <p className="mt-0.5 font-mono text-caption tracking-[0.13em] text-subtle">{field.description}</p>}
               </div>
-              {field.unit && <span className="font-mono text-[0.68rem] text-primary/70">{field.unit}</span>}
+              {field.unit && <span className="font-mono text-caption text-primary-text">{field.unit}</span>}
             </div>
           </legend>
           <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
@@ -43,9 +41,9 @@ export function RangeFilterGrid({ fields, className }: { fields: RangeFilterDefi
               onChange={(event) => field.onMinChange(event.target.value)}
               placeholder="最小"
               aria-label={String(field.label) + "最小值"}
-              className="h-9 px-3 font-mono text-xs"
+              className="h-9 px-3 font-mono text-caption"
             />
-            <span className="font-mono text-xs text-muted-foreground/45">至</span>
+            <span className="font-mono text-caption text-subtle">至</span>
             <Input
               type="number"
               inputMode={field.inputMode ?? "decimal"}
@@ -55,7 +53,7 @@ export function RangeFilterGrid({ fields, className }: { fields: RangeFilterDefi
               onChange={(event) => field.onMaxChange(event.target.value)}
               placeholder="最大"
               aria-label={String(field.label) + "最大值"}
-              className="h-9 px-3 font-mono text-xs"
+              className="h-9 px-3 font-mono text-caption"
             />
           </div>
         </fieldset>

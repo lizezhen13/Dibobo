@@ -47,7 +47,7 @@ export function Pagination({
       )}
       aria-label="分页"
     >
-      <p className="font-mono text-caption tracking-[0.08em] text-muted-foreground/60">{summaryContent ?? summary}</p>
+      <p className="font-mono text-caption tracking-[0.08em] text-subtle">{summaryContent ?? summary}</p>
       <div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")}>
         <Button
           variant="outline"
@@ -58,7 +58,10 @@ export function Pagination({
         >
           <ChevronLeft size={14} /> 上一页
         </Button>
-        <span className={cn("text-center text-muted-foreground", compact ? "min-w-16 text-xs" : "min-w-20 text-sm")} aria-current="page">
+        <span
+          className={cn("text-center text-muted-foreground", compact ? "min-w-16 text-caption" : "min-w-20 text-body-sm")}
+          aria-current="page"
+        >
           第 {page} 页
         </span>
         <Button

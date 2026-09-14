@@ -1,28 +1,9 @@
 @layer components {
   .journals-page {
     display: flex;
-    height: calc(100dvh - 108px);
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
-  }
-
-  @media (min-width: 640px) {
-    .journals-page {
-      height: calc(100dvh - 124px);
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .journals-page {
-      height: calc(100dvh - 132px);
-    }
-  }
-
-  @media (min-width: 1280px) {
-    .journals-page {
-      height: calc(100dvh - 148px);
-    }
   }
 
   .journal-workspace-shell {
@@ -91,9 +72,9 @@
 
   .journal-index-kicker,
   .journal-reading-kicker {
-    color: color-mix(in oklch, var(--primary) 86%, var(--foreground));
+    color: var(--primary-text);
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: var(--text-caption);
     font-weight: 600;
     letter-spacing: 0.12em;
     line-height: 1.4;
@@ -104,7 +85,7 @@
     margin-top: 0.45rem;
     color: var(--foreground);
     font-family: var(--font-display);
-    font-size: 1.22rem;
+    font-size: var(--text-title-sm);
     font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1.2;
@@ -132,13 +113,13 @@
 
   .journal-index-filter-clear {
     flex-shrink: 0;
-    color: color-mix(in oklch, var(--muted-foreground) 82%, transparent);
+    color: var(--subtle);
   }
 
   .journal-index-count {
-    color: var(--primary);
+    color: var(--primary-text);
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: var(--text-table);
     letter-spacing: 0.08em;
   }
 
@@ -206,20 +187,20 @@
   .journal-index-time,
   .journal-index-submeta {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-caption);
     letter-spacing: 0.06em;
     line-height: 1.4;
   }
 
   .journal-index-date {
-    color: color-mix(in oklch, var(--primary) 82%, var(--foreground));
-    font-size: 12px;
+    color: var(--primary-text);
+    font-size: var(--text-caption);
   }
 
   .journal-index-time {
     overflow: hidden;
-    color: color-mix(in oklch, var(--muted-foreground) 78%, transparent);
-    font-size: 12px;
+    color: var(--subtle);
+    font-size: var(--text-caption);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -230,7 +211,7 @@
     overflow: hidden;
     color: inherit;
     font-family: var(--font-display);
-    font-size: 1.02rem;
+    font-size: var(--text-body);
     font-weight: 600;
     line-height: 1.45;
     -webkit-box-orient: vertical;
@@ -241,8 +222,8 @@
     display: block;
     margin-top: 0.55rem;
     overflow: hidden;
-    color: color-mix(in oklch, var(--muted-foreground) 58%, transparent);
-    font-size: 10.5px;
+    color: var(--subtle);
+    font-size: var(--text-caption);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -256,9 +237,9 @@
     flex-shrink: 0;
     padding: 0 1.15rem;
     border-top: 1px solid var(--line);
-    color: color-mix(in oklch, var(--muted-foreground) 62%, transparent);
+    color: var(--subtle);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-caption);
     letter-spacing: 0.08em;
     line-height: 1.4;
     text-transform: uppercase;
@@ -293,7 +274,7 @@
   .journal-reading-kicker {
     overflow: hidden;
     color: var(--foreground);
-    font-size: 0.65rem;
+    font-size: var(--text-caption);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -320,9 +301,9 @@
   }
 
   .journal-reading-date {
-    color: color-mix(in oklch, var(--primary) 82%, var(--foreground));
+    color: var(--primary-text);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: var(--text-table);
     letter-spacing: 0.08em;
     line-height: 1.5;
     text-transform: uppercase;
@@ -330,11 +311,11 @@
 
   .journal-reading-title {
     width: 100%;
-    max-width: none;
+    max-width: 68ch;
     margin-top: 0.8rem;
     color: var(--foreground);
     font-family: var(--font-display);
-    font-size: clamp(2rem, 3.8vw, 3rem);
+    font-size: var(--text-heading);
     font-weight: 600;
     letter-spacing: -0.055em;
     line-height: 1.18;
@@ -349,10 +330,10 @@
 
   .journal-reading-copy {
     width: 100%;
-    max-width: none;
+    max-width: 68ch;
     color: var(--card-foreground);
-    font-size: 1.08rem;
-    line-height: 2.15;
+    font-size: var(--text-title-sm);
+    line-height: 1.85;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -364,7 +345,7 @@
     place-items: center;
     padding: 2rem;
     color: var(--muted-foreground);
-    font-size: 0.9rem;
+    font-size: var(--text-table);
   }
 
   .journal-workspace-skeleton {
@@ -381,7 +362,7 @@
     padding-top: 2.2rem;
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 64rem) {
     .journal-workspace {
       grid-template-columns: minmax(210px, 0.38fr) minmax(0, 1fr);
     }
@@ -391,7 +372,7 @@
     }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 47.9375rem) {
     .journals-page {
       height: auto;
       min-height: 100%;
@@ -438,7 +419,7 @@
     .journal-index-footer {
       min-height: 2.65rem;
       padding: 0 0.9rem;
-      font-size: 10px;
+      font-size: var(--text-caption);
     }
 
     .journal-reading-pane,
@@ -463,12 +444,33 @@
     }
 
     .journal-reading-copy {
-      font-size: 1rem;
+      font-size: var(--text-body);
       line-height: 2;
     }
   }
 
-  @media (max-width: 420px) {
+  @media (max-width: 79.9375rem), (max-height: 56.1875rem) {
+    .journal-workspace-shell,
+    .journal-state-shell {
+      height: auto;
+      flex: none;
+      overflow: visible;
+    }
+    .journal-workspace-shell > .journal-workspace {
+      height: auto;
+    }
+    .journal-index-list {
+      max-height: 30rem;
+    }
+    .journal-reading-pane {
+      height: auto;
+    }
+    .journal-reading-body {
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 26.25rem) {
     .journal-index-list {
       grid-template-columns: minmax(0, 1fr);
     }

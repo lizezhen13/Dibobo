@@ -15,6 +15,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { InstrumentCell } from "../../components/patterns/instrument-cell";
 import { DataTable } from "../../components/data-table";
 import { EmptyState, ErrorState, InlineAlert, PageContainer, Pagination } from "../../components/patterns";
 import { Button } from "../../components/ui/button";
@@ -82,19 +83,7 @@ function createRadarColumns({
       meta: { sticky: "left", headerClassName: "min-w-[190px]", cellClassName: "min-w-[190px]" },
       cell: ({ row }) => {
         const item = row.original;
-        return (
-          <div className="flex min-w-[190px] items-center justify-center">
-            <div className="min-w-0 text-center">
-              <div className="truncate text-[13px] font-semibold text-foreground">{item.name}</div>
-              <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-[13px] tracking-[0.04em] text-muted-foreground/60">
-                <span>{item.ticker}</span>
-                <span className="rounded-md border border-border/80 bg-secondary px-1.5 py-0.5 text-[11px] leading-none tracking-[0.08em] text-muted-foreground">
-                  {item.exchange}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
+        return <InstrumentCell name={item.name} code={item.ticker} suffix={item.exchange} />;
       },
     },
     {
@@ -103,7 +92,7 @@ function createRadarColumns({
       meta: { align: "center", headerClassName: "min-w-[156px]", cellClassName: "min-w-[156px]" },
       cell: ({ row }) => (
         <div>
-          <div className="numeric text-[0.88rem] text-foreground">{formatMetric(row.original.latest)}</div>
+          <div className="numeric text-table text-foreground">{formatMetric(row.original.latest)}</div>
           <div className="mt-1 text-caption">
             <Movement value={row.original.change_percent} />
           </div>
@@ -121,7 +110,7 @@ function createRadarColumns({
       header: "股息率",
       meta: { align: "center", headerClassName: "min-w-[136px]", cellClassName: "min-w-[136px]" },
       cell: ({ row }) => (
-        <span className={cn("numeric font-semibold", row.original.dividend_yield !== null ? "text-primary" : "text-muted-foreground")}>
+        <span className={cn("numeric font-semibold", row.original.dividend_yield !== null ? "text-primary-text" : "text-muted-foreground")}>
           {formatYield(row.original.dividend_yield)}
         </span>
       ),
@@ -158,7 +147,7 @@ function createRadarColumns({
               size="icon-sm"
               variant="ghost"
               className={cn(
-                "text-muted-foreground hover:bg-primary/10 hover:text-primary",
+                "text-muted-foreground hover:bg-primary/10 hover:text-primary-text",
                 isAdded && "text-danger hover:bg-danger/10 hover:text-danger",
               )}
               disabled={isPending}
@@ -177,7 +166,7 @@ function createRadarColumns({
             <Button
               size="icon-sm"
               variant="ghost"
-              className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              className="text-muted-foreground hover:bg-primary/10 hover:text-primary-text"
               onClick={() => onDetails(item)}
               aria-label={"查看" + item.name + "详情"}
               title="查看详情"
@@ -268,32 +257,34 @@ export function RadarPage() {
     onDetails: (item) => navigate("/radar/detail/" + encodeURIComponent(item.ticker)),
   });
   return (
-    <PageContainer size="wide" className="radar-page flex min-h-0 flex-col overflow-hidden">
+    <PageContainer size="wide" layout="workspace" className="radar-page flex min-h-0 flex-col overflow-hidden">
       <Card className="radar-strategy-card shrink-0 animate-fade-in-up">
         <div className="radar-strategy-grid" aria-hidden="true" />
         <div className="radar-strategy-sweep" aria-hidden="true" />
         <div className="relative z-10 grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
           <div className="max-w-xl">
-            <div className="flex items-center gap-2 font-mono text-caption tracking-[0.18em] text-primary/80">
+            <div className="flex items-center gap-2 font-mono text-caption tracking-[0.18em] text-primary-text">
               <span className="radar-signal-dot" aria-hidden="true" /> DEFAULT STRATEGY / DAILY 15:30
             </div>
-            <h2 className="mt-3 font-display text-2xl font-semibold leading-tight tracking-[-0.04em] text-foreground sm:text-3xl">
-              <span className="text-primary">时间会证明红利低波策略</span>
+            <h2 className="mt-3 font-display text-heading font-semibold leading-tight tracking-[-0.04em] text-foreground sm:text-heading">
+              <span className="text-primary-text">时间会证明红利低波策略</span>
             </h2>
-            <p className="mt-3 max-w-lg text-sm leading-7 text-muted-foreground">央企/国企+行业龙头+高市值，股息率 4% 以上且连续稳定分红</p>
+            <p className="mt-3 max-w-lg text-body-sm leading-7 text-muted-foreground">
+              央企/国企+行业龙头+高市值，股息率 4% 以上且连续稳定分红
+            </p>
           </div>
           <div className="border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-            <p className="font-mono text-caption tracking-[0.14em] text-muted-foreground/60">MARKET CAP FLOOR</p>
+            <p className="font-mono text-caption tracking-[0.14em] text-subtle">MARKET CAP FLOOR</p>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="numeric text-3xl font-semibold tracking-[-0.08em] text-foreground">800</span>
-              <span className="text-sm text-muted-foreground">亿</span>
+              <span className="numeric text-heading font-semibold tracking-[-0.08em] text-foreground">800</span>
+              <span className="text-body-sm text-muted-foreground">亿</span>
             </div>
           </div>
           <div className="border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-            <p className="font-mono text-caption tracking-[0.14em] text-muted-foreground/60">DIVIDEND FLOOR</p>
+            <p className="font-mono text-caption tracking-[0.14em] text-subtle">DIVIDEND FLOOR</p>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="numeric text-3xl font-semibold tracking-[-0.08em] text-primary">4.00</span>
-              <span className="text-sm text-muted-foreground">%</span>
+              <span className="numeric text-heading font-semibold tracking-[-0.08em] text-primary-text">4.00</span>
+              <span className="text-body-sm text-muted-foreground">%</span>
             </div>
           </div>
         </div>
@@ -326,7 +317,7 @@ export function RadarPage() {
         </InlineAlert>
       )}
 
-      <section className="mt-8 flex min-h-0 flex-1 flex-col" aria-labelledby="radar-results-title">
+      <section className="workspace-content mt-6 flex min-h-0 flex-1 flex-col" aria-labelledby="radar-results-title">
         <DataTable
           columns={radarColumns}
           data={response?.items ?? []}
@@ -336,24 +327,25 @@ export function RadarPage() {
           centered
           className="min-h-0 flex-1"
           ariaLabelledBy="radar-results-title"
-          toolbarClassName="!bg-secondary/25"
-          tableClassName="!min-w-[1240px] border-separate border-spacing-0 whitespace-nowrap text-center"
-          headerClassName="!bg-secondary"
+          mobile={{ titleColumn: "security", primaryColumns: ["latest", "dividend_yield", "market_cap", "industry"] }}
+          toolbarClassName="bg-secondary/25"
+          tableClassName="min-w-[1240px] border-separate border-spacing-0 whitespace-nowrap text-center"
+          headerClassName="bg-secondary"
           toolbar={
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 id="radar-results-title" className="font-display text-base font-semibold tracking-tight text-foreground">
+                  <h2 id="radar-results-title" className="font-display text-body font-semibold tracking-tight text-foreground">
                     高股息标的
                   </h2>
-                  <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground/65">
+                  <span className="inline-flex items-center gap-1.5 text-caption text-subtle">
                     <Clock3 size={13} aria-hidden="true" />
                     {response?.generated_at ? "数据时间 " + formatDateTime(response.generated_at) : "尚无生成时间"}
                   </span>
                 </div>
-                <p className="mt-1.5 text-[12px] text-muted-foreground/65">{summaryText}</p>
+                <p className="mt-1.5 text-caption text-subtle">{summaryText}</p>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-3 text-caption text-muted-foreground/65">
+              <div className="flex flex-wrap items-center justify-end gap-3 text-caption text-subtle">
                 <Button size="sm" onClick={() => runDefaultScan()} disabled={resultLoading}>
                   <Radar size={15} /> 开始扫描
                 </Button>

@@ -36,18 +36,18 @@ export function TemperatureBullet({ value, description }: { value: number; descr
     <div className="w-full min-w-0" role="img" aria-label={`市场温度 ${temperature} 度，${tone.label}，区间 ${tone.range}`}>
       <div className="mb-3 flex min-w-0 items-center gap-3">
         <div className="flex shrink-0 items-center gap-[18px]">
-          <span className="font-mono text-[1.9rem] font-semibold leading-none tracking-[-0.08em]" style={{ color: tone.accent }}>
+          <span className="font-mono text-heading font-semibold leading-none tracking-[-0.08em]" style={{ color: tone.accent }}>
             {temperature}
           </span>
           <span
-            className="rounded-sm border-2 px-1.5 py-0.5 font-mono text-[15px] font-semibold leading-none"
+            className="rounded-sm border-2 px-1.5 py-0.5 font-mono text-body font-semibold leading-none"
             style={{ borderColor: `${tone.accent}66`, color: tone.accent, backgroundColor: `${tone.accent}14` }}
           >
             {tone.label}
           </span>
         </div>
         <p
-          className="min-w-0 flex-1 truncate text-right text-[15px] font-semibold leading-5"
+          className="min-w-0 flex-1 truncate text-right text-body font-semibold leading-5"
           style={{ color: tone.accent }}
           title={description ?? tone.description}
         >
@@ -76,21 +76,21 @@ export function TemperatureBullet({ value, description }: { value: number; descr
         </div>
 
         <div className="absolute top-0" style={{ left: `${temperature}%`, transform: markerTransform }}>
-          <span className="block whitespace-nowrap font-mono text-[10px] font-medium" style={{ color: tone.accent }}>
+          <span className="block whitespace-nowrap font-mono text-caption-xs font-medium" style={{ color: tone.accent }}>
             {temperature}
           </span>
           <span className="mx-auto mt-1 block h-10 w-0.5" style={{ backgroundColor: tone.accent, boxShadow: `0 0 10px ${tone.glow}` }} />
         </div>
       </div>
 
-      <div className="mt-2 flex justify-between font-mono text-[9px] text-muted-foreground/60">
+      <div className="mt-2 flex justify-between font-mono text-caption-xs text-subtle">
         <span>0</span>
         <span>35</span>
         <span>60</span>
         <span>80</span>
         <span>100</span>
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground/70">
+      <div className="mt-1 flex justify-between text-caption-xs text-subtle">
         <span>低迷</span>
         <span>平稳</span>
         <span>偏热</span>
@@ -103,9 +103,9 @@ export function TemperatureBullet({ value, description }: { value: number; descr
 function TemperatureMetric({ kind, label, value }: { kind: "valuation" | "sentiment"; label: string; value: number }) {
   return (
     <div className="min-w-0 text-center" title={`${label}指数 ${value}/100`}>
-      <p className="text-base font-medium text-foreground/80">{label}</p>
-      <p className={cn("mt-1 truncate text-base font-semibold", indexTone(value))}>{indexLabel(kind, value)}</p>
-      <p className="mt-0.5 font-mono text-base text-muted-foreground/55">{value}/100</p>
+      <p className="text-body font-medium text-foreground">{label}</p>
+      <p className={cn("mt-1 truncate text-body font-semibold", indexTone(value))}>{indexLabel(kind, value)}</p>
+      <p className="mt-0.5 font-mono text-body text-subtle">{value}/100</p>
     </div>
   );
 }

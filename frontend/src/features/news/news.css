@@ -1,8 +1,8 @@
 @layer components {
   .news-page {
-    --news-viewport-height: calc(100dvh - 68px);
+    --news-viewport-height: calc(100dvh - var(--app-header-height));
     width: 100%;
-    max-width: none !important;
+    max-width: none;
     height: var(--news-viewport-height);
     max-height: var(--news-viewport-height);
     min-height: 0;
@@ -41,11 +41,11 @@
     min-height: 0;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 47.9375rem) {
     .news-page {
       height: auto;
       max-height: none;
-      min-height: calc(100dvh - 68px);
+      min-height: calc(100dvh - var(--app-header-height));
       overflow: visible;
     }
 

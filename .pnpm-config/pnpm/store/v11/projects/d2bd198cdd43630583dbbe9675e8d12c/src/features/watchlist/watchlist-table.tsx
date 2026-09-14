@@ -1,7 +1,11 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, FileText, GripVertical, PencilLine, Search, Star, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, FileText, PencilLine, Search, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, type DragEvent } from "react";
 
 import { EmptyState, ErrorState, Pagination } from "../../components/patterns";
+import { InstrumentCell } from "../../components/patterns/instrument-cell";
+import { RecordCard } from "../../components/patterns/record-card";
+import { Select } from "../../components/ui/select";
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
@@ -52,6 +56,7 @@ export function WatchlistTable({
   onDragEnd,
   onDragOver,
   onDrop,
+  onMove,
   onSort,
   onClear,
   onAdd,
@@ -83,6 +88,7 @@ export function WatchlistTable({
   onDragEnd: () => void;
   onDragOver: (event: DragEvent<HTMLTableRowElement>) => void;
   onDrop: (targetId: string) => void;
+  onMove: (id: string, direction: -1 | 1) => void;
   onSort: (key: SortKey) => void;
   onClear: () => void;
   onAdd: () => void;
@@ -101,13 +107,13 @@ export function WatchlistTable({
   }, [filterKey, sort.direction, sort.key]);
 
   return (
-    <div className="watchlist-table-card mt-8 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-raised">
+    <TableFrame className="watchlist-table-card mt-6 flex-1">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border bg-secondary/25 px-5 py-4">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-caption tracking-[0.14em] text-muted-foreground/60">MY WATCHLIST</span>
+          <span className="font-mono text-caption tracking-[0.14em] text-subtle">MY WATCHLIST</span>
           {selectedVisibleCount > 0 && <Badge variant="warning">已选 {selectedVisibleCount} 条</Badge>}
         </div>
-        <div className="flex items-center gap-3 text-caption text-muted-foreground/65">
+        <div className="flex items-center gap-3 text-caption text-subtle">
           <span className={cn("size-1.5 rounded-full", query.data?.polling_enabled ? "bg-market-up" : "bg-primary")} />
           {query.data?.polling_enabled ? `自动刷新 · ${query.data.refresh_seconds}s` : "非交易时段 · 不轮询"}
           {selectedVisibleCount > 0 && (
@@ -127,14 +133,126 @@ export function WatchlistTable({
         />
       ) : (
         <>
-          <div ref={tableScrollRef} className="watchlist-table-scroll min-h-0 flex-1 overflow-auto">
-            <table
-              className="watchlist-table w-full min-w-[1420px] whitespace-nowrap border-separate border-spacing-0 text-center text-[13px]"
+          <div className="md:hidden" aria-label="自选记录">
+            <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+              <label className="flex min-h-11 items-center gap-2 text-label text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={onToggleSelectAll}
+                  ref={(element) => {
+                    if (element) element.indeterminate = !allVisibleSelected && someVisibleSelected;
+                  }}
+                  className="size-5 accent-[var(--primary)]"
+                />
+                选择当前页
+              </label>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Select aria-label="自选排序" value={sort.key} onChange={(event) => onSort(event.target.value as SortKey)}>
+                  {Object.entries(SORT_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+                {sort.key !== "custom" && (
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    aria-label={`切换为${sort.direction === "asc" ? "降序" : "升序"}`}
+                    onClick={() => onSort(sort.key)}
+                  >
+                    {sort.direction === "asc" ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                  </Button>
+                )}
+              </div>
+            </div>
+            {query.isLoading ? (
+              <div className="p-6 text-body text-muted-foreground" role="status">
+                正在加载自选…
+              </div>
+            ) : (
+              pageItems.map((item) => (
+                <RecordCard
+                  key={item.id}
+                  title={<InstrumentCell name={item.name} code={item.thscode} align="left" />}
+                  selection={
+                    <label className="grid size-11 shrink-0 place-items-center">
+                      <input
+                        type="checkbox"
+                        className="size-5 accent-[var(--primary)]"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => onToggleSelected(item.id)}
+                        aria-label={`选择${item.name}`}
+                      />
+                    </label>
+                  }
+                  fields={[
+                    { id: "latest", label: "最新价", value: <span className="numeric">{formatPoint(item.latest)}</span> },
+                    {
+                      id: "change_percent",
+                      label: "涨跌幅",
+                      value: (
+                        <span className={cn("numeric", movementClass(item.change_percent))}>{formatPercent(item.change_percent)}</span>
+                      ),
+                    },
+                  ]}
+                  details={[
+                    { id: "type", label: "类型", value: item.asset_type === "a_share" ? "A 股" : "ETF" },
+                    {
+                      id: "change",
+                      label: "涨跌额",
+                      value: <span className={movementClass(item.change)}>{formatSignedPoint(item.change)}</span>,
+                    },
+                    { id: "volume", label: "成交量", value: formatVolume(item.volume) },
+                    { id: "turnover", label: "成交额", value: formatMoney(item.turnover) },
+                    { id: "added_at", label: "添加时间", value: formatDateTime(item.added_at) },
+                    { id: "note", label: "备注", value: item.note || "暂无备注" },
+                  ]}
+                  actions={
+                    <>
+                      {canDrag && (
+                        <div className="mr-auto flex gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={`将${item.name}上移`}
+                            disabled={displayItems[0]?.id === item.id}
+                            onClick={() => onMove(item.id, -1)}
+                          >
+                            <ArrowUp size={16} />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={`将${item.name}下移`}
+                            disabled={displayItems[displayItems.length - 1]?.id === item.id}
+                            onClick={() => onMove(item.id, 1)}
+                          >
+                            <ArrowDown size={16} />
+                          </Button>
+                        </div>
+                      )}
+                      <WatchlistActions
+                        name={item.name}
+                        onDetails={() => onDetails(item)}
+                        onEditNote={() => onOpenNote(item)}
+                        onDelete={() => onDelete(item)}
+                      />
+                    </>
+                  }
+                />
+              ))
+            )}
+          </div>
+          <div ref={tableScrollRef} className="watchlist-table-scroll workspace-table-scroll hidden flex-1 md:block">
+            <Table
+              className="watchlist-table w-full min-w-[1420px] whitespace-nowrap border-separate border-spacing-0 text-center text-table"
               aria-label="自选列表"
             >
-              <thead className="sticky top-0 z-20 border-b border-border bg-secondary">
-                <tr>
-                  <th className="watchlist-sticky-left watchlist-sticky-select sticky left-0 top-0 z-30 w-12 bg-secondary px-4 py-3 text-center text-[13px]">
+              <TableHeader className="sticky top-0 z-20 border-b border-border bg-secondary">
+                <TableRow>
+                  <TableHead className="watchlist-sticky-left watchlist-sticky-select sticky left-0 top-0 z-30 w-12 bg-secondary px-4 py-3 text-center text-table">
                     <input
                       ref={headerCheckboxRef}
                       type="checkbox"
@@ -143,24 +261,22 @@ export function WatchlistTable({
                       aria-label="选择当前页"
                       className="size-4 accent-[var(--primary)]"
                     />
-                  </th>
-                  <th className="watchlist-sticky-left watchlist-sticky-instrument sticky left-12 top-0 z-30 min-w-[220px] bg-secondary px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">
+                  </TableHead>
+                  <TableHead className="watchlist-sticky-left watchlist-sticky-instrument sticky left-12 top-0 z-30 min-w-[220px] bg-secondary ">
                     标的名称
-                  </th>
-                  <th className="min-w-[90px] px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">类型</th>
+                  </TableHead>
+                  <TableHead className="min-w-[90px] ">类型</TableHead>
                   <SortableHeader label="最新价" sortKey="latest" sort={sort} onSort={onSort} />
                   <SortableHeader label="涨跌额" sortKey="change" sort={sort} onSort={onSort} />
                   <SortableHeader label="涨跌幅" sortKey="change_percent" sort={sort} onSort={onSort} />
                   <SortableHeader label="成交量" sortKey="volume" sort={sort} onSort={onSort} />
                   <SortableHeader label="成交额" sortKey="turnover" sort={sort} onSort={onSort} />
                   <SortableHeader label="添加时间" sortKey="added_at" sort={sort} onSort={onSort} />
-                  <th className="min-w-[180px] px-5 py-3 text-[13px] font-bold tracking-[0.1em] text-muted-foreground">备注</th>
-                  <th className="watchlist-sticky-right sticky right-0 top-0 z-30 w-36 bg-secondary px-5 py-3 text-center text-[13px] font-bold tracking-[0.1em] text-muted-foreground">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
+                  <TableHead className="min-w-[180px] ">备注</TableHead>
+                  <TableHead className="watchlist-sticky-right sticky right-0 top-0 z-30 w-36 bg-secondary text-center">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border/60">
                 {query.isLoading
                   ? Array.from({ length: 5 }, (_, index) => <LoadingRow key={index} />)
                   : pageItems.map((item, index) => {
@@ -183,30 +299,30 @@ export function WatchlistTable({
                         />
                       );
                     })}
-              </tbody>
-            </table>
-            {!query.isLoading && displayItems.length === 0 && (
-              <EmptyState
-                icon={isFiltered ? Search : Star}
-                title={isFiltered ? "没有符合条件的标的" : "先建立你的观察清单"}
-                description={
-                  isFiltered ? "换一个关键词或清除筛选，看看其他自选标的。" : "搜索一只 A 股或 ETF，把它放进你每天都会打开的列表。"
-                }
-                action={
-                  <Button variant={isFiltered ? "outline" : "default"} onClick={isFiltered ? onClear : onAdd}>
-                    {isFiltered ? (
-                      <>
-                        <X size={15} /> 清除筛选
-                      </>
-                    ) : (
-                      "添加第一只自选"
-                    )}
-                  </Button>
-                }
-                className="min-h-64 rounded-none border-0 bg-transparent shadow-none"
-              />
-            )}
+              </TableBody>
+            </Table>
           </div>
+          {!query.isLoading && displayItems.length === 0 && (
+            <EmptyState
+              icon={isFiltered ? Search : Star}
+              title={isFiltered ? "没有符合条件的标的" : "先建立你的观察清单"}
+              description={
+                isFiltered ? "换一个关键词或清除筛选，看看其他自选标的。" : "搜索一只 A 股或 ETF，把它放进你每天都会打开的列表。"
+              }
+              action={
+                <Button variant={isFiltered ? "outline" : "default"} onClick={isFiltered ? onClear : onAdd}>
+                  {isFiltered ? (
+                    <>
+                      <X size={15} /> 清除筛选
+                    </>
+                  ) : (
+                    "添加第一只自选"
+                  )}
+                </Button>
+              }
+              className="min-h-64 rounded-none border-0 bg-transparent shadow-none"
+            />
+          )}
           {!query.isLoading && displayItems.length > 0 && (
             <Pagination
               page={currentPage}
@@ -222,7 +338,7 @@ export function WatchlistTable({
           )}
         </>
       )}
-    </div>
+    </TableFrame>
   );
 }
 
@@ -256,7 +372,7 @@ function WatchlistRow({
   onDrop: () => void;
 }) {
   return (
-    <tr
+    <TableRow
       draggable={canDrag}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
@@ -273,7 +389,7 @@ function WatchlistRow({
         isDragging && "opacity-45",
       )}
     >
-      <td className="watchlist-sticky-left watchlist-sticky-select sticky left-0 z-10 w-12 bg-card px-4 py-3 text-center align-middle group-hover:bg-secondary">
+      <TableCell className="watchlist-sticky-left watchlist-sticky-select sticky left-0 z-10 w-12 bg-card px-4 py-3 text-center align-middle group-hover:bg-secondary">
         <input
           type="checkbox"
           checked={selected}
@@ -281,79 +397,37 @@ function WatchlistRow({
           aria-label={`选择${item.name}`}
           className="size-4 accent-[var(--primary)]"
         />
-      </td>
-      <td className="watchlist-sticky-left watchlist-sticky-instrument sticky left-12 z-10 min-w-[220px] bg-card px-5 py-3 text-center align-middle group-hover:bg-secondary">
-        <div className="relative flex min-w-0 items-center justify-center">
-          {canDrag && (
-            <GripVertical className="absolute left-0 cursor-grab text-muted-foreground/45 active:cursor-grabbing" size={15} aria-hidden />
-          )}
-          <div className="min-w-0 text-center">
-            <p className="truncate font-semibold text-foreground" title={item.name}>
-              {item.name}
-            </p>
-            <p className="mt-1 font-mono text-[13px] tracking-[0.04em] text-muted-foreground/60">{item.thscode}</p>
-          </div>
-        </div>
-      </td>
-      <td className="px-5 py-3 text-center align-middle">
-        <Badge className="text-[13px]">{item.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
-      </td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] font-semibold text-foreground">
-        {formatPoint(item.latest)}
-      </td>
-      <td className={cn("px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px]", movementClass(item.change))}>
+      </TableCell>
+      <TableCell className="watchlist-sticky-left watchlist-sticky-instrument sticky left-12 z-10 min-w-[220px] bg-card group-hover:bg-secondary">
+        <InstrumentCell name={item.name} code={item.thscode} draggable={canDrag} />
+      </TableCell>
+      <TableCell className="text-center">
+        <Badge className="text-table">{item.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
+      </TableCell>
+      <TableCell className="font-mono tabular-nums text-table font-semibold text-foreground">{formatPoint(item.latest)}</TableCell>
+      <TableCell className={cn("font-mono tabular-nums text-table", movementClass(item.change))}>
         {formatSignedPoint(item.change)}
-      </td>
-      <td className={cn("px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px]", movementClass(item.change_percent))}>
+      </TableCell>
+      <TableCell className={cn("font-mono tabular-nums text-table", movementClass(item.change_percent))}>
         {formatPercent(item.change_percent)}
-      </td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">
-        {formatVolume(item.volume)}
-      </td>
-      <td className="px-5 py-3 text-center align-middle font-mono tabular-nums text-[13px] text-foreground/80">
-        {formatMoney(item.turnover)}
-      </td>
-      <td className="px-5 py-3 text-center align-middle font-mono text-[13px] text-muted-foreground/70">{formatDateTime(item.added_at)}</td>
-      <td className="max-w-[220px] px-5 py-3 text-center align-middle">
+      </TableCell>
+      <TableCell className="font-mono tabular-nums text-table text-foreground">{formatVolume(item.volume)}</TableCell>
+      <TableCell className="font-mono tabular-nums text-table text-foreground">{formatMoney(item.turnover)}</TableCell>
+      <TableCell className="font-mono text-table text-subtle">{formatDateTime(item.added_at)}</TableCell>
+      <TableCell className="max-w-[220px] text-center">
         <button
           type="button"
-          className="max-w-full truncate text-center text-[13px] text-muted-foreground transition hover:text-primary"
+          className="max-w-full truncate text-center text-table text-muted-foreground transition hover:text-primary-text"
           title={item.note ?? "添加备注"}
           onClick={onEditNote}
         >
-          {item.note || <span className="text-muted-foreground/45">添加备注</span>}
+          {item.note || <span className="text-subtle">添加备注</span>}
         </button>
-      </td>
-      <td className="watchlist-sticky-right sticky right-0 z-10 w-36 bg-card px-5 py-3 text-center align-middle group-hover:bg-secondary">
-        <div className="flex justify-center gap-1">
-          <button
-            type="button"
-            onClick={onDetails}
-            aria-label={`查看${item.name}详情`}
-            title="查看详情"
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-          >
-            <FileText size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={onEditNote}
-            aria-label={`编辑${item.name}备注`}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-          >
-            <PencilLine size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`删除${item.name}`}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-danger/10 hover:text-danger"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      </td>
-    </tr>
+      </TableCell>
+      <TableCell className="watchlist-sticky-right sticky right-0 z-10 w-36 bg-card group-hover:bg-secondary">
+        <WatchlistActions name={item.name} onDetails={onDetails} onEditNote={onEditNote} onDelete={onDelete} />
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -370,9 +444,9 @@ function SortableHeader({
 }) {
   const active = sort.key === sortKey;
   return (
-    <th
+    <TableHead
       aria-sort={active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
-      className="whitespace-nowrap px-5 py-3 text-center text-[13px] font-bold tracking-[0.1em] text-muted-foreground"
+      className="whitespace-nowrap text-center"
     >
       <button
         type="button"
@@ -383,26 +457,70 @@ function SortableHeader({
         {label}
         {active ? (
           sort.direction === "asc" ? (
-            <ArrowUp size={13} className="text-primary" />
+            <ArrowUp size={13} className="text-primary-text" />
           ) : (
-            <ArrowDown size={13} className="text-primary" />
+            <ArrowDown size={13} className="text-primary-text" />
           )
         ) : (
-          <ArrowUpDown size={13} className="text-muted-foreground/45" />
+          <ArrowUpDown size={13} className="text-subtle" />
         )}
       </button>
-    </th>
+    </TableHead>
   );
 }
 
 function LoadingRow() {
   return (
-    <tr>
+    <TableRow>
       {Array.from({ length: 11 }, (_, index) => (
-        <td key={index} className="px-5 py-6">
+        <TableCell key={index} className="px-5 py-6">
           <div className="h-3 animate-pulse rounded-full bg-secondary" style={{ width: `${42 + (index % 4) * 12}%` }} />
-        </td>
+        </TableCell>
       ))}
-    </tr>
+    </TableRow>
+  );
+}
+
+const SORT_LABELS: Record<SortKey, string> = {
+  custom: "自定义顺序",
+  latest: "最新价",
+  change: "涨跌额",
+  change_percent: "涨跌幅",
+  volume: "成交量",
+  turnover: "成交额",
+  added_at: "添加时间",
+};
+
+function WatchlistActions({
+  name,
+  onDetails,
+  onEditNote,
+  onDelete,
+}: {
+  name: string;
+  onDetails: () => void;
+  onEditNote: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex justify-center gap-1">
+      <Button type="button" variant="ghost" size="icon-sm" onClick={onDetails} aria-label={`查看${name}详情`} title="查看详情">
+        <FileText size={16} />
+      </Button>
+      <Button type="button" variant="ghost" size="icon-sm" onClick={onEditNote} aria-label={`编辑${name}备注`} title="编辑备注">
+        <PencilLine size={16} />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-danger hover:bg-danger/10 hover:text-danger"
+        onClick={onDelete}
+        aria-label={`删除${name}`}
+        title="删除"
+      >
+        <Trash2 size={16} />
+      </Button>
+    </div>
   );
 }

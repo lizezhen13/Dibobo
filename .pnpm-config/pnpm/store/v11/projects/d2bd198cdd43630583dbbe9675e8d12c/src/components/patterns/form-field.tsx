@@ -44,14 +44,14 @@ export function FormField({ label, children, error, hint, required, className }:
           )}
         </Label>
         {hint && (
-          <span id={hintId} className="font-mono text-xs font-normal tracking-normal text-muted-foreground/60">
+          <span id={hintId} className="font-mono text-caption font-normal tracking-normal text-subtle">
             {hint}
           </span>
         )}
       </div>
       {control}
       {error && (
-        <p id={errorId} role="alert" className="mt-1.5 text-xs leading-relaxed text-danger">
+        <p id={errorId} role="alert" className="mt-1.5 text-caption leading-relaxed text-danger">
           {error}
         </p>
       )}

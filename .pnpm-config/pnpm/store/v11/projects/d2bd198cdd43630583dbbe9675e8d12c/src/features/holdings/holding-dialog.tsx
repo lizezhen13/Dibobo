@@ -15,7 +15,7 @@ import {
 import { InlineAlert, LoadingButton } from "../../components/patterns";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { ApiError } from "../../lib/api";
 import { useCreateHoldingMutation, useInstrumentSearchQuery, useUpdateHoldingMutation } from "./queries";
 import { HoldingFormFields } from "./holding-form-fields";
@@ -135,7 +135,7 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[min(680px,calc(100vw-64px))]">
+        <DialogContent className="w-[min(42.5rem,calc(100vw-2rem))]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
@@ -148,7 +148,7 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
           </DialogHeader>
 
           <form onSubmit={onSubmit} noValidate>
-            <div className="space-y-5 px-6 py-6">
+            <DialogBody className="space-y-5">
               {!isEditing ? (
                 <HoldingInstrumentField
                   query={instrumentQuery}
@@ -168,9 +168,9 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
                   search={instrumentSearch}
                 />
               ) : (
-                <div className="grid grid-cols-[110px_1fr_auto] items-center gap-4 rounded-xl border border-border bg-card-deep/45 px-4 py-3">
-                  <span className="font-mono text-[0.65rem] tracking-[0.12em] text-muted-foreground/60">INSTRUMENT</span>
-                  <span className="text-[0.95rem] font-semibold text-foreground">
+                <div className="grid grid-cols-1 sm:grid-cols-[110px_1fr_auto] items-center gap-4 rounded-xl border border-border bg-card-deep/45 px-4 py-3">
+                  <span className="font-mono text-caption tracking-[0.12em] text-subtle">INSTRUMENT</span>
+                  <span className="text-body font-semibold text-foreground">
                     {holding.ticker} · {holding.name}
                   </span>
                   <Badge>{holding.asset_type === "a_share" ? "A 股" : "ETF"}</Badge>
@@ -186,10 +186,10 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
               />
 
               {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-            </div>
+            </DialogBody>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" className="!text-[12px]" onClick={() => onOpenChange(false)} disabled={isPending}>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
                 取消
               </Button>
               <LoadingButton type="submit" loading={isPending}>
@@ -209,11 +209,8 @@ export function HoldingDialog({ open, onOpenChange, holding, portfolioId }: Hold
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="!text-[12px]" disabled={isPending}>
-              返回修改
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending}>返回修改</AlertDialogCancel>
             <AlertDialogAction
-              className="!text-[12px]"
               disabled={isPending}
               onClick={(event) => {
                 event.preventDefault();

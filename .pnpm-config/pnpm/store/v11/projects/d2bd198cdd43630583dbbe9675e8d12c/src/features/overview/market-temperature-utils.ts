@@ -40,7 +40,7 @@ export function temperatureTone(value: number): TemperatureTone {
     };
   }
   return {
-    accent: "#f05a4f",
+    accent: "#ff7c6b",
     description: "市场温度过高",
     glow: "rgba(240, 90, 79, 0.42)",
     label: "过热",

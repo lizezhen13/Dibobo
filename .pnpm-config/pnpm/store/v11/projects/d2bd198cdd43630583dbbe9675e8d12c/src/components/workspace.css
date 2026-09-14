@@ -1,0 +1,112 @@
+@layer components {
+  .app-shell {
+    --app-header-height: 4.25rem;
+    --page-gutter-x: 1rem;
+    --page-gutter-y: 1.25rem;
+  }
+
+  .app-header {
+    height: var(--app-header-height);
+  }
+  .app-content {
+    padding: var(--page-gutter-y) var(--page-gutter-x);
+  }
+  .app-content[data-full-bleed="true"] {
+    padding: 0;
+    --page-gutter-y: 0rem;
+  }
+
+  .workspace-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Let headers and notices grow naturally; bound the data region instead of the page. */
+  .workspace-table-scroll {
+    overflow: auto;
+    min-height: 12rem;
+    max-height: 36rem;
+    scrollbar-gutter: stable;
+  }
+  .external-content-page {
+    height: calc(100dvh - var(--app-header-height));
+    min-height: 28rem;
+  }
+
+  @media (min-width: 40rem) {
+    .app-shell {
+      --page-gutter-x: 1.5rem;
+      --page-gutter-y: 1.75rem;
+    }
+  }
+  @media (min-width: 64rem) {
+    .app-shell {
+      --page-gutter-x: 2rem;
+      --page-gutter-y: 2rem;
+    }
+  }
+
+  @media (min-width: 80rem) and (min-height: 56.25rem) {
+    .journals-page {
+      height: calc(100dvh - var(--app-header-height) - 2 * var(--page-gutter-y));
+    }
+  }
+
+  @media (max-width: 79.9375rem), (max-height: 56.1875rem) {
+    .workspace-page {
+      height: auto;
+      overflow: visible;
+    }
+    .workspace-page .workspace-table-frame {
+      height: auto;
+      flex: none;
+      overflow: visible;
+    }
+    .workspace-page .workspace-content {
+      height: auto;
+      flex: none;
+      overflow: visible;
+    }
+    .journal-workspace-shell,
+    .journal-state-shell {
+      height: auto;
+      flex: none;
+      overflow: visible;
+    }
+    .journal-workspace {
+      height: auto;
+    }
+    .journal-index-list {
+      max-height: 30rem;
+    }
+    .journal-reading-body {
+      overflow: visible;
+    }
+    .journal-reading-pane {
+      height: auto;
+    }
+  }
+
+  @media (max-width: 47.9375rem), (pointer: coarse) {
+    .ui-button,
+    .form-control,
+    button[aria-haspopup="dialog"],
+    button[role="tab"] {
+      min-height: 2.75rem;
+    }
+    .ui-button[data-size^="icon"] {
+      min-width: 2.75rem;
+    }
+    .record-card button,
+    .record-card summary {
+      min-height: 2.75rem;
+    }
+    .workspace-page .workspace-table-frame {
+      overflow: hidden;
+    }
+    .record-card .numeric {
+      flex-wrap: wrap;
+    }
+  }
+}

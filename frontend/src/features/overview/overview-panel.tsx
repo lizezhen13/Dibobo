@@ -42,15 +42,15 @@ export function OverviewPanel({
   children,
 }: OverviewPanelProps) {
   return (
-    <Card className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-lg shadow-subtle hover:shadow-raised", className)}>
-      <div className="flex min-h-[52px] shrink-0 items-center justify-between gap-4 border-b border-border px-5">
+    <Card className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
+      <div className="flex min-h-[52px] shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-baseline gap-2.5">
-          <h2 className="truncate text-base font-semibold tracking-normal text-foreground">{title}</h2>
-          <span className="hidden font-mono text-[11px] text-muted-foreground/55 sm:inline">{label}</span>
+          <h2 className="text-body font-semibold tracking-normal text-foreground">{title}</h2>
+          <span className="hidden font-mono text-caption text-subtle sm:inline">{label}</span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div
-            className={cn("flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground/70", stale && "text-warning")}
+            className={cn("flex items-center gap-1.5 font-mono text-caption text-subtle", stale && "text-warning")}
             title={stale ? "当前展示最后一次成功数据" : "卡片数据更新时间"}
           >
             {isFetching ? <LoaderCircle className="animate-spin" size={12} /> : <Clock3 size={12} />}
@@ -76,14 +76,14 @@ export function PanelState({ kind, message, className }: { kind: PanelStateKind;
       <div>
         <Icon
           className={cn(
-            "mx-auto text-muted-foreground/55",
-            kind === "loading" && "animate-spin text-primary",
+            "mx-auto text-subtle",
+            kind === "loading" && "animate-spin text-primary-text",
             kind === "error" && "text-market-up",
           )}
           size={22}
         />
-        <p className="mt-3 text-[15px] font-medium text-foreground/85">{title}</p>
-        {message && <p className="mt-1.5 max-w-sm text-[13px] leading-5 text-muted-foreground">{message}</p>}
+        <p className="mt-3 text-body font-medium text-foreground">{title}</p>
+        {message && <p className="mt-1.5 max-w-sm text-table leading-5 text-muted-foreground">{message}</p>}
       </div>
     </div>
   );

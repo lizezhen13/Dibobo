@@ -80,7 +80,7 @@ export function PortfoliosPage() {
   } = usePortfoliosController();
 
   return (
-    <PageContainer size="fluid" className="portfolio-page flex min-h-0 flex-col">
+    <PageContainer size="fluid" layout="workspace" className="portfolio-page flex min-h-0 flex-col">
       <h1 className="sr-only">投资组合</h1>
       <div className="grid min-h-0 flex-1 gap-6 xl:grid-cols-[276px_minmax(0,1fr)] xl:items-stretch">
         <PortfolioRail
@@ -93,7 +93,7 @@ export function PortfoliosPage() {
           onMove={movePortfolio}
         />
 
-        <main className="flex min-h-0 min-w-0 flex-col">
+        <section className="workspace-content flex min-h-0 min-w-0 flex-col" aria-label="组合持仓工作区">
           {portfoliosQuery.isError ? (
             <ErrorState
               title="投资组合加载失败"
@@ -119,7 +119,7 @@ export function PortfoliosPage() {
               />
 
               {summary.data?.incomplete && summary.data.holding_count > 0 && (
-                <div className="mt-4 flex shrink-0 items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/8 px-5 py-3.5 text-[0.85rem] text-primary/90">
+                <div className="mt-4 flex shrink-0 items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/8 px-5 py-3.5 text-table text-primary-text">
                   <AlertTriangle size={16} />
                   <span className="leading-relaxed">部分持仓行情缺失，组合汇总不完整；缺失值没有按 0 计算。</span>
                 </div>
@@ -128,17 +128,15 @@ export function PortfoliosPage() {
               {source && source.state !== "ready" && (
                 <div className="mt-4 flex shrink-0 flex-col justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-subtle sm:flex-row sm:items-center">
                   <div className="flex items-center gap-3">
-                    <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary/90">
+                    <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary-text">
                       <Settings size={16} />
                     </span>
                     <div>
-                      <p className="text-[0.95rem] font-semibold text-foreground">行情连接未就绪</p>
-                      <p className="mt-1 text-[0.85rem] leading-relaxed text-muted-foreground">
-                        {source.message ?? "请检查当前启用的数据源"}
-                      </p>
+                      <p className="text-body font-semibold text-foreground">行情连接未就绪</p>
+                      <p className="mt-1 text-table leading-relaxed text-muted-foreground">{source.message ?? "请检查当前启用的数据源"}</p>
                     </div>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="!text-[12px]">
+                  <Button asChild variant="outline" size="sm">
                     <Link to="/settings">前往系统设置</Link>
                   </Button>
                 </div>
@@ -177,7 +175,7 @@ export function PortfoliosPage() {
           ) : (
             <NoPortfolioState onCreate={() => openPortfolioEditor(null)} />
           )}
-        </main>
+        </section>
       </div>
 
       <Suspense fallback={null}>
@@ -211,11 +209,8 @@ export function PortfoliosPage() {
           </AlertDialogHeader>
           {deleteHoldingMutation.error && <InlineAlert className="mt-4">{mutationErrorMessage(deleteHoldingMutation.error)}</InlineAlert>}
           <AlertDialogFooter>
-            <AlertDialogCancel className="!text-[12px]" disabled={deleteHoldingMutation.isPending}>
-              取消
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteHoldingMutation.isPending}>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="!text-[12px]"
               disabled={deleteHoldingMutation.isPending}
               onClick={(event) => {
                 event.preventDefault();
@@ -240,11 +235,8 @@ export function PortfoliosPage() {
             <InlineAlert className="mt-4">{mutationErrorMessage(deletePortfolioMutation.error)}</InlineAlert>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel className="!text-[12px]" disabled={deletePortfolioMutation.isPending}>
-              取消
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={deletePortfolioMutation.isPending}>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="!text-[12px]"
               disabled={deletePortfolioMutation.isPending}
               onClick={(event) => {
                 event.preventDefault();
@@ -264,15 +256,15 @@ function NoPortfolioState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="grid min-h-[560px] place-items-center rounded-2xl border border-dashed border-primary/30 bg-card px-6 py-16 text-center shadow-raised">
       <div>
-        <span className="mx-auto grid size-16 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+        <span className="mx-auto grid size-16 place-items-center rounded-2xl border border-primary/25 bg-primary/10 text-primary-text">
           <Orbit size={26} />
         </span>
-        <p className="mt-6 font-mono text-[0.65rem] tracking-[0.18em] text-primary/75">PORTFOLIO DESK / EMPTY</p>
-        <h2 className="mt-3 font-display text-3xl tracking-tight text-foreground">建立你的第一个组合</h2>
-        <p className="mx-auto mt-3 max-w-md text-[0.92rem] leading-7 text-muted-foreground">
+        <p className="mt-6 font-mono text-caption tracking-[0.18em] text-primary-text">PORTFOLIO DESK / EMPTY</p>
+        <h2 className="mt-3 font-display text-heading tracking-tight text-foreground">建立你的第一个组合</h2>
+        <p className="mx-auto mt-3 max-w-md text-table leading-7 text-muted-foreground">
           用不同组合隔离策略和观察视角，组合内股票的市值与盈亏会自动聚合。
         </p>
-        <Button className="mt-7 !text-[12px]" onClick={onCreate}>
+        <Button className="mt-7" onClick={onCreate}>
           <Plus size={16} /> 新建投资组合
         </Button>
       </div>

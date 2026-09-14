@@ -4,9 +4,9 @@
 
 @layer components {
   .calendar-page {
-    --calendar-viewport-height: calc(100dvh - 68px);
+    --calendar-viewport-height: calc(100dvh - var(--app-header-height));
     width: 100%;
-    max-width: none !important;
+    max-width: none;
     height: var(--calendar-viewport-height);
     max-height: var(--calendar-viewport-height);
     min-height: 0;
@@ -71,7 +71,7 @@
     grid-template-rows: auto repeat(6, minmax(0, 1fr));
   }
 
-  @media (min-width: 1280px) {
+  @media (min-width: 80rem) {
     .calendar-workspace {
       grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.84fr);
       grid-template-rows: minmax(0, 1fr);
@@ -79,7 +79,7 @@
     }
   }
 
-  @media (max-width: 1279px) {
+  @media (max-width: 79.9375rem) {
     .calendar-content {
       overflow-x: hidden;
       overflow-y: auto;
@@ -93,26 +93,42 @@
     }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 47.9375rem) {
+    .calendar-page {
+      height: auto;
+      max-height: none;
+      overflow: visible;
+    }
+
     .calendar-content {
-      overflow-y: auto;
+      overflow: visible;
     }
 
     .calendar-workspace {
-      grid-template-rows: minmax(460px, auto) minmax(380px, auto);
-      min-height: 840px;
+      grid-template-rows: auto;
+      min-height: 0;
     }
 
     .calendar-pane {
       min-height: 460px;
+      height: 32rem;
     }
 
     .calendar-timeline-panel {
       min-height: 380px;
     }
+
+    .calendar-page[data-mobile-view="agenda"] .calendar-pane,
+    .calendar-page[data-mobile-view="month"] .calendar-timeline-panel {
+      display: none;
+    }
+
+    .calendar-timeline-scroll {
+      overflow: visible;
+    }
   }
 
-  @media (min-width: 1600px) {
+  @media (min-width: 100rem) {
     .calendar-workspace {
       grid-template-columns: minmax(0, 1.68fr) minmax(420px, 0.92fr);
     }

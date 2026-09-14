@@ -1,4 +1,7 @@
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
+import { Button } from "../../components/ui/button";
+import { Select } from "../../components/ui/select";
+import { cardVariants } from "../../components/ui/card";
 
 import { usePortfolioSummariesQuery } from "../holdings/queries";
 import type { HoldingSummary, Portfolio } from "../holdings/types";
@@ -30,13 +33,13 @@ export function PortfolioRail({
   const summaryQueries = usePortfolioSummariesQuery(portfolios.map((portfolio) => portfolio.id));
 
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-raised xl:sticky xl:top-[92px]">
-      <div className="border-b border-border px-5 py-5">
+    <aside className={cn(cardVariants({ variant: "raised", interactive: false }), "flex min-h-0 flex-col overflow-hidden xl:h-full")}>
+      <div className="border-b border-border px-4 py-4 xl:px-5 xl:py-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl tracking-tight text-foreground">我的组合</h2>
+          <h2 className="font-display text-title tracking-tight text-foreground">我的组合</h2>
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-lg border border-primary/30 bg-primary/[0.08] text-primary transition-colors hover:border-primary/55 hover:bg-primary/[0.15]"
+            className="grid size-10 place-items-center rounded-lg border border-primary/30 bg-primary/[0.08] text-primary-text transition-colors hover:border-primary/55 hover:bg-primary/[0.15]"
             onClick={onCreate}
             aria-label="新建投资组合"
             title="新建投资组合"
@@ -44,9 +47,42 @@ export function PortfolioRail({
             <Plus size={17} />
           </button>
         </div>
+        <div className="mt-3 flex items-center gap-2 xl:hidden">
+          <Select
+            aria-label="选择投资组合"
+            value={selectedId ?? ""}
+            disabled={isLoading || portfolios.length === 0}
+            onChange={(event) => onSelect(event.target.value)}
+          >
+            {portfolios.length === 0 && <option value="">{isLoading ? "正在加载组合…" : "暂无组合"}</option>}
+            {portfolios.map((portfolio) => (
+              <option key={portfolio.id} value={portfolio.id}>
+                {portfolio.name}
+              </option>
+            ))}
+          </Select>
+          {portfolios.length > 1 &&
+            ([-1, 1] as const).map((direction) => {
+              const index = portfolios.findIndex((portfolio) => portfolio.id === selectedId);
+              const portfolio = portfolios[index];
+              return (
+                <Button
+                  key={direction}
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  disabled={isReordering || !portfolio || index + direction < 0 || index + direction >= portfolios.length}
+                  aria-label={`将当前组合${direction === -1 ? "上移" : "下移"}`}
+                  onClick={() => portfolio && onMove(portfolio, direction)}
+                >
+                  {direction === -1 ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                </Button>
+              );
+            })}
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="hidden max-h-[36rem] min-h-0 flex-1 space-y-2 overflow-y-auto p-3 xl:block">
         {isLoading && [0, 1, 2].map((item) => <div key={item} className="h-[130px] animate-pulse rounded-xl bg-secondary" />)}
         {!isLoading &&
           portfolios.map((portfolio, index) => (
@@ -64,8 +100,8 @@ export function PortfolioRail({
           ))}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-4 text-[14px]">
-        <span className="text-[14px] text-muted-foreground/70">当前持仓市值</span>
+      <div className="hidden items-center justify-between gap-3 border-t border-border px-5 py-4 text-table xl:flex">
+        <span className="text-table text-subtle">当前持仓市值</span>
         <PortfolioRailTotal summaries={summaryQueries} />
       </div>
     </aside>
@@ -128,10 +164,10 @@ function PortfolioRailItem({
         </span>
       </button>
 
-      <div className="flex flex-col justify-center pr-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="flex flex-col justify-center gap-1 pr-1">
         <button
           type="button"
-          className="grid size-5 place-items-center rounded text-muted-foreground/60 hover:bg-secondary hover:text-foreground disabled:opacity-20"
+          className="grid size-8 place-items-center rounded text-subtle hover:bg-secondary hover:text-foreground disabled:opacity-30"
           onClick={() => void onMove(portfolio, -1)}
           disabled={isReordering || index === 0}
           aria-label={`将${portfolio.name}上移`}
@@ -141,7 +177,7 @@ function PortfolioRailItem({
         </button>
         <button
           type="button"
-          className="grid size-5 place-items-center rounded text-muted-foreground/60 hover:bg-secondary hover:text-foreground disabled:opacity-20"
+          className="grid size-8 place-items-center rounded text-subtle hover:bg-secondary hover:text-foreground disabled:opacity-30"
           onClick={() => void onMove(portfolio, 1)}
           disabled={isReordering || index === total - 1}
           aria-label={`将${portfolio.name}下移`}
@@ -160,7 +196,7 @@ function PortfolioRailTotal({ summaries }: { summaries: SummaryQuery[] }) {
   const hasValue = summaries.some((summary) => summary.data?.total_market_value !== null && summary.data?.total_market_value !== undefined);
 
   return (
-    <span className="font-mono text-[14px] font-semibold tracking-tight text-foreground">
+    <span className="font-mono text-table font-semibold tracking-tight text-foreground">
       {hasValue ? formatRailMoney(total) : isLoading ? "—" : "暂无数据"}
     </span>
   );

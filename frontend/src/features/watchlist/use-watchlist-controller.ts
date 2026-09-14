@@ -111,6 +111,22 @@ export function useWatchlistController() {
     }
   }
 
+  async function moveRow(id: string, direction: -1 | 1) {
+    if (!canDrag) return;
+    const index = items.findIndex((item) => item.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(index, 1);
+    if (!moved) return;
+    next.splice(target, 0, moved);
+    try {
+      await reorderMutation.mutateAsync(next.map((item) => item.id));
+    } catch {
+      // The shared mutation error remains visible above the list.
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
@@ -176,6 +192,7 @@ export function useWatchlistController() {
     clearFilters,
     goToPage,
     dropRow,
+    moveRow,
     confirmDelete,
     confirmBatchDelete,
     source: query.data?.data_source,

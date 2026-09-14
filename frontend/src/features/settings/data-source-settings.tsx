@@ -169,7 +169,7 @@ export function DataSourceSettings() {
         <Card className="grid min-h-[360px] place-items-center text-center">
           <div>
             <AlertTriangle className="mx-auto text-danger" size={26} />
-            <p className="mt-5 font-display text-2xl">数据源配置加载失败</p>
+            <p className="mt-5 font-display text-heading">数据源配置加载失败</p>
             <Button className="mt-5" variant="outline" onClick={() => void query.refetch()}>
               重新加载
             </Button>
@@ -178,11 +178,11 @@ export function DataSourceSettings() {
       ) : query.data.length === 0 ? (
         <Card className="grid min-h-[430px] place-items-center text-center">
           <div className="max-w-md">
-            <div className="mx-auto grid size-14 place-items-center rounded-full border border-primary/25 bg-primary/10 text-primary/90">
+            <div className="mx-auto grid size-14 place-items-center rounded-full border border-primary/25 bg-primary/10 text-primary-text">
               <DatabaseZap size={23} />
             </div>
-            <h3 className="mt-5 font-display text-2xl">还没有数据源</h3>
-            <p className="mt-3 text-[0.95rem] leading-7 text-muted-foreground">
+            <h3 className="mt-5 font-display text-heading">还没有数据源</h3>
+            <p className="mt-3 text-body leading-7 text-muted-foreground">
               添加同花顺或 Longbridge 配置，测试通过后即可按需启用。所有凭证都会在服务端加密保存。
             </p>
             <Button className="mt-7" onClick={openCreate}>
@@ -260,38 +260,36 @@ function DataSourceCard({
         source.is_active && "border-market-down/35 shadow-[inset_3px_0_0_0_var(--market-down),0_10px_35px_rgba(0,0,0,.4)]",
       )}
     >
-      <div className="absolute right-5 top-1 font-display text-[4.5rem] leading-none text-foreground/[0.025]">
+      <div aria-hidden="true" className="absolute right-5 top-1 font-display text-display leading-none text-foreground/[0.025]">
         {String(ordinal).padStart(2, "0")}
       </div>
-      <div className="relative grid grid-cols-[1fr_230px]">
-        <div className="p-5">
+      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_230px]">
+        <div className="min-w-0 p-5">
           <div className="flex items-start gap-4">
-            <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary font-mono text-xs font-bold text-primary/90">
+            <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-secondary font-mono text-caption font-bold text-primary-text">
               {isLongbridge ? "LB" : "FY"}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h3 className="font-display text-[1.25rem] text-foreground">{source.name}</h3>
+                <h3 className="font-display text-title-sm text-foreground">{source.name}</h3>
                 {source.is_active && (
                   <Badge variant="success">
                     <Activity size={10} className="mr-1" /> 当前启用
                   </Badge>
                 )}
-                <Button variant="outline" size="sm" className="ml-auto h-7 gap-1 px-2 text-[0.75rem]" onClick={onTest} disabled={testing}>
+                <Button variant="outline" size="sm" className="ml-auto h-7 gap-1 px-2" onClick={onTest} disabled={testing}>
                   {testing ? <LoaderCircle className="animate-spin" size={12} /> : <Activity size={12} />}
                   测试连接
                 </Button>
               </div>
-              <p className="mt-2 truncate font-mono text-[0.7rem] text-muted-foreground/60">{source.base_url}</p>
+              <p className="mt-2 break-all font-mono text-caption text-subtle">{source.base_url}</p>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[150px_1fr] gap-4 border-t border-border pt-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-4 border-t border-border pt-3.5 sm:grid-cols-[minmax(0,150px)_minmax(0,1fr)]">
             <div>
-              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">
-                {isLongbridge ? "鉴权方式" : "API KEY"}
-              </p>
-              <p className="mt-1.5 flex items-center gap-2 font-mono text-[0.8rem] text-muted-foreground">
+              <p className="text-caption font-medium tracking-[0.1em] text-subtle">{isLongbridge ? "鉴权方式" : "API KEY"}</p>
+              <p className="mt-1.5 flex items-center gap-2 font-mono text-caption text-muted-foreground">
                 <KeyRound size={12} />
                 {isLongbridge
                   ? source.auth_type === "oauth"
@@ -301,9 +299,9 @@ function DataSourceCard({
               </p>
             </div>
             <div>
-              <p className="text-[0.65rem] font-medium tracking-[0.1em] text-muted-foreground/60">能力识别</p>
+              <p className="text-caption font-medium tracking-[0.1em] text-subtle">能力识别</p>
               {capabilities.length ? (
-                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-muted-foreground">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted-foreground">
                   {capabilities.slice(0, 5).map(([key, state]) => (
                     <span key={key} className="flex items-center gap-1">
                       {state === "supported" ? (
@@ -311,21 +309,21 @@ function DataSourceCard({
                       ) : state === "partial" ? (
                         <Minus className="text-warning" size={11} />
                       ) : (
-                        <CircleOff className="text-muted-foreground/60" size={11} />
+                        <CircleOff className="text-subtle" size={11} />
                       )}
                       {capabilityLabels[key] ?? key}
                     </span>
                   ))}
-                  {capabilities.length > 5 && <span className="text-muted-foreground/60">+{capabilities.length - 5}</span>}
+                  {capabilities.length > 5 && <span className="text-subtle">+{capabilities.length - 5}</span>}
                 </div>
               ) : (
-                <p className="mt-1.5 text-[0.8rem] text-muted-foreground/60">测试连接后识别</p>
+                <p className="mt-1.5 text-caption text-subtle">测试连接后识别</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="border-l border-border bg-secondary/45 p-4">
+        <div className="min-w-0 border-t border-border bg-secondary/45 p-4 lg:border-l lg:border-t-0">
           <TestStatus source={source} />
           <div className="-mt-1 grid grid-cols-2 gap-2.5">
             <Button
@@ -356,10 +354,10 @@ function TestStatus({ source }: { source: DataSource }) {
   if (!source.last_test_status) {
     return (
       <div className="min-h-[72px]">
-        <p className="flex items-center gap-2 text-[0.8rem] font-semibold text-muted-foreground">
+        <p className="flex items-center gap-2 text-caption font-semibold text-muted-foreground">
           <CircleOff size={14} /> 尚未测试
         </p>
-        <p className="mt-2 text-[0.75rem] leading-5 text-muted-foreground/60">
+        <p className="mt-2 text-caption leading-5 text-subtle">
           {source.provider_type === "longbridge" ? "授权后可验证地址、鉴权与代表接口。" : "启用前需要验证地址、鉴权与代表接口。"}
         </p>
       </div>
@@ -368,19 +366,19 @@ function TestStatus({ source }: { source: DataSource }) {
   const success = source.last_test_status === "success";
   return (
     <div className="min-h-[72px]">
-      <p className={cn("flex items-center gap-2 text-[0.8rem] font-semibold", success ? "text-market-down" : "text-danger")}>
+      <p className={cn("flex items-center gap-2 text-caption font-semibold", success ? "text-market-down" : "text-danger")}>
         {success ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
         {success ? "连接成功" : "最近测试失败"}
         {source.last_test_latency_ms !== null && (
-          <span className="font-mono font-normal text-muted-foreground/60">{source.last_test_latency_ms} ms</span>
+          <span className="font-mono font-normal text-subtle">{source.last_test_latency_ms} ms</span>
         )}
       </p>
       {!success && source.last_test_message && (
-        <p className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-muted-foreground/60" title={source.last_test_message}>
+        <p className="mt-2 line-clamp-2 text-caption leading-5 text-subtle" title={source.last_test_message}>
           {source.last_test_message}
         </p>
       )}
-      <p className="mt-2 font-mono text-[0.7rem] text-muted-foreground/60">{formatDateTime(source.last_test_at)}</p>
+      <p className="mt-2 font-mono text-caption text-subtle">{formatDateTime(source.last_test_at)}</p>
     </div>
   );
 }
@@ -417,9 +415,9 @@ function NoticeBar({ notice, onClose }: { notice: NonNullable<Notice>; onClose: 
   return (
     <div
       className={cn(
-        "mb-5 flex items-center gap-3 rounded-lg border-l-4 px-4 py-3 text-[0.9rem]",
+        "mb-5 flex items-center gap-3 rounded-lg border-l-4 px-4 py-3 text-table",
         notice.tone === "success" && "border-market-down bg-market-down/6 text-market-down",
-        notice.tone === "warning" && "border-primary bg-primary/10 text-primary/90",
+        notice.tone === "warning" && "border-primary bg-primary/10 text-primary-text",
         notice.tone === "error" && "border-market-up bg-market-up/6 text-danger",
       )}
     >
